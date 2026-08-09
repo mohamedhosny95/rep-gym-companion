@@ -227,7 +227,7 @@ h1, h2, h3, p { margin-top: 0; }
 .nav-button.primary { background: var(--acid); border-color: var(--acid); color: var(--acid-ink); }
 .nav-button:disabled { opacity: .3; }
 
-.timer-dock { position: fixed; z-index: 20; left: 50%; bottom: calc(14px + var(--safe-bottom)); width: min(calc(100% - 24px), 700px); min-height: 84px; transform: translate(-50%,0); display: grid; grid-template-columns: 62px 1fr auto auto auto; gap: 10px; align-items: center; padding: 10px 12px; background: #edf7cf; color: #11150c; border-radius: 22px; box-shadow: 0 22px 70px #000; transition: transform .3s ease, opacity .25s ease; }
+.timer-dock { position: fixed; z-index: 20; left: 50%; bottom: calc(96px + var(--safe-bottom)); width: min(calc(100% - 24px), 700px); min-height: 84px; transform: translate(-50%,0); display: grid; grid-template-columns: 62px 1fr auto auto auto; gap: 10px; align-items: center; padding: 10px 12px; background: #edf7cf; color: #11150c; border-radius: 22px; box-shadow: 0 22px 70px #000; transition: transform .3s ease, opacity .25s ease; }
 .timer-dock.is-hidden { transform: translate(-50%,140%); opacity: 0; pointer-events: none; }
 .timer-ring { --progress: 100%; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#11150c var(--progress), rgba(17,21,12,.16) 0); position: relative; }
 .timer-ring::after { content:""; position:absolute; inset:5px; border-radius:50%; background:#edf7cf; }
