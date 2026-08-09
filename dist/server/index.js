@@ -283,12 +283,17 @@ function recoveryProperties(payload) {
 }
 
 function nutritionProperties(payload) {
-  return {
+  const properties = {
     "Day":{title:richText(`${payload.plan} · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},"Plan":{select:{name:safeText(payload.plan,20)}},
     "Calories Target":{number:Number(payload.caloriesTarget)||0},"Protein Target":{number:Number(payload.proteinTarget)||0},"Water Target L":{number:Number(payload.waterTarget)||0},
     "Meals Complete":{number:Number(payload.mealsComplete)||0},"Meals Total":{number:Number(payload.mealsTotal)||0},"Hydration Complete":{checkbox:Boolean(payload.hydrationComplete)},
     "Supplements Complete":{checkbox:Boolean(payload.supplementsComplete)},"Completion Percent":{number:Number(payload.completion)||0},"Notes":{rich_text:richText(payload.notes)}
   };
+  // Only written on days a weigh-in actually happened, so the column stays a
+  // sparse weekly series instead of repeating the same number every day.
+  const weight = Number(payload.weightKg);
+  if (Number.isFinite(weight) && weight >= 30 && weight <= 300) properties["Weight (kg)"] = { number: weight };
+  return properties;
 }
 
 function hygieneProperties(payload) {
