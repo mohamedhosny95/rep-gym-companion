@@ -3,8 +3,11 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache
 const HEALTH_DATA_SOURCES = {
   recovery: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
   nutrition: "fcfdaac1-87a5-4fc7-b437-42e1b247b80e",
-  hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2"
+  hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2",
+  food: "97671c61-586a-4443-aea6-00b1d9f835a7"
 };
+
+const FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion_size (string), estimated_weight_g (number), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), sugar_g (number), sodium_mg (number), confidence (High, Medium, or Low), confidence_pct (0-100 integer), notes (string), recognizable (boolean). All nutrition values are estimates. Use 0 instead of null. Sum multiple foods. If the input is Arabic, understand it natively and include the Arabic name after the English name.`;
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -17,6 +20,96 @@ function safeText(value, max = 1800) {
 function richText(value) {
   const content = safeText(value);
   return content ? [{ type: "text", text: { content } }] : [];
+}
+
+function paired(request, env) {
+  return Boolean(env.REP_SYNC_KEY) && (request.headers.get("x-rep-sync-key") || "") === env.REP_SYNC_KEY;
+}
+
+function numberInRange(value, maximum) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(number, maximum)) : 0;
+}
+
+function normalizeNutrition(value = {}) {
+  const nutrition = {
+    food_name: safeText(value.food_name || "Unknown food", 240),
+    portion_size: safeText(value.portion_size || "Unknown", 180),
+    estimated_weight_g: numberInRange(value.estimated_weight_g, 10000),
+    calories: numberInRange(value.calories, 10000),
+    protein_g: numberInRange(value.protein_g, 1000),
+    carbs_g: numberInRange(value.carbs_g, 2000),
+    fat_g: numberInRange(value.fat_g, 1000),
+    fiber_g: numberInRange(value.fiber_g, 250),
+    sugar_g: numberInRange(value.sugar_g, 1000),
+    sodium_mg: numberInRange(value.sodium_mg, 100000),
+    confidence: ["High", "Medium", "Low"].includes(value.confidence) ? value.confidence : "Low",
+    confidence_pct: Math.round(numberInRange(value.confidence_pct, 100)),
+    notes: safeText(value.notes, 900),
+    recognizable: value.recognizable !== false,
+    source: safeText(value.source || "AI estimate", 80)
+  };
+  const macroCalories = nutrition.protein_g * 4 + nutrition.carbs_g * 4 + nutrition.fat_g * 9;
+  if (nutrition.calories && macroCalories && Math.abs(macroCalories - nutrition.calories) > Math.max(100, nutrition.calories * .2)) {
+    nutrition.confidence = "Low";
+    nutrition.confidence_pct = Math.min(nutrition.confidence_pct || 40, 50);
+    nutrition.notes = safeText(`${nutrition.notes} Validation warning: calories differ materially from macro-derived energy.`, 900);
+  }
+  return nutrition;
+}
+
+function parseModelJson(text) {
+  const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("AI returned an unreadable response.");
+  return JSON.parse(match[0]);
+}
+
+async function geminiGenerate(env, parts, jsonMode = true) {
+  if (!env.GEMINI_API_KEY) throw new Error("Food analysis is not configured. Add GEMINI_API_KEY in Cloudflare.");
+  const model = safeText(env.GEMINI_MODEL || "gemini-flash-latest", 100);
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+    body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { temperature: .1, maxOutputTokens: jsonMode ? 2048 : 64, ...(jsonMode ? { responseMimeType: "application/json" } : {}) } })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || `Food analysis failed (${response.status}).`);
+  return (data.candidates?.[0]?.content?.parts || []).map(part => part.text || "").join("").trim();
+}
+
+async function lookupBarcode(barcode) {
+  const code = String(barcode || "").replace(/\D/g, "");
+  if (code.length < 8) throw new Error("No readable barcode was found.");
+  const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`, { headers: { "user-agent": "RepFoodTracker/1.0" } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.status !== 1) throw new Error(`Barcode ${code} was not found in Open Food Facts.`);
+  const product = data.product || {}, nutrients = product.nutriments || {}, serving = Number(product.serving_quantity), factor = serving > 0 ? serving / 100 : 1;
+  const n = key => numberInRange((Number(nutrients[key]) || 0) * factor, 100000);
+  const sodium = n("sodium_100g") * 1000 || n("salt_100g") / 2.54 * 1000;
+  return normalizeNutrition({ food_name: `${product.product_name || product.generic_name || "Unknown product"}${product.brands ? ` (${product.brands})` : ""}`, portion_size: serving > 0 ? (product.serving_size || `${serving}g`) : "100g", estimated_weight_g: serving || 100, calories: n("energy-kcal_100g"), protein_g: n("proteins_100g"), carbs_g: n("carbohydrates_100g"), fat_g: n("fat_100g"), fiber_g: n("fiber_100g"), sugar_g: n("sugars_100g"), sodium_mg: sodium, confidence: "High", confidence_pct: 92, notes: `Open Food Facts data. Barcode: ${code}`, recognizable: true, source: "Open Food Facts" });
+}
+
+async function analyzeFood(request, env) {
+  if (!paired(request, env)) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  const body = await request.json().catch(() => null), mode = safeText(body?.mode, 30), description = safeText(body?.description, 1200);
+  if (!body || !["text", "restaurant", "photo", "barcode-image", "barcode"].includes(mode)) return json({ ok: false, error: "Unsupported food input." }, 400);
+  try {
+    if (mode === "barcode") return json({ ok: true, nutrition: await lookupBarcode(body.barcode), logMethod: "Barcode" });
+    const image = safeText(body.image, 12_000_000), mimeType = /^image\/(jpeg|png|webp|heic|heif)$/i.test(body.mimeType || "") ? body.mimeType : "image/jpeg";
+    if (["photo", "barcode-image"].includes(mode) && !image) return json({ ok: false, error: "Image data is missing." }, 400);
+    if (mode === "barcode-image") {
+      const rawCode = await geminiGenerate(env, [{ text: "Extract the numeric EAN/UPC barcode from this image. Return only digits, or NONE." }, { inlineData: { mimeType, data: image } }], false);
+      return json({ ok: true, nutrition: await lookupBarcode(rawCode), logMethod: "Barcode" });
+    }
+    const prompt = mode === "restaurant" ? `Estimate this restaurant meal using general knowledge. Never claim the values are official. State portion assumptions and uncertainty in notes. ${FOOD_SCHEMA}\nMeal: ${description}` : mode === "photo" ? `Analyze all food visible in this image. Use plate, hand, utensils, or packaging to estimate portion size. ${FOOD_SCHEMA}${description ? `\nUser note: ${description}` : ""}` : `Calculate nutrition for this food description. Specific quantities increase confidence; vague portions must be Medium or Low confidence. ${FOOD_SCHEMA}\nMeal: ${description}`;
+    const parts = [{ text: prompt }];
+    if (mode === "photo") parts.push({ inlineData: { mimeType, data: image } });
+    const raw = await geminiGenerate(env, parts, true), nutrition = normalizeNutrition({ ...parseModelJson(raw), source: mode === "photo" ? "AI estimate (photo)" : mode === "restaurant" ? "AI estimate (restaurant, unverified)" : "AI estimate (ingredients)" });
+    return json({ ok: true, nutrition, logMethod: mode === "photo" ? "Photo" : mode === "restaurant" ? "Restaurant" : "Ingredients" });
+  } catch (error) {
+    return json({ ok: false, error: safeText(error?.message || "Food analysis failed.", 300) }, 502);
+  }
 }
 
 async function notionRequest(env, path, init = {}) {
@@ -107,7 +200,7 @@ async function syncWorkout(request, env) {
 }
 
 function healthSource(env, kind) {
-  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID"};
+  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID",food:"NOTION_FOOD_DATA_SOURCE_ID"};
   return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
 }
 
@@ -143,11 +236,31 @@ function hygieneProperties(payload) {
   };
 }
 
+function foodProperties(payload) {
+  const method=["Photo","Restaurant","Ingredients","Barcode","Voice","Re-log","Template"].includes(payload.logMethod)?payload.logMethod:"Ingredients";
+  const meal=["Breakfast","Lunch","Dinner","Snack"].includes(payload.mealType)?payload.mealType:"Snack",marker=`[REP:${safeText(payload.id,100)}]`;
+  return {
+    "Name":{title:richText(payload.food_name||payload.rawNote||"Meal note")},"Date":{date:{start:safeText(payload.date,40)}},"Meal Type":{select:{name:meal}},"Log Method":{select:{name:method}},
+    "Calories":{number:Number(payload.calories)||0},"Protein":{number:Number(payload.protein_g)||0},"Carbs":{number:Number(payload.carbs_g)||0},"Fat":{number:Number(payload.fat_g)||0},"Fiber":{number:Number(payload.fiber_g)||0},
+    "Sugar":{number:Number(payload.sugar_g)||0},"Sodium":{number:Number(payload.sodium_mg)||0},"Portion Size":{rich_text:richText(payload.portion_size)},"Confidence":{select:{name:["High","Medium","Low"].includes(payload.confidence)?payload.confidence:"Low"}},
+    "Notes":{rich_text:richText(`${marker} ${safeText(payload.rawNote,900)}${payload.notes?` · ${safeText(payload.notes,600)}`:""}`)}
+  };
+}
+
+async function syncFood(env,payload,source) {
+  if(!payload?.id||!payload?.date)return json({ok:false,error:"Invalid food entry."},400);
+  const marker=`[REP:${safeText(payload.id,100)}]`,result=await notionRequest(env,`/data_sources/${source}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Notes",rich_text:{contains:marker}}})});
+  if(result.results?.length)return json({ok:true,created:0,skipped:1});
+  await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties:foodProperties(payload)})});
+  return json({ok:true,created:1,skipped:0});
+}
+
 async function syncHealth(request, env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) return json({ok:false,error:"Sync is not configured on the server."},503);
   if ((request.headers.get("x-rep-sync-key")||"")!==env.REP_SYNC_KEY) return json({ok:false,error:"Pairing key is incorrect."},401);
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
+  if(kind==="food")return syncFood(env,payload,source);
   const builders={recovery:recoveryProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
   if(!properties)return json({ok:false,error:"Unsupported health log type."},400);
   const pageId=await existingHealthPage(env,source,payload.date);
@@ -159,6 +272,11 @@ async function syncHealth(request, env, body) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/food/analyze") {
+      if (request.method === "POST") return analyzeFood(request, env);
+      if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+      return json({ ok: false, error: "Method not allowed." }, 405);
+    }
     if (url.pathname === "/api/notion-sync") {
       if (request.method === "POST") {
         try { const body=await request.clone().json().catch(()=>null);return body?.workout?await syncWorkout(request, env):await syncHealth(request,env,body); }

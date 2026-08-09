@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Rep">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <div class="app-shell">
@@ -30,6 +30,11 @@
     </header>
 
     <main id="app" aria-live="polite"></main>
+    <nav class="app-tabs" id="appTabs" aria-label="Main app sections">
+      <button data-app-tab="train" aria-current="page"><i aria-hidden="true">↗</i><span>Train</span></button>
+      <button data-app-tab="food"><i aria-hidden="true">◒</i><span>Food</span></button>
+      <button data-app-tab="care"><i aria-hidden="true">✦</i><span>Care</span></button>
+    </nav>
   </div>
 
   <div class="timer-dock is-hidden" id="timerDock" role="timer" aria-live="assertive">
@@ -43,8 +48,8 @@
     <button id="timerSkip" class="timer-skip">Skip</button>
   </div>
 
-  <script src="health-data.js?v=12" defer></script>
+  <script src="health-data.js?v=13" defer></script>
   <script src="i18n.js" defer></script>
-  <script src="app.js?v=12" defer></script>
+  <script src="app.js?v=13" defer></script>
 </body>
 </html>
