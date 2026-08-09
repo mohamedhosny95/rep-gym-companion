@@ -130,6 +130,7 @@ const state = {
   daily:saved.daily||{nutrition:{},hygiene:{}}, cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||new Date().toISOString().slice(0,10),
   foodEntries:saved.foodEntries||[], savedMeals:saved.savedMeals||[], water:saved.water||{}, foodDraft:null, foodNote:saved.foodNote||"", foodMealType:saved.foodMealType||"", foodLogMethod:saved.foodLogMethod||"Ingredients", foodBusy:false, foodPendingPayload:null,
   pairBusy:false, pairMessage:"",
+  lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -137,7 +138,7 @@ const app = document.querySelector("#app");
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, savedMeals:state.savedMeals, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, savedMeals:state.savedMeals, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil }));
 }
 function U(){return REP_I18N[state.lang].ui;}
 function sessionText(id,s){const v=REP_I18N[state.lang].sessions[id];return {name:v?.[0]||s.name,meta:v?.[1]||s.meta,description:v?.[2]||s.description};}
@@ -165,6 +166,23 @@ function programStatus(){
   return {week,stalled,review:week>=REP_HEALTH_GUIDE.rules.reviewWeek||stalled.length>=2};
 }
 function healthStatusStrip(){const gate=recoveryGate(),program=programStatus(),ar=state.lang==="ar";let label=ar?"جاهز للتقدم":"Progress available",tone="good";if(gate.hold){label=ar?`${gate.flags} علامات خطر · ثبّت الحمل`:`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label=ar?"موعد مراجعة البرنامج":"Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${ar?"قرار اليوم":"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${ar?`الأسبوع ${program.week}`:`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
+
+function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0;}
+function notionProtected(){return Boolean(localStorage.getItem(syncKeyStorage))&&state.syncQueue.length===0&&!["failed","auth"].includes(state.syncState);}
+function needsBackupReminder(){
+  if(!hasMeaningfulData())return false;
+  if(state.backupSnoozedUntil&&new Date(state.backupSnoozedUntil)>new Date())return false;
+  const thresholdDays=notionProtected()?30:7;
+  if(!state.lastBackupAt)return true;
+  return (Date.now()-new Date(state.lastBackupAt).getTime())/86400000>=thresholdDays;
+}
+function backupReminderStrip(){
+  if(!needsBackupReminder())return "";
+  const ar=state.lang==="ar",neverBacked=!state.lastBackupAt;
+  const sub=notionProtected()?(ar?"متصل بـNotion، لكن الإعدادات والملاحظات المحلية لا تُنسخ إلا بالتصدير.":"Notion is connected, but local settings and drafts are only saved by exporting."):(ar?"بياناتك محفوظة على هذا الجهاز فقط. نسخة ضائعة تعني بداية من الصفر.":"Your data lives only on this device. Losing it means starting from zero.");
+  return `<section class="backup-reminder"><div><small>${ar?"نسخة احتياطية":"BACKUP"}</small><strong>${neverBacked?(ar?"لم تُصدَّر نسخة احتياطية بعد":"You've never exported a backup"):(ar?"حان وقت نسخة احتياطية جديدة":"Time for a fresh backup")}</strong><p>${sub}</p></div><div class="backup-reminder-actions"><button data-backup-export>${ar?"تصدير الآن":"Export now"}</button><button data-backup-snooze>${ar?"ذكّرني لاحقاً":"Remind me later"}</button></div></section>`;
+}
+function snoozeBackupReminder(){state.backupSnoozedUntil=new Date(Date.now()+7*86400000).toISOString();persist();renderHome();}
 function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={train:state.lang==="ar"?"تمرين":"Train",food:state.lang==="ar"?"طعام":"Food",care:state.lang==="ar"?"عناية":"Care"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
 function setPrimaryTab(tab){state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else renderHome();}
 function renderCareHub(){renderHygiene();}
@@ -182,6 +200,7 @@ function renderHome() {
     </section>
     <div class="today-strip"><span>${state.lang==="ar"?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div>
     ${healthStatusStrip()}
+    ${backupReminderStrip()}
     <section class="session-grid" aria-label="Choose a session">
       ${Object.entries(sessions).filter(([id])=>!["bad","gymLite"].includes(id)).map(([id,s]) => sessionCard(id,s,resume && state.session===id)).join("")}
     </section>
@@ -203,6 +222,8 @@ function renderHome() {
   document.querySelector("[data-bad-day]").addEventListener("click", renderBadDay);
   document.querySelector("[data-review]").addEventListener("click", renderReview);
   document.querySelector("[data-install]").addEventListener("click", installApp);
+  document.querySelector("[data-backup-export]")?.addEventListener("click", exportData);
+  document.querySelector("[data-backup-snooze]")?.addEventListener("click", snoozeBackupReminder);
 }
 function sessionCard(id, s, resume) {
   const u=U(),ls=sessionText(id,s);
@@ -394,7 +415,7 @@ function renderHistory(){
   const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
   app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
   <section class="notion-sync"><div class="notion-sync-head"><span class="notion-mark">N</span><div><strong>Notion</strong><small data-sync-status>${syncStatusText()}</small></div></div><div class="notion-sync-actions"><input data-sync-key type="password" autocomplete="new-password" placeholder="${state.lang==="ar"?"مفتاح الاقتران":"Pairing key"}" aria-label="${state.lang==="ar"?"مفتاح مزامنة Notion":"Notion sync pairing key"}"><button data-save-sync-key>${state.lang==="ar"?"اقتران":"Pair"}</button><button data-sync-now>${state.lang==="ar"?"زامن الآن":"Sync now"}</button><button class="quiet" data-forget-sync>${state.lang==="ar"?"نسيان المفتاح":"Forget key"}</button></div><p>${state.lang==="ar"?"تُحفظ الحصص دون إنترنت وتُرسل تلقائياً عند عودة الاتصال.":"Workouts queue offline and upload automatically when your connection returns."}</p></section>
-  <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تُحفظ البيانات محلياً على جهازك فقط.":"Your data stays on this device unless you export it."}</small>${clientErrorCount()?`<button class="quiet" data-diagnostics>${state.lang==="ar"?`سجل الأخطاء (${clientErrorCount()})`:`Error log (${clientErrorCount()})`}</button>`:""}</section>
+  <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تُحفظ البيانات محلياً على جهازك فقط.":"Your data stays on this device unless you export it."}</small><small>${state.lastBackupAt?(state.lang==="ar"?`آخر نسخة احتياطية: ${new Date(state.lastBackupAt).toLocaleDateString("ar-EG",{day:"numeric",month:"short"})}`:`Last backup: ${new Date(state.lastBackupAt).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`):(state.lang==="ar"?"لم تُصدَّر نسخة احتياطية بعد":"No backup exported yet")}</small>${clientErrorCount()?`<button class="quiet" data-diagnostics>${state.lang==="ar"?`سجل الأخطاء (${clientErrorCount()})`:`Error log (${clientErrorCount()})`}</button>`:""}</section>
   ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const details=Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${sessionText(r.session,sessions[r.session]).name}</strong><small>${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
   document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;document.querySelector("[data-save-sync-key]").onclick=savePairingKey;document.querySelector("[data-sync-now]").onclick=syncPending;document.querySelector("[data-forget-sync]").onclick=forgetPairingKey;document.querySelector("[data-diagnostics]")?.addEventListener("click",showDiagnostics);updateSyncPanel();
 }
@@ -411,9 +432,11 @@ function showDiagnostics(){
 }
 
 function exportData(){
-  persist();const errorLog=(()=>{try{return JSON.parse(localStorage.getItem(errorLogKey)||"[]");}catch{return [];}})();
+  state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();
+  const errorLog=(()=>{try{return JSON.parse(localStorage.getItem(errorLogKey)||"[]");}catch{return [];}})();
   const payload={app:"Rep Gym Companion",schema:3,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:JSON.parse(localStorage.getItem(storageKey)||"{}"),diagnostics:errorLog};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rep-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  if(state.view==="home")renderHome();
 }
 async function importData(event){
   try{const payload=JSON.parse(await event.target.files[0].text());if(payload.app!=="Rep Gym Companion"||![1,2,3].includes(payload.schema)||typeof payload.data!=="object")throw Error("invalid");
