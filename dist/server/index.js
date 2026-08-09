@@ -2,6 +2,7 @@ const NOTION_VERSION = "2026-03-11";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const HEALTH_DATA_SOURCES = {
   recovery: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
+  sleep: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
   nutrition: "fcfdaac1-87a5-4fc7-b437-42e1b247b80e",
   hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2",
   food: "97671c61-586a-4443-aea6-00b1d9f835a7"
@@ -264,7 +265,7 @@ async function syncWorkout(request, env) {
 }
 
 function healthSource(env, kind) {
-  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID",food:"NOTION_FOOD_DATA_SOURCE_ID"};
+  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",sleep:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID",food:"NOTION_FOOD_DATA_SOURCE_ID"};
   return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
 }
 
@@ -296,6 +297,12 @@ function nutritionProperties(payload) {
   return properties;
 }
 
+function sleepProperties(payload) {
+  return {
+    "Check-in":{title:richText(`Recovery · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},
+    "Sleep Hours":{number:Number(payload.sleep)||0}
+  };
+}
 function hygieneProperties(payload) {
   return {
     "Day":{title:richText(`Daily care · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},"Morning Complete":{checkbox:Boolean(payload.morningComplete)},
@@ -330,7 +337,7 @@ async function syncHealth(request, env, body) {
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
   if(kind==="food")return syncFood(env,payload,source);
-  const builders={recovery:recoveryProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
+  const builders={recovery:recoveryProperties,sleep:sleepProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
   if(!properties)return json({ok:false,error:"Unsupported health log type."},400);
   const pageId=await existingHealthPage(env,source,payload.date);
   if(pageId)await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties})});
