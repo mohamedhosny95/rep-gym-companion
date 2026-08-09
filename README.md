@@ -70,8 +70,24 @@ committed file. `.env.example` documents the names only, for reference.
 
 ## Deployment
 
-Production is deployed by Cloudflare's direct GitHub integration. A push to
-`main` triggers `npx wrangler deploy`. GitHub Actions is used only for the
-non-deploying verification workflow described above.
+Production is deployed by Cloudflare's direct GitHub integration, which
+should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
+is used only for the non-deploying verification workflow described above.
+
+**Verify this is actually scoped to `main`.** On PR #7, Cloudflare posted a
+"Deployment successful" comment for the *feature branch's* commit, and the
+link it gave pointed at the Worker's `production` environment — with no
+separate Preview URL. `wrangler.jsonc` defines no `env` blocks, so there is
+only one environment for Cloudflare to deploy into. Taken together, this
+suggests the git integration may be deploying **every push, on every
+branch, straight to production** — not just merges to `main` — which means
+in-progress branch work can go live, and there's no isolated environment to
+test changes against before they're user-facing.
+
+To confirm and fix, in the Cloudflare dashboard: **Workers & Pages →
+rep-gym-companion → Settings → Build** — check the configured production
+branch and whether non-production branches are set to deploy to Preview
+URLs (or not deploy at all) rather than production. This is a dashboard
+setting, not something in this repo, so it can't be fixed by a commit here.
 
 Never commit secret values. Environment files are ignored by Git.
