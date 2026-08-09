@@ -1,5 +1,5 @@
 window.REP_HEALTH_GUIDE = Object.freeze({
-  version: "2026.08.1",
+  version: "2026.08.2",
   updatedAt: "2026-08-09",
   sources: {
     training: "https://app.notion.com/p/3b6fa9cab09281c9aa03d11732cc200b",
@@ -59,31 +59,37 @@ window.REP_HEALTH_GUIDE = Object.freeze({
     milk: "410 ml whole milk across coffee, oats, and shake"
   },
   hygiene: {
-    nonNegotiables: ["SPF every morning", "Floss every evening", "Beard oil AM + PM", "Post-workout shower within 30 min"],
+    nonNegotiables: ["SPF 50 (Bobai Oil Defense) every morning", "Floss every evening", "Beard oil (Jojoba/Argan) AM + PM", "Post-workout shower within 30 min"],
     morning: [
-      "Face: gentle wash, pat dry, SPF 50 on face, neck, and ears",
-      "Dental: soft-bristle brush for 2 minutes; spit, do not rinse",
+      "Face: Foaming Face Wash, pat dry, then Bobai Oil Defense SPF50 on face, neck, and ears — last step, non-negotiable even on cloudy days",
+      "Dental (pre-workout, before wudu): Pardonotx toothbrush, 2 minutes, gentle at the gumline",
+      "Body: Rivoli or Mood Vanilla Shower Gel in the shower, then Body Lotion Cocooil (or Glysolid on elbows/knees)",
+      "Beard: 3–4 drops Jojoba or Argan oil into the skin first, then comb",
       "Eyes: clean-water rinse; preservative-free drops on heavy screen days",
-      "Beard: 3–4 drops oil into skin first, then comb",
-      "Body: antiperspirant on dry underarms + SPF lip balm"
+      "Deodorant: Nivea on fully dry underarms, then lip balm",
+      "Optional: 2–3 sprays fragrance on wrists/neck; quick nail glance for snags"
     ],
     evening: [
-      "Face: micellar water, gentle wash, moisturiser on damp skin",
-      "Dental: floss first, brush 2 minutes, scrape tongue; spit, do not rinse",
+      "Face: Foaming Face Wash, then a little Gruum Face Oil",
+      "Dental: floss first (fresh section per tooth), Pardonotx brush 2 minutes at 45° along the gumline",
+      "Tongue scraper 5–6 passes, then Listerine mouthwash 30 sec; spit, don't rinse (move after lunch instead if it stings)",
+      "Beard: Jojoba or Argan oil into the skin, then comb",
       "Eyes: one preservative-free drop per eye",
-      "Beard: oil into skin, then comb",
-      "Body: lotion within 3 minutes of shower; repair dry areas as needed"
+      "Lip balm"
     ],
-    postWorkout: ["Shower within 30 minutes", "Wash heavy-sweat areas and face", "Condition mid-lengths and ends when washing hair", "Lotion on damp skin", "Fresh antiperspirant"],
+    afterWork: ["Wash hands and face", "Fresh undershirt if it's the same one since the 5 AM workout", "Reapply Nivea deodorant if needed"],
+    postWorkout: ["Shower within 30 minutes — Rivoli or Mood Vanilla Shower Gel (hair only washed if it's a wash day)", "Wash heavy-sweat areas and face with Foaming Face Wash", "Condition mid-lengths and ends with Keratin AD Conditioner on wash days", "Body Lotion Cocooil on damp skin", "Fresh Nivea antiperspirant"],
     hair: {
-      Monday: ["Treatment wash · evening", "Nizapex on scalp 3–5 min", "Conditioner on mid-lengths and ends"],
-      Tuesday: ["Non-wash scalp care · morning", "Kerella thin layer on dry scalp; leave on"],
-      Wednesday: ["Maintenance wash · evening", "Keratin AD shampoo on scalp", "Conditioner on lengths"],
-      Thursday: ["Non-wash relief · morning", "Do nothing unless itchy; Kitadan lightly if needed", "No oils or creams"],
-      Friday: ["Treatment wash · evening", "Nizapex on scalp 3–5 min", "Conditioner on mid-lengths and ends"],
-      Saturday: ["Hydration wash · evening", "Weekly mask, then rinse", "Shampoo as directed; no extra treatment"],
-      Sunday: ["Recovery · evening", "No wash", "If dry: 1–2 drops jojoba OR argan oil"]
+      Sunday: ["Kerella dose · evening (1 of 2)", "Thin layer on dry scalp, massage in, leave on", "Doctor's Rx — don't change frequency without checking"],
+      Monday: ["Treatment wash · evening", "Nizapex on scalp, massage, leave 3–5 min, rinse", "Keratin AD Conditioner on mid-lengths and ends"],
+      Tuesday: ["Kerella dose · morning (2 of 2)", "Thin layer on dry scalp, massage in, leave on", "Same as Sunday — doctor's Rx"],
+      Wednesday: ["Maintenance wash + mask · evening", "Keratin AD Shampoo on scalp, 30–60 sec, rinse", "Garnier Mask on lengths 5–10 min, rinse (replaces conditioner)"],
+      Thursday: ["Non-wash · morning", "Nothing unless itchy — then Kitadan Spray lightly", "No oils or creams today"],
+      Friday: ["Treatment wash · evening", "Nizapex on scalp, massage, leave 3–5 min, rinse", "Keratin AD Conditioner on mid-lengths and ends"],
+      Saturday: ["Non-wash / rest", "Nothing unless itchy, same as Thursday", "Let the scalp recover before Sunday's Kerella dose"]
     },
-    strictHairRules: ["Nizapex max 2×/week", "Mask once/week", "Kerella only on non-wash days", "Never Kerella and Nizapex on the same day", "Conditioner stays off the scalp", "Oil only Sunday if dry"]
+    strictHairRules: ["Wash days: Monday, Wednesday, Friday only", "Nizapex max 2×/week", "Mask once/week, Wednesday only", "Kerella twice weekly (Sun + Tue), only on non-wash days", "Never Kerella and Nizapex on the same day", "Conditioner and mask stay off the scalp", "No oils on Kerella days", "Exact Kerella frequency is doctor's Rx — don't extend it without checking"],
+    weekly: ["Face: Salicylic Acid Soap 2% once/week, evening, instead of the usual face wash", "Beard: neckline and cheek-line trim", "Nails: full trim + file, fingers and toes, post-shower", "Body exfoliation 2–3×/week, loofah or glove, pair with gym days", "Towels: fresh one every 2–3 uses", "Bedsheets/pillowcase: change weekly", "Ears: washcloth on the outer ear only during shower — never insert anything into the canal"],
+    monthly: ["Skin self-check — scan for new moles or changes", "Gym gear — air out shoes and bag, check for buildup", "Cross-check the Body Care Products list, reorder what's low", "Every 6 months: professional dental cleaning (mention sensitive gums)", "Annually: dermatologist skin check"]
   }
 });
