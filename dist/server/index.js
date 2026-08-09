@@ -1,5 +1,10 @@
 const NOTION_VERSION = "2026-03-11";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+const HEALTH_DATA_SOURCES = {
+  recovery: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
+  nutrition: "fcfdaac1-87a5-4fc7-b437-42e1b247b80e",
+  hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2"
+};
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -101,12 +106,62 @@ async function syncWorkout(request, env) {
   return json({ ok: true, created, skipped });
 }
 
+function healthSource(env, kind) {
+  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID"};
+  return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
+}
+
+async function existingHealthPage(env, dataSourceId, date) {
+  const result=await notionRequest(env,`/data_sources/${dataSourceId}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Date",date:{equals:safeText(date,10)}}})});
+  return result.results?.[0]?.id || null;
+}
+
+function recoveryProperties(payload) {
+  return {
+    "Check-in":{title:richText(`Recovery · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},
+    "Soreness":{number:Number(payload.soreness)||0},"Energy":{number:Number(payload.energy)||0},"Sleep Hours":{number:Number(payload.sleep)||0},
+    "Pain":{checkbox:Boolean(payload.pain)},"Red Flags":{number:Number(payload.flags)||0},
+    "Recommendation":{select:{name:safeText(payload.recommendation||"Hold",40)}},"Notes":{rich_text:richText(payload.notes)}
+  };
+}
+
+function nutritionProperties(payload) {
+  return {
+    "Day":{title:richText(`${payload.plan} · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},"Plan":{select:{name:safeText(payload.plan,20)}},
+    "Calories Target":{number:Number(payload.caloriesTarget)||0},"Protein Target":{number:Number(payload.proteinTarget)||0},"Water Target L":{number:Number(payload.waterTarget)||0},
+    "Meals Complete":{number:Number(payload.mealsComplete)||0},"Meals Total":{number:Number(payload.mealsTotal)||0},"Hydration Complete":{checkbox:Boolean(payload.hydrationComplete)},
+    "Supplements Complete":{checkbox:Boolean(payload.supplementsComplete)},"Completion Percent":{number:Number(payload.completion)||0},"Notes":{rich_text:richText(payload.notes)}
+  };
+}
+
+function hygieneProperties(payload) {
+  return {
+    "Day":{title:richText(`Daily care · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},"Morning Complete":{checkbox:Boolean(payload.morningComplete)},
+    "Evening Complete":{checkbox:Boolean(payload.eveningComplete)},"Post-workout Complete":{checkbox:Boolean(payload.postWorkoutComplete)},"Hair Routine Complete":{checkbox:Boolean(payload.hairRoutineComplete)},
+    "SPF":{checkbox:Boolean(payload.spf)},"Floss":{checkbox:Boolean(payload.floss)},"Beard Oil":{checkbox:Boolean(payload.beardOil)},"Shower Within 30m":{checkbox:Boolean(payload.showerWithin30m)},
+    "Completion Percent":{number:Number(payload.completion)||0},"Notes":{rich_text:richText(payload.notes)}
+  };
+}
+
+async function syncHealth(request, env, body) {
+  if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) return json({ok:false,error:"Sync is not configured on the server."},503);
+  if ((request.headers.get("x-rep-sync-key")||"")!==env.REP_SYNC_KEY) return json({ok:false,error:"Pairing key is incorrect."},401);
+  const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
+  if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
+  const builders={recovery:recoveryProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
+  if(!properties)return json({ok:false,error:"Unsupported health log type."},400);
+  const pageId=await existingHealthPage(env,source,payload.date);
+  if(pageId)await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties})});
+  else await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties})});
+  return json({ok:true,created:pageId?0:1,updated:pageId?1:0});
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/api/notion-sync") {
       if (request.method === "POST") {
-        try { return await syncWorkout(request, env); }
+        try { const body=await request.clone().json().catch(()=>null);return body?.workout?await syncWorkout(request, env):await syncHealth(request,env,body); }
         catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
       }
       if (request.method === "OPTIONS") return new Response(null, { status: 204 });

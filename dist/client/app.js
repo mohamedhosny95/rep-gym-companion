@@ -35,6 +35,24 @@ const sessions = {
       ex("Incline Treadmill Walk", "20–25 min", "RPE 5–6 · 4–6% incline", 0, "main", "inclinewalk", "Start around 4–6% incline at a comfortable walking pace.", "Hold RPE 5–6: short sentences are possible, full conversation is not.", "Brace gently, swing arms naturally, and look forward.", "Overstriding or holding the rails. Progress incline or pace, not duration."),
       ex("Easy Cooldown + Stretch", "3–5 min", "Easy pace", 0, "cooldown", "stretch", "Reduce speed and incline gradually.", "Walk easily, then stretch anything that feels tight.", "Let breathing return toward normal.", "Stopping abruptly or forcing stretches.")
     ]
+  },
+  bad: {
+    name: "Bad Day Floor", short: "MIN", meta: "Any day · Home · 5–7 min", icon: "↘", accent: "#d9b3ff",
+    description: "The non-negotiable minimum. It protects consistency without pretending a hard day is a normal session.",
+    exercises: [
+      ex("Brisk Marching in Place", "3 min", "Easy", 0, "minimum", "march", "Stand tall and give yourself permission to keep this easy.", "March smoothly for three minutes.", "Finish feeling better than you started.", "Turning the minimum into a test."),
+      ex("Pelvic Floor (Kegel)", "3 × 10", "3–5 sec hold / release", 0, "minimum", "kegel", "Sit or lie comfortably.", "Contract, hold, release fully, and breathe normally.", "Keep glutes, abs, and thighs relaxed.", "Pushing through pain or numbness.", 3)
+    ]
+  },
+  gymLite: {
+    name: "Reduced Gym", short: "LITE", meta: "Bad day · Gym · 25–30 min", icon: "↘", accent: "#ffb27a",
+    description: "The guide-approved reduced session: one squat, one push, and one pull.",
+    exercises: [
+      ex("Stationary Bike", "5 min", "Light resistance", 0, "warm-up", "bike", "Set the seat so the knee stays slightly bent.", "Pedal easily.", "Conversational effort.", "Testing your fitness."),
+      ex("Leg Press", "2 × 10", "RPE 6–7", 90, "squat", "legpress", "Feet shoulder-width; back supported.", "Lower under control, then press without locking.", "Leave at least 3 good reps in reserve.", "Grinding reps or knee collapse.", 2),
+      ex("Chest Press", "2 × 10", "RPE 6–7", 90, "push", "chestpress", "Handles at mid-chest.", "Press and return under control.", "Shoulder blades stay back and down.", "Shrugging or grinding.", 2),
+      ex("Seated Cable Row", "2 × 10", "RPE 6–7", 90, "pull", "row", "Sit tall with feet supported.", "Pull to the torso and control the return.", "Keep chest up.", "Using momentum.", 2)
+    ]
   }
 };
 
@@ -103,7 +121,8 @@ const state = {
   speed:saved.speed||1, paused:saved.paused||false, muscles:saved.muscles!==false, viewMode:saved.viewMode||"side",
   logs:saved.logs||{}, swaps:saved.swaps||{}, history:saved.history||[], sessionStartedAt:saved.sessionStartedAt||null,
   reviews:saved.reviews||{}, fieldTest:saved.fieldTest||{}, voice:saved.voice!==false,
-  syncQueue:saved.syncQueue||[], syncState:"idle",
+  syncQueue:saved.syncQueue||[], syncState:"idle", recoveryCheckins:saved.recoveryCheckins||[],
+  daily:saved.daily||{nutrition:{},hygiene:{}}, cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||new Date().toISOString().slice(0,10),
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -111,7 +130,7 @@ const app = document.querySelector("#app");
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:3, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:4, guideVersion:REP_HEALTH_GUIDE.version, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart }));
 }
 function U(){return REP_I18N[state.lang].ui;}
 function sessionText(id,s){const v=REP_I18N[state.lang].sessions[id];return {name:v?.[0]||s.name,meta:v?.[1]||s.meta,description:v?.[2]||s.description};}
@@ -129,6 +148,16 @@ function todayPlan(day) {
   if (day === "Friday") return state.lang==="ar"?"استشفاء نشط":"Active recovery";
   return state.lang==="ar"?"استشفاء السبا":"Spa recovery";
 }
+function isoDay(){return new Date().toISOString().slice(0,10);}
+function latestRecovery(){return state.recoveryCheckins[0]||null;}
+function recoveryFlags(c){return c?(Number(c.soreness)>=4?1:0)+(Number(c.energy)<=2?1:0)+(Number(c.sleep)<REP_HEALTH_GUIDE.rules.minimumSleepHours?1:0)+(c.pain?1:0):0;}
+function recoveryGate(){const c=latestRecovery();if(!c)return {flags:0,hold:false,stale:true};const age=(Date.now()-new Date(c.date).getTime())/86400000;const flags=recoveryFlags(c);return {flags,hold:age<=10&&flags>=REP_HEALTH_GUIDE.rules.redFlagThreshold,stale:age>10};}
+function programStatus(){
+  const week=Math.max(1,Math.floor((Date.now()-new Date(state.programStart).getTime())/604800000)+1),gym=state.history.filter(h=>h.session==="gym").slice(0,2),stalled=[];
+  if(gym.length===2){const names=["Leg Press","Back Extension","Hip Thrust Machine","Chest Press","Seated Cable Row","Lat Pulldown"];for(const name of names){const score=h=>Math.max(0,...setsFromLog(h.loads?.[name]).map(s=>(Number(s.weight)||0)*(Number(s.reps)||0)));if(score(gym[0])&&score(gym[0])<=score(gym[1]))stalled.push(name);}}
+  return {week,stalled,review:week>=REP_HEALTH_GUIDE.rules.reviewWeek||stalled.length>=2};
+}
+function healthStatusStrip(){const gate=recoveryGate(),program=programStatus(),ar=state.lang==="ar";let label=ar?"جاهز للتقدم":"Progress available",tone="good";if(gate.hold){label=ar?`${gate.flags} علامات خطر · ثبّت الحمل`:`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label=ar?"موعد مراجعة البرنامج":"Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${ar?"قرار اليوم":"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${ar?`الأسبوع ${program.week}`:`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
 
 function renderHome() {
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view = "home";
@@ -142,13 +171,17 @@ function renderHome() {
       <p>${u.heroSub}</p>
     </section>
     <div class="today-strip"><span>${state.lang==="ar"?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div>
+    ${healthStatusStrip()}
     <section class="session-grid" aria-label="Choose a session">
-      ${Object.entries(sessions).map(([id,s]) => sessionCard(id,s,resume && state.session===id)).join("")}
+      ${Object.entries(sessions).filter(([id])=>!["bad","gymLite"].includes(id)).map(([id,s]) => sessionCard(id,s,resume && state.session===id)).join("")}
       <button class="session-card" data-recovery style="--card-accent:#d9b3ff">
         <span><small>${u.reference}</small><h2>${u.recovery}</h2></span><span class="session-icon">≈</span>
         <p>${u.recoveryDesc}</p><small>${u.openGuide}</small>
       </button>
       <button class="session-card" data-history style="--card-accent:#7dc9ff"><span><small>${u.reference}</small><h2>${u.history}</h2></span><span class="session-icon">↗</span><p>${u.historyDesc}</p><small>${u.openHistory}</small></button>
+      <button class="session-card" data-nutrition style="--card-accent:#ffd36a"><span><small>${state.lang==="ar"?"نظام الصحة":"HEALTH OS"}</small><h2>${state.lang==="ar"?"التغذية اليوم":"Nutrition today"}</h2></span><span class="session-icon">◒</span><p>${state.lang==="ar"?"أهداف اليوم، الوجبات، الماء والمكملات.":"Day-aware targets, meals, hydration, and supplements."}</p><small>${state.lang==="ar"?"افتح الخطة ←":"Open today →"}</small></button>
+      <button class="session-card" data-hygiene style="--card-accent:#73e6d1"><span><small>${state.lang==="ar"?"نظام الصحة":"HEALTH OS"}</small><h2>${state.lang==="ar"?"العناية اليومية":"Daily care"}</h2></span><span class="session-icon">✦</span><p>${state.lang==="ar"?"الصباح والمساء وما بعد التمرين وروتين الشعر.":"Morning, evening, post-workout, and today's hair routine."}</p><small>${state.lang==="ar"?"افتح القائمة ←":"Open checklist →"}</small></button>
+      <button class="session-card bad-day-card" data-bad-day style="--card-accent:#d9b3ff"><span><small>${state.lang==="ar"?"خطة اليوم الصعب":"BAD DAY MODE"}</small><h2>${state.lang==="ar"?"شيء أفضل من لا شيء":"Something beats nothing"}</h2></span><span class="session-icon">↘</span><p>${state.lang==="ar"?"الحد الأدنى أو جيم مختصر، دون تغيير خطتك الأصلية.":"Run the minimum or a reduced gym without changing the normal plan."}</p><small>${state.lang==="ar"?"اختر الخطة ←":"Choose fallback →"}</small></button>
       <button class="session-card" data-review style="--card-accent:#ef6f55"><span><small>${state.lang==="ar"?"السلامة والجودة":"SAFETY & QUALITY"}</small><h2>${state.lang==="ar"?"المراجعة والاختبار":"Review & field test"}</h2></span><span class="session-icon">✓</span><p>${state.lang==="ar"?"اعتماد مختص، قائمة فحص الحركة، واختبار الاستخدام داخل الجيم.":"Professional sign-off, movement checklist, and real-gym usability test."}</p><small>${state.lang==="ar"?"افتح قائمة الفحص ←":"Open checklist →"}</small></button>
       <button class="session-card install-card" data-install style="--card-accent:#ffffff"><span><small>PWA</small><h2>${u.install}</h2></span><span class="session-icon">↓</span><p>${u.installDesc}</p><small>${u.installNow} →</small></button>
     </section>
@@ -159,6 +192,9 @@ function renderHome() {
   document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => startSession(button.dataset.session)));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-history]").addEventListener("click", renderHistory);
+  document.querySelector("[data-nutrition]").addEventListener("click", renderNutrition);
+  document.querySelector("[data-hygiene]").addEventListener("click", renderHygiene);
+  document.querySelector("[data-bad-day]").addEventListener("click", renderBadDay);
   document.querySelector("[data-review]").addEventListener("click", renderReview);
   document.querySelector("[data-install]").addEventListener("click", installApp);
 }
@@ -179,7 +215,7 @@ function currentItem(base){
   const swap={...base,name:"Hip Thrust Machine",motion:"floor",setup:"Shoulders against the machine pad, feet flat and hip-width.",execution:"Drive through the heels, lift the hips, squeeze the glutes, then lower with control.",cues:"Keep ribs down and finish with the glutes, not the lower back.",avoid:"Overarching the back or pushing through the toes."};
   return localizedItem(swap);
 }
-function isLoadExercise(item){return ["legpress","hinge","floor","chestpress","row","pulldown"].includes(item.motion)&&state.session==="gym";}
+function isLoadExercise(item){return ["legpress","hinge","floor","chestpress","row","pulldown"].includes(item.motion)&&["gym","gymLite"].includes(state.session);}
 function exerciseId(base){return base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;}
 function normalizedLog(id,sets=3){
   const old=state.logs[id]||{};
@@ -200,6 +236,7 @@ function progressionAdvice(id){
   const valid=sample.filter(s=>Number(s.reps)>0),avgRpe=valid.reduce((n,s)=>n+(Number(s.rpe)||7),0)/(valid.length||1),minReps=Math.min(...valid.map(s=>Number(s.reps)||0));
   const allTop=valid.length>=2&&valid.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5);
   const twoWins=allTop&&recent.slice(0,2).length===2&&recent.slice(0,2).every(a=>a.length>=2&&a.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5));
+  const gate=recoveryGate();if(gate.hold)return state.lang==="ar"?`${gate.flags} علامات استشفاء حمراء: ثبّت الحمل وخذ يوماً خفيفاً إضافياً.`:`${gate.flags} recovery red flags: hold the load and take an extra light day.`;
   if(avgRpe>=9||minReps<8)return state.lang==="ar"?"خفّض 5% أو ثبّت الوزن حتى تعود التقنية والتكرارات.":"Reduce about 5% or hold until form and reps recover.";
   if(allTop){const jump=["Leg Press","Back Extension","Hip Thrust Machine"].includes(id)?5:2.5;return state.lang==="ar"?`${twoWins?"تقدّم مؤكد:":"جاهز للتقدم:"} زد ${jump} كجم في الحصة القادمة.`:`${twoWins?"Progression confirmed:":"Ready to progress:"} add ${jump} kg next session.`;}
   return state.lang==="ar"?"ثبّت الوزن؛ ارفع جودة التكرارات أو أكمل 12 تكراراً عند RPE ≤ 7.5.":"Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
@@ -218,6 +255,11 @@ function loadPanel(base,item){
     ${Array.from({length:item.sets},(_,i)=>{const s=log.sets[i]||{};return `<div class="set-log-row"><b>${i+1}</b><label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label><label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label><label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label><label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label></div>`}).join("")}
   </div><p>${u.previousLog}: <strong>${prev}</strong></p><div class="progression-callout">${progressionAdvice(id)}</div></section>`;
 }
+function cardioPanel(item){
+  if(state.session!=="cardio"||item.motion!=="inclinewalk")return "";const d=state.cardioDraft,advice=cardioAdvice();
+  return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
+}
+function cardioAdvice(){const recent=state.history.filter(h=>h.session==="cardio"&&h.cardio).slice(0,6),easy=recent.filter(h=>Number(h.cardio.minutes)>=25&&Number(h.cardio.rpe)<=6);if(easy.length<3)return state.lang==="ar"?`ثبّت الإعدادات: ${easy.length}/3 حصص كاملة وسهلة.`:`Hold settings: ${easy.length}/3 full, easy sessions.`;const span=(new Date(easy[0].date)-new Date(easy[easy.length-1].date))/86400000;if(span<21)return state.lang==="ar"?"الأداء جيد، لكن أكمل 3 أسابيع قبل زيادة الميل أو السرعة.":"Performance is good; complete three weeks before raising incline or pace.";return state.lang==="ar"?"جاهز: زد الميل أو السرعة قليلاً، وليس المدة.":"Ready: raise incline or pace slightly, not duration.";}
 function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
 
 function renderExercise() {
@@ -240,6 +282,7 @@ function renderExercise() {
       <div class="exercise-info"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:""}</div><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>
       ${motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer>${u.startTimer} · ${formatClock(motionGuide[item.motion][2])}</button>`:""}
       ${loadPanel(base,item)}
+      ${cardioPanel(item)}
       <div class="set-tracker" aria-label="Set checklist">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
       <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${state.index===session.exercises.length-1?u.finish:u.next}</button></nav>
@@ -252,6 +295,7 @@ function renderExercise() {
   document.querySelector("[data-swap]")?.addEventListener("click",()=>{state.swaps.backExtension=!state.swaps.backExtension;persist();renderExercise();});
   document.querySelector("[data-exercise-timer]")?.addEventListener("click",()=>toggleExerciseTimer(item.motion));
   document.querySelectorAll("[data-log]").forEach(input=>input.addEventListener("input",()=>saveLog(base,item)));
+  document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persist();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
   const swipe = document.querySelector("[data-swipe]");
   swipe.addEventListener("touchstart", e => state.touchX = e.changedTouches[0].clientX, {passive:true});
   swipe.addEventListener("touchend", e => { const dx=e.changedTouches[0].clientX-state.touchX; if(Math.abs(dx)>65) dx<0?next():prev(); }, {passive:true});
@@ -306,28 +350,30 @@ function showExitConfirm(){
 }
 function recordSession(){
   const sets=Object.entries(state.completed).filter(([k])=>k.startsWith(`${state.session}-`)).reduce((n,[,v])=>n+v.length,0);
-  const record={id:Date.now(),date:new Date().toISOString(),session:state.session,duration:Math.max(0,Math.floor((Date.now()-(state.sessionStartedAt||Date.now()))/1000)),sets,loads:JSON.parse(JSON.stringify(state.logs)),entries:[]};
+  const record={id:Date.now(),date:new Date().toISOString(),session:state.session,duration:Math.max(0,Math.floor((Date.now()-(state.sessionStartedAt||Date.now()))/1000)),sets,loads:JSON.parse(JSON.stringify(state.logs)),entries:[],cardio:state.session==="cardio"?JSON.parse(JSON.stringify(state.cardioDraft)):null};
   const priorBest={};state.history.forEach(h=>Object.entries(h.loads||{}).forEach(([name,log])=>setsFromLog(log).forEach(s=>{priorBest[name]=Math.max(priorBest[name]||0,Number(s.weight)||0);}))); 
   sessions[state.session].exercises.forEach((base,index)=>{const completed=state.completed[`${state.session}-${index}`]||[],id=base.name==="Back Extension"&&state.swaps.backExtension?"Hip Thrust Machine":base.name,logged=setsFromLog(state.logs[id]);completed.forEach(setIndex=>{const set=logged[setIndex]||{},weight=Number(set.weight)||0;record.entries.push({entry:`${id} · Set ${setIndex+1}`,exercise:id,set:setIndex+1,weight:set.weight||"",reps:set.reps||"",rpe:set.rpe||"",note:set.note||"",duration:!set.reps&&!set.weight?(motionGuide[base.motion]?.[2]||""):"",rest:base.rest||"",progression:progressionCode(id,logged),personalBest:Boolean(weight&&weight>(priorBest[id]||0))});});});
+  if(record.cardio){const main=record.entries.find(e=>e.exercise==="Incline Treadmill Walk");if(main){main.duration=Number(record.cardio.minutes||0)*60;main.rpe=record.cardio.rpe||"";main.note=`Incline ${record.cardio.incline||"—"}% · Pace ${record.cardio.pace||"—"} km/h`;main.progression=cardioAdvice().startsWith("Ready")?"Increase":"Hold";}}
   state.history.unshift(record);state.history=state.history.slice(0,60);queueWorkout(record);state.sessionStartedAt=null;
 }
 
 function queueWorkout(record){
-  if(!record?.entries?.length)return;const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio"};
-  if(!state.syncQueue.some(item=>String(item.workout.id)===String(record.id)))state.syncQueue.push({workout:{id:String(record.id),date:record.date,type:typeMap[record.session]||"Recovery",duration:record.duration,entries:record.entries},attempts:0,error:""});
+  if(!record?.entries?.length)return;const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
+  const id=`workout-${record.id}`;if(!state.syncQueue.some(item=>String(item.id||`workout-${item.workout?.id}`)===id))state.syncQueue.push({id,kind:"workout",workout:{id:String(record.id),date:record.date,type:typeMap[record.session]||"Recovery",duration:record.duration,entries:record.entries},attempts:0,error:""});
   persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);
 }
+function queueHealth(kind,payload){const id=`${kind}-${payload.date}`;state.syncQueue=state.syncQueue.filter(item=>String(item.id)!==id);state.syncQueue.push({id,kind,payload,attempts:0,error:""});persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);}
 
 async function syncPending(){
   const key=localStorage.getItem(syncKeyStorage);if(!key||state.syncState==="syncing"||!navigator.onLine)return;
   state.syncState="syncing";updateSyncPanel();
   for(const item of [...state.syncQueue]){
-    try{const response=await fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key},body:JSON.stringify({workout:item.workout})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Sync failed (${response.status})`);state.syncQueue=state.syncQueue.filter(q=>String(q.workout.id)!==String(item.workout.id));persist();}
+    try{const legacy=item.workout&&!item.kind,body=(legacy||item.kind==="workout")?{workout:item.workout}:{kind:item.kind,payload:item.payload};const response=await fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key},body:JSON.stringify(body)}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Sync failed (${response.status})`);const id=item.id||`workout-${item.workout?.id}`;state.syncQueue=state.syncQueue.filter(q=>(q.id||`workout-${q.workout?.id}`)!==id);persist();}
     catch(error){item.attempts=(item.attempts||0)+1;item.error=String(error.message||error).slice(0,180);state.syncState="failed";persist();updateSyncPanel();return;}
   }
   state.syncState="synced";persist();updateSyncPanel();
 }
-function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),pending=state.syncQueue.length;if(!key)return ar?"غير مقترن":"Not paired";if(state.syncState==="syncing")return ar?"جارٍ الإرسال إلى Notion…":"Syncing to Notion…";if(state.syncState==="failed")return ar?`${pending} بانتظار إعادة المحاولة`:`${pending} waiting to retry`;if(pending)return ar?`${pending} حصة بانتظار المزامنة`:`${pending} workout${pending===1?"":"s"} pending`;return ar?"تمت المزامنة مع Notion":"Synced with Notion";}
+function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),pending=state.syncQueue.length;if(!key)return ar?"غير مقترن":"Not paired";if(state.syncState==="syncing")return ar?"جارٍ الإرسال إلى Notion…":"Syncing to Notion…";if(state.syncState==="failed")return ar?`${pending} بانتظار إعادة المحاولة`:`${pending} waiting to retry`;if(pending)return ar?`${pending} سجل بانتظار المزامنة`:`${pending} health log${pending===1?"":"s"} pending`;return ar?"تمت المزامنة مع Notion":"Synced with Notion";}
 function updateSyncPanel(){const status=document.querySelector("[data-sync-status]");if(status)status.textContent=syncStatusText();const button=document.querySelector("[data-sync-now]");if(button)button.disabled=state.syncState==="syncing";}
 function savePairingKey(){const input=document.querySelector("[data-sync-key]"),key=input?.value.trim();if(!key)return;if(key.length<12){alert(state.lang==="ar"?"استخدم مفتاحاً من 12 حرفاً على الأقل.":"Use a pairing key with at least 12 characters.");return;}localStorage.setItem(syncKeyStorage,key);input.value="";state.syncState="idle";updateSyncPanel();syncPending();}
 function forgetPairingKey(){localStorage.removeItem(syncKeyStorage);state.syncState="idle";updateSyncPanel();}
@@ -343,11 +389,11 @@ function renderHistory(){
 }
 
 function exportData(){
-  persist();const payload={app:"Rep Gym Companion",schema:2,exportedAt:new Date().toISOString(),data:JSON.parse(localStorage.getItem(storageKey)||"{}")};
+  persist();const payload={app:"Rep Gym Companion",schema:3,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:JSON.parse(localStorage.getItem(storageKey)||"{}")};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rep-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 async function importData(event){
-  try{const payload=JSON.parse(await event.target.files[0].text());if(payload.app!=="Rep Gym Companion"||![1,2].includes(payload.schema)||typeof payload.data!=="object")throw Error("invalid");
+  try{const payload=JSON.parse(await event.target.files[0].text());if(payload.app!=="Rep Gym Companion"||![1,2,3].includes(payload.schema)||typeof payload.data!=="object")throw Error("invalid");
     if(!confirm(state.lang==="ar"?"سيستبدل هذا بيانات التطبيق الحالية. متابعة؟":"This will replace the current app data. Continue?"))return;
     localStorage.setItem(storageKey,JSON.stringify(payload.data));location.reload();
   }catch{alert(state.lang==="ar"?"ملف النسخة غير صالح أو تالف.":"That backup file is invalid or damaged.");event.target.value="";}
@@ -383,36 +429,72 @@ function renderRecovery() {
   state.view="recovery";
   if(state.lang==="ar")return renderRecoveryArabic();
   const check = saved.checkin || {};
-  app.innerHTML = `<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>
+  app.innerHTML = `<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
     <section class="recovery-grid">
       <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:15 AM wake, aim for 9:15 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Sun · Tue · Thu</span><h2>After lifting</h2><ul><li>Foam roll lower body + back in the evening, ~8 min.</li><li>Massage gun before sleep, targeted, ~6–8 min.</li><li>Skip routine icing; use ice only for actual joint pain.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Friday</span><h2>Active recovery</h2><ul><li>No gym and no morning circuit.</li><li>Optional light walking and 5–10 min gentle stretching.</li><li><strong>Legs up the wall:</strong> 5 min, breathe slowly.</li><li>Soreness should resolve, not accumulate.</li></ul></article>
-      <article class="recovery-card"><span class="card-kicker">2-minute check-in</span><h2>Weekly signals</h2><form class="checkin" id="checkin"><label>Soreness<select name="soreness">${ratingOptions(check.soreness)}</select></label><label>Energy<select name="energy">${ratingOptions(check.energy)}</select></label><label class="wide">Average sleep<input name="sleep" type="number" min="0" max="12" step="0.5" value="${check.sleep||7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${check.pain?"checked":""}> Any pain (not soreness)</span></label></form><p class="check-result" id="checkResult"></p></article>
+      <article class="recovery-card"><span class="card-kicker">2-minute check-in</span><h2>Weekly signals</h2><form class="checkin" id="checkin"><label>Soreness<select name="soreness">${ratingOptions(check.soreness)}</select></label><label>Energy<select name="energy">${ratingOptions(check.energy)}</select></label><label class="wide">Average sleep<input name="sleep" type="number" min="0" max="12" step="0.5" value="${check.sleep||7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${check.pain?"checked":""}> Any pain (not soreness)</span></label><label class="wide">Notes<input name="notes" maxlength="180" value="${esc(check.notes||"")}" placeholder="Optional context"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>Save & sync check-in</button></article>
+      <article class="recovery-card wide"><span class="card-kicker">Guided recovery</span><h2>Start a timer</h2><div class="timer-presets"><button data-guide-timer="480" data-guide-label="Foam roll">Foam roll <b>8:00</b></button><button data-guide-timer="420" data-guide-label="Massage gun">Massage gun <b>7:00</b></button><button data-guide-timer="300" data-guide-label="Legs up the wall">Legs up wall <b>5:00</b></button><button data-guide-timer="600" data-guide-label="Gentle stretch">Gentle stretch <b>10:00</b></button></div></article>
       <article class="recovery-card wide"><span class="card-kicker">Saturday · 45–55 min</span><h2>Steam → Sauna → Jacuzzi</h2><ol class="spa-list"><li><span>Shower — rinse</span><strong>2 min</strong></li><li><span>Steam room</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Sauna</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Jacuzzi</span><strong>15–20</strong></li><li><span>Cool shower + rehydrate</span><strong>2 min</strong></li></ol><p class="check-result">Water before and between every step. Exit immediately if dizzy, nauseous, or unwell. Skip if sick, dehydrated, or hungover.</p></article>
       <article class="recovery-card warning wide"><span class="card-kicker">Stop, don't push</span><h2>Real red flags</h2><ul><li><strong>Sharp or joint pain:</strong> stop that exercise.</li><li><strong>Soreness beyond 72 hours:</strong> back off volume.</li><li><strong>Persistent fatigue or declining sleep:</strong> address it before adding load.</li><li>Pain that persists for days or feels unlike normal soreness needs a doctor, not a training workaround.</li></ul></article>
       <article class="recovery-card wide"><span class="card-kicker">Bad-day fallback</span><h2>Something beats nothing.</h2><ul><li><strong>Non-negotiable:</strong> Kegels 3 × 10 + 3 min marching.</li><li>Cut cardio first, then reduce gym to Leg Press + Chest Press + Row.</li><li>Protect the morning circuit last.</li><li>Review the full program at week 8, or after 2+ lifts stall for 2+ sessions.</li></ul></article>
     </section>`;
-  const form=document.querySelector("#checkin"); form.addEventListener("input",updateCheckin); updateCheckin();
+  bindRecoveryTools();
 }
 function renderRecoveryArabic(){
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section><section class="recovery-grid">
+  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}<section class="recovery-grid">
   <article class="recovery-card"><span class="card-kicker">كل يوم</span><h2>الأساسيات</h2><ul><li><strong>النوم:</strong> 7 ساعات على الأقل؛ مع الاستيقاظ 4:15 ص استهدف 9:15 م.</li><li><strong>الماء:</strong> عند الاستيقاظ وطوال الصباح، خصوصاً مع حرارة القاهرة.</li><li><strong>الإفطار:</strong> بروتين وكربوهيدرات بعد تمرين الصباح.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الأحد · الثلاثاء · الخميس</span><h2>بعد الجيم</h2><ul><li>Foam roller للجسم السفلي والظهر مساءً، نحو 8 دقائق.</li><li>مسدس المساج قبل النوم، 6–8 دقائق.</li><li>لا تستخدم الثلج روتينياً؛ فقط لألم مفصل حقيقي.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الجمعة</span><h2>استشفاء نشط</h2><ul><li>لا جيم ولا دائرة صباحية.</li><li>مشي خفيف وإطالة 5–10 دقائق اختياريان.</li><li><strong>الرجلان على الحائط:</strong> 5 دقائق مع تنفس بطيء.</li><li>يجب أن يقل الإجهاد لا أن يتراكم.</li></ul></article>
   <article class="recovery-card warning"><span class="card-kicker">توقف ولا تضغط</span><h2>علامات الخطر</h2><ul><li>ألم حاد أو ألم مفصل: أوقف التمرين.</li><li>إجهاد عضلي أكثر من 72 ساعة: خفّض الحجم.</li><li>إرهاق مستمر أو نوم متراجع: عالجه قبل زيادة الحمل.</li><li>الألم المستمر لأيام يحتاج طبيباً.</li></ul></article>
   <article class="recovery-card wide"><span class="card-kicker">السبت · 45–55 دقيقة</span><h2>بخار ← ساونا ← جاكوزي</h2><ol class="spa-list"><li><span>دش سريع</span><strong>2 د</strong></li><li><span>غرفة البخار</span><strong>10–12</strong></li><li><span>دش بارد + ماء</span><strong>3–5</strong></li><li><span>ساونا</span><strong>10–12</strong></li><li><span>دش بارد + ماء</span><strong>3–5</strong></li><li><span>جاكوزي</span><strong>15–20</strong></li><li><span>دش بارد وترطيب</span><strong>2 د</strong></li></ol><p class="check-result">اشرب قبل البداية وبين كل خطوة. اخرج فوراً عند الدوخة أو الغثيان. لا تبدأ إذا كنت مريضاً أو جافاً.</p></article>
-  <article class="recovery-card"><span class="card-kicker">مراجعة دقيقتين</span><h2>إشارات الأسبوع</h2><form class="checkin" id="checkin"><label>الإجهاد العضلي<select name="soreness">${ratingOptions(saved.checkin?.soreness)}</select></label><label>الطاقة<select name="energy">${ratingOptions(saved.checkin?.energy)}</select></label><label class="wide">متوسط النوم<input name="sleep" type="number" min="0" max="12" step="0.5" value="${saved.checkin?.sleep||7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${saved.checkin?.pain?"checked":""}> يوجد ألم غير الإجهاد العضلي</span></label></form><p class="check-result" id="checkResult"></p></article>
+  <article class="recovery-card"><span class="card-kicker">مراجعة دقيقتين</span><h2>إشارات الأسبوع</h2><form class="checkin" id="checkin"><label>الإجهاد العضلي<select name="soreness">${ratingOptions(saved.checkin?.soreness)}</select></label><label>الطاقة<select name="energy">${ratingOptions(saved.checkin?.energy)}</select></label><label class="wide">متوسط النوم<input name="sleep" type="number" min="0" max="12" step="0.5" value="${saved.checkin?.sleep||7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${saved.checkin?.pain?"checked":""}> يوجد ألم غير الإجهاد العضلي</span></label><label class="wide">ملاحظات<input name="notes" maxlength="180" value="${esc(saved.checkin?.notes||"")}" placeholder="اختياري"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>حفظ ومزامنة</button></article>
+  <article class="recovery-card wide"><span class="card-kicker">استشفاء موجه</span><h2>ابدأ مؤقتاً</h2><div class="timer-presets"><button data-guide-timer="480" data-guide-label="Foam roll">Foam roller <b>8:00</b></button><button data-guide-timer="420" data-guide-label="Massage gun">مسدس المساج <b>7:00</b></button><button data-guide-timer="300" data-guide-label="Legs up the wall">الرجلان على الحائط <b>5:00</b></button><button data-guide-timer="600" data-guide-label="Gentle stretch">إطالة خفيفة <b>10:00</b></button></div></article>
   <article class="recovery-card wide"><span class="card-kicker">الخطة المصغرة</span><h2>شيء أفضل من لا شيء.</h2><ul><li><strong>الحد الأدنى:</strong> كيجل 3 × 10 + مشي في المكان 3 دقائق.</li><li>اختصر الكارديو أولاً، ثم الجيم إلى Leg Press + Chest Press + Row.</li><li>احمِ دائرة الصباح أخيراً.</li><li>راجع البرنامج في الأسبوع الثامن.</li></ul></article></section>`;
-  document.querySelector("#checkin").addEventListener("input",updateCheckin);updateCheckin();
+  bindRecoveryTools();
 }
 function ratingOptions(selected){return [1,2,3,4,5].map(n=>`<option ${Number(selected||3)===n?"selected":""}>${n}</option>`).join("");}
 function updateCheckin(){
-  const form=new FormData(document.querySelector("#checkin")); const c={soreness:Number(form.get("soreness")),energy:Number(form.get("energy")),sleep:Number(form.get("sleep")),pain:form.get("pain")==="on"};
+  const form=new FormData(document.querySelector("#checkin")); const c={soreness:Number(form.get("soreness")),energy:Number(form.get("energy")),sleep:Number(form.get("sleep")),pain:form.get("pain")==="on",notes:String(form.get("notes")||"")};
   const flags=(c.soreness>=4?1:0)+(c.energy<=2?1:0)+(c.sleep<7?1:0)+(c.pain?1:0);
   document.querySelector("#checkResult").textContent=state.lang==="ar"?(flags>=2?`${flags} علامات خطر — خذ يوماً خفيفاً إضافياً أو لا تزد الحمل.`:flags===1?"علامة خطر واحدة — راقبها وركز على الاستشفاء.":"لا توجد علامات خطر — استمر وتقدم كما هو مخطط."):(flags>=2?`${flags} red flags — take an extra light day or hold progression flat.`:flags===1?"1 red flag — keep an eye on it and prioritize recovery.":"No red flags — stay consistent and progress as planned.");
   const all=JSON.parse(localStorage.getItem(storageKey)||"{}"); all.checkin=c; localStorage.setItem(storageKey,JSON.stringify(all)); saved.checkin=c;
 }
+function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),ar=state.lang==="ar",decision=gate.hold?(ar?"يوم خفيف إضافي · لا تزيد الحمل":"Extra light day · hold progression"):(ar?"استمر حسب الخطة":"Proceed as planned");return `<section class="decision-card ${gate.hold?"hold":""}"><div><small>${ar?"قرار الاستشفاء":"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${gate.stale?(ar?"سجّل مراجعة حديثة لتفعيل بوابة التقدم.":"Log a fresh check-in to activate progression gating."):(ar?`${gate.flags} علامات خطر في آخر مراجعة.`:`${gate.flags} red flags in the latest check-in.`)}</p></div><div><strong>${ar?`الأسبوع ${p.week}`:`WEEK ${p.week}`}</strong><span>${p.review?(ar?"المراجعة مستحقة":"Review due"):(ar?"المراجعة في الأسبوع 8":"Review at week 8")}</span>${p.stalled.length>=2?`<em>${ar?`${p.stalled.length} تمارين متوقفة`:`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
+function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));}
+function saveRecoveryCheckin(){updateCheckin();const c={...saved.checkin,date:new Date().toISOString()},flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>x.date.slice(0,10)!==isoDay());state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,24);queueHealth("recovery",c);persist();renderRecovery();}
+
+function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
+function dailyBucket(kind){state.daily[kind]=state.daily[kind]||{};state.daily[kind][isoDay()]=state.daily[kind][isoDay()]||{checked:{},notes:""};return state.daily[kind][isoDay()];}
+function checkedCount(bucket,prefix,total){let n=0;for(let i=0;i<total;i++)if(bucket.checked[`${prefix}-${i}`])n++;return n;}
+function checklist(items,prefix,bucket){return `<div class="module-checklist">${items.map((item,i)=>{const parts=Array.isArray(item)?item:["",item,""];return `<label><input type="checkbox" data-daily-key="${prefix}-${i}" ${bucket.checked[`${prefix}-${i}`]?"checked":""}><span>${parts[0]?`<time>${esc(parts[0])}</time>`:""}<strong>${esc(parts[1])}</strong>${parts[2]?`<small>${esc(parts[2])}</small>`:""}</span></label>`}).join("")}</div>`;}
+function bindDaily(kind,render){document.querySelectorAll("[data-daily-key]").forEach(el=>el.onchange=()=>{const b=dailyBucket(kind);b.checked[el.dataset.dailyKey]=el.checked;persist();render();});document.querySelector("[data-daily-notes]").oninput=e=>{dailyBucket(kind).notes=e.target.value;persist();};}
+function moduleHeader(kicker,title,copy){return `<section class="recovery-head module-head"><p class="eyebrow">${kicker}</p><h1>${title}</h1><p>${copy}</p><span class="guide-version">Guide v${REP_HEALTH_GUIDE.version} · ${REP_HEALTH_GUIDE.updatedAt}</span></section>`;}
+function renderNutrition(){
+  stopSessionClock();document.body.classList.remove("workout-mode");state.view="nutrition";const ar=state.lang==="ar",key=nutritionPlanKey(),guide=REP_HEALTH_GUIDE.nutrition,target=guide.targets[key],meals=guide.meals[key],b=dailyBucket("nutrition"),mealDone=checkedCount(b,"meal",meals.length),suppDone=checkedCount(b,"supp",guide.supplements.length),total=meals.length+guide.supplements.length+1,done=mealDone+suppDone+(b.checked.water?1:0),percent=Math.round(done/total*100);
+  app.innerHTML=`${moduleHeader(ar?"التغذية":"NUTRITION",ar?"خطة اليوم، بدون تخمين.":"Today, without guesswork.",ar?"الأهداف والتوقيت من خطة التغذية الحالية. سجل التنفيذ لا المثالية.":"Targets and timing from the current nutrition plan. Track execution, not perfection.")}
+  <section class="target-grid"><article><span>${ar?"السعرات":"Calories"}</span><strong>${target.calories}</strong><small>kcal</small></article><article><span>${ar?"البروتين":"Protein"}</span><strong>${target.protein}</strong><small>g</small></article><article><span>${ar?"الماء":"Water"}</span><strong>${target.water}</strong><small>L</small></article><article class="progress-target"><span>${ar?"اكتمل":"Complete"}</span><strong>${percent}%</strong><small>${target.label}</small></article></section>
+  <section class="module-card"><div class="module-card-head"><div><small>${ar?"خط زمني":"MEAL TIMELINE"}</small><h2>${mealDone}/${meals.length} ${ar?"وجبات":"meals"}</h2></div><span>${guide.milk}</span></div>${checklist(meals,"meal",b)}</section>
+  <section class="module-card"><div class="module-card-head"><div><small>${ar?"يومي":"DAILY"}</small><h2>${ar?"المكملات والترطيب":"Supplements & hydration"}</h2></div></div>${checklist(guide.supplements,"supp",b)}<label class="water-check"><input type="checkbox" data-daily-key="water" ${b.checked.water?"checked":""}><span><strong>${ar?"اكتمل هدف الماء":"Water target complete"}</strong><small>${target.water} L</small></span></label></section>
+  <section class="module-card"><label class="notes-label">${ar?"ملاحظات اليوم":"Today's notes"}<textarea data-daily-notes maxlength="300" placeholder="${ar?"الجوع، التحضير، التعديلات...":"Hunger, preparation, substitutions…"}">${esc(b.notes||"")}</textarea></label><button class="module-save" data-save-daily>${ar?"حفظ ومزامنة اليوم":"Save & sync today"}</button></section>`;
+  bindDaily("nutrition",renderNutrition);document.querySelector("[data-save-daily]").onclick=()=>{queueHealth("nutrition",{date:isoDay(),plan:target.label,caloriesTarget:target.calories,proteinTarget:target.protein,waterTarget:target.water,mealsComplete:mealDone,mealsTotal:meals.length,hydrationComplete:Boolean(b.checked.water),supplementsComplete:suppDone===guide.supplements.length,completion:percent,notes:b.notes||""});state.syncState="idle";renderNutrition();};
+}
+function renderHygiene(){
+  stopSessionClock();document.body.classList.remove("workout-mode");state.view="hygiene";const ar=state.lang==="ar",g=REP_HEALTH_GUIDE.hygiene,b=dailyBucket("hygiene"),day=currentDay(),hair=g.hair[day],training=["Sunday","Monday","Tuesday","Wednesday","Thursday"].includes(day),sections=[...g.morning.map((x,i)=>["morning",i,x]),...g.evening.map((x,i)=>["evening",i,x]),...hair.map((x,i)=>["hair",i,x]),...(training?g.postWorkout.map((x,i)=>["post",i,x]):[])],done=sections.filter(([p,i])=>b.checked[`${p}-${i}`]).length,percent=Math.round(done/sections.length*100);
+  const complete=p=>{const group=sections.filter(x=>x[0]===p);return group.length>0&&group.every(([,i])=>b.checked[`${p}-${i}`]);};
+  app.innerHTML=`${moduleHeader(ar?"العناية اليومية":"DAILY CARE",ar?"امسح. نفّذ. أكمل.":"Scan. Do. Done.",ar?"روتين الصباح والمساء وما بعد التمرين مع تعليمات الشعر حسب اليوم.":"Morning, evening, post-workout, and the correct hair routine for today.")}
+  <section class="nonneg-grid">${g.nonNegotiables.map((x,i)=>`<div class="${(i===0&&b.checked["morning-0"])||(i===1&&b.checked["evening-1"])||(i===2&&b.checked["morning-3"]&&b.checked["evening-3"])||(i===3&&b.checked["post-0"])?"done":""}"><span>${i+1}</span><strong>${esc(x)}</strong></div>`).join("")}</section>
+  <section class="module-progress"><span style="width:${percent}%"></span><strong>${percent}% ${ar?"اليوم":"today"}</strong></section>
+  <section class="module-card"><div class="module-card-head"><div><small>${ar?"كل يوم":"EVERY DAY"}</small><h2>${ar?"الصباح":"Morning"}</h2></div><span>${complete("morning")?"✓":""}</span></div>${checklist(g.morning,"morning",b)}</section>
+  <section class="module-card"><div class="module-card-head"><div><small>${ar?"الأهم":"MOST IMPORTANT"}</small><h2>${ar?"المساء":"Evening"}</h2></div><span>${complete("evening")?"✓":""}</span></div>${checklist(g.evening,"evening",b)}</section>
+  ${training?`<section class="module-card accent-card"><div class="module-card-head"><div><small>30-MINUTE RULE</small><h2>${ar?"بعد التمرين":"Post-workout"}</h2></div><span>${complete("post")?"✓":""}</span></div>${checklist(g.postWorkout,"post",b)}</section>`:""}
+  <section class="module-card"><div class="module-card-head"><div><small>${esc(day.toUpperCase())}</small><h2>${ar?"روتين الشعر":"Hair routine"}</h2></div><span>${complete("hair")?"✓":""}</span></div>${checklist(hair,"hair",b)}<details class="cue-details"><summary>${ar?"قواعد الشعر الصارمة":"Strict hair rules"}</summary><div class="cue-body"><ul>${g.strictHairRules.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div></details></section>
+  <section class="module-card"><label class="notes-label">${ar?"ملاحظات اليوم":"Today's notes"}<textarea data-daily-notes maxlength="300">${esc(b.notes||"")}</textarea></label><button class="module-save" data-save-daily>${ar?"حفظ ومزامنة اليوم":"Save & sync today"}</button></section>`;
+  bindDaily("hygiene",renderHygiene);document.querySelector("[data-save-daily]").onclick=()=>{queueHealth("hygiene",{date:isoDay(),morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:training?complete("post"):false,hairRoutineComplete:complete("hair"),spf:Boolean(b.checked["morning-0"]),floss:Boolean(b.checked["evening-1"]),beardOil:Boolean(b.checked["morning-3"]&&b.checked["evening-3"]),showerWithin30m:Boolean(b.checked["post-0"]),completion:percent,notes:b.notes||""});state.syncState="idle";renderHygiene();};
+}
+function renderBadDay(){const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";app.innerHTML=`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`;document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
+function startGuideTimer(label,seconds){let remaining=seconds,paused=false;const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=`<button class="timed-close" aria-label="Close">×</button><p>${esc(label)}</p><strong data-guide-value>${formatClock(remaining)}</strong><span>${state.lang==="ar"?"تنفس ببطء وحافظ على الراحة":"BREATHE SLOWLY · STAY COMFORTABLE"}</span><div class="timed-progress"><i data-guide-progress></i></div><div class="timed-actions"><button data-guide-pause>${U().pause}</button><button data-guide-finish>${U().skip}</button></div>`;document.body.appendChild(overlay);const close=()=>{clearInterval(tick);overlay.remove();};overlay.querySelector(".timed-close").onclick=close;overlay.querySelector("[data-guide-finish]").onclick=()=>{signalEnd();close();};overlay.querySelector("[data-guide-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};const tick=setInterval(()=>{if(paused)return;remaining--;overlay.querySelector("[data-guide-value]").textContent=formatClock(Math.max(0,remaining));overlay.querySelector("[data-guide-progress]").style.width=`${Math.max(0,remaining/seconds*100)}%`;if(remaining<=0){signalEnd();close();}},1000);}
 
 function startTimer(seconds, setIndex) {
   if (state.timer?.interval) clearInterval(state.timer.interval);
@@ -436,7 +518,7 @@ document.querySelector("#timerAdd").addEventListener("click",()=>{if(!state.time
 document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="badDay"?renderBadDay():renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
 document.querySelector("#wakeButton").addEventListener("click",toggleWakeLock);
 async function toggleWakeLock(){
