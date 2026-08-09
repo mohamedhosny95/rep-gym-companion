@@ -130,7 +130,7 @@ const state = {
   daily:saved.daily||{nutrition:{},hygiene:{}}, cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||new Date().toISOString().slice(0,10),
   foodEntries:saved.foodEntries||[], water:saved.water||{}, foodDraft:null, foodNote:saved.foodNote||"", foodMealType:saved.foodMealType||"", foodLogMethod:saved.foodLogMethod||"Ingredients", foodBusy:false, foodPendingPayload:null,
   bodyWeights:saved.bodyWeights||[], mealTemplates:saved.mealTemplates||[],
-  pairBusy:false, pairMessage:"",
+  pairBusy:false, pairMessage:"", reminderExpanded:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
@@ -206,8 +206,9 @@ function openReminders(){
 }
 function reminderStrip(){
   const items=openReminders();if(!items.length)return "";
-  const ar=state.lang==="ar";
-  return `<section class="reminder-strip"><div class="reminder-head"><small>${ar?"متبقٍ اليوم":"STILL OPEN TODAY"}</small><b>${items.length}</b></div><div class="reminder-items">${items.map(item=>`<button data-reminder-tab="${item.tab}"><span>${esc(item.label)}</span><i>→</i></button>`).join("")}</div></section>`;
+  const ar=state.lang==="ar",collapseAt=2,expanded=state.reminderExpanded||items.length<=collapseAt,visible=expanded?items:items.slice(0,collapseAt),hidden=items.length-visible.length;
+  const toggle=hidden>0?`<button class="reminder-toggle" data-reminder-toggle>${ar?`+${hidden} أخرى ↓`:`+${hidden} more ↓`}</button>`:items.length>collapseAt?`<button class="reminder-toggle" data-reminder-toggle>${ar?"عرض أقل ↑":"Show less ↑"}</button>`:"";
+  return `<section class="reminder-strip"><div class="reminder-head"><small>${ar?"متبقٍ اليوم":"STILL OPEN TODAY"}</small><b>${items.length}</b></div><div class="reminder-items">${visible.map(item=>`<button data-reminder-tab="${item.tab}"><span>${esc(item.label)}</span><i>→</i></button>`).join("")}</div>${toggle}</section>`;
 }
 
 // --- Cross-module insights -------------------------------------------------
@@ -280,6 +281,7 @@ function renderHome() {
   document.querySelector("[data-review]").addEventListener("click", renderReview);
   document.querySelector("[data-install]").addEventListener("click", installApp);
   document.querySelectorAll("[data-reminder-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.reminderTab)));
+  document.querySelector("[data-reminder-toggle]")?.addEventListener("click",()=>{state.reminderExpanded=!state.reminderExpanded;renderHome();});
   document.querySelector("[data-backup-export]")?.addEventListener("click", exportData);
   document.querySelector("[data-backup-snooze]")?.addEventListener("click", snoozeBackupReminder);
 }
