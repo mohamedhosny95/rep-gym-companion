@@ -12,7 +12,9 @@ const ICONS={
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,13 9,18 20,6"/></svg>',
   download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7,10 12,15 17,10"/><line x1="4" y1="20" x2="20" y2="20"/></svg>',
-  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg>'
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1.5 3-2 4.5-2 8a2 2 0 0 0 4 0c0-1-.5-2-.5-2.5 2 1.5 3.5 4 3.5 6.5a5 5 0 0 1-10 0c0-4.5 3-6 3-9 .5.5 1.5 1.5 2 3z"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>'
 };
 const sessions = {
   morning: {
@@ -143,6 +145,7 @@ const state = {
   bodyWeights:saved.bodyWeights||[], mealTemplates:saved.mealTemplates||[], sleepLogs:saved.sleepLogs||[],
   pairBusy:false, pairMessage:"", reminderExpanded:{}, newTemplateOpen:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
+  pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -151,7 +154,7 @@ new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidt
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint }));
 }
 let persistTimer=null;
 function persistDebounced(){
@@ -296,6 +299,7 @@ function renderInsights(){
   const volumeBuckets=weeklyTrainingVolume(6);
   app.innerHTML=`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
   <section class="insight-stats">
+    <article><small>${ar?"سلسلة الأيام":"DAY STREAK"}</small><strong>${computeStreak()}</strong></article>
     <article><small>${ar?"الحصص هذا الأسبوع":"SESSIONS THIS WEEK"}</small><strong>${sessions7}</strong></article>
     <article><small>${ar?"سعرات محروقة (تقدير)":"KCAL BURNED (EST.)"}</small><strong>${calories7}</strong></article>
     <article><small>${ar?"أيام تسجيل الطعام":"FOOD LOGGED"}</small><strong>${foodDays7}/7</strong></article>
@@ -320,12 +324,14 @@ function renderHome() {
   const day = currentDay(),u=U();
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
   const resume = state.session && sessions[state.session] && state.index < sessions[state.session].exercises.length;
+  const streak=computeStreak();
   app.innerHTML = `
     <section class="hero">
       <p class="eyebrow">${u.companion}</p>
       <h1>${u.hero1}<br><em>${u.hero2}</em></h1>
       <p>${u.heroSub}</p>
     </section>
+    ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${state.lang==="ar"?"يوم متتالٍ":"day streak"}</span></div>`:""}
     <div class="today-strip"><span>${state.lang==="ar"?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div>
     ${healthStatusStrip()}
     ${reminderStrip("train")}
@@ -587,15 +593,53 @@ async function connectPairingKey(input,requireFoodAi=false){const key=input?.val
 async function savePairingKey(){const input=document.querySelector("[data-sync-key]");if(await connectPairingKey(input,false))syncPending();}
 async function pairFromFood(){const input=document.querySelector("[data-food-pair-key]"),pending=state.foodPendingPayload;if(!await connectPairingKey(input,true))return;syncPending();if(pending){state.foodPendingPayload=null;await analyzeFood(pending);}}
 function forgetPairingKey(){localStorage.removeItem(syncKeyStorage);state.syncState="idle";state.pairMessage="";if(state.view==="nutrition")renderNutrition();else updateSyncPanel();}
+function urlBase64ToUint8Array(base64String){
+  const padding="=".repeat((4-base64String.length%4)%4),base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/"),raw=atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+function pushStatusText(){
+  const ar=state.lang==="ar";
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return ar?"غير مدعوم في هذا المتصفح":"Not supported in this browser";
+  if(typeof Notification!=="undefined"&&Notification.permission==="denied")return ar?"الإشعارات محظورة في إعدادات المتصفح":"Notifications blocked in browser settings";
+  return state.pushEndpoint?(ar?`مفعّل · يومياً الساعة ${state.pushTime}`:`Enabled · daily at ${state.pushTime}`):(ar?"غير مفعّل":"Not enabled");
+}
+async function togglePushReminders(){
+  const ar=state.lang==="ar";
+  if(state.pushEndpoint){await disablePushReminders();return;}
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)){showToast(ar?"الإشعارات غير مدعومة في هذا المتصفح.":"Push notifications aren't supported in this browser.");return;}
+  const time=document.querySelector("[data-push-time]")?.value||state.pushTime;
+  try{
+    const keyRes=await fetch("/api/push/public-key"),keyData=await keyRes.json().catch(()=>({}));
+    if(!keyRes.ok||!keyData.key){showToast(ar?"الإشعارات غير مُعدّة على الخادم بعد.":"Push notifications aren't set up on the server yet.");return;}
+    const permission=await Notification.requestPermission();
+    if(permission!=="granted"){showToast(ar?"تم رفض إذن الإشعارات.":"Notification permission was denied.");return;}
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(keyData.key)});
+    const res=await fetch("/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),time,timezoneOffsetMinutes:new Date().getTimezoneOffset(),lang:state.lang})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.ok)throw Error(data.error||"subscribe failed");
+    state.pushEndpoint=sub.endpoint;state.pushTime=time;persist();
+    if(state.view==="history")renderHistory();
+  }catch{showToast(ar?"تعذّر تفعيل الإشعارات.":"Couldn't enable push notifications.");}
+}
+async function disablePushReminders(){
+  try{
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+    if(sub){await fetch("/api/push/unsubscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({endpoint:sub.endpoint})}).catch(()=>{});await sub.unsubscribe();}
+  }catch{}
+  state.pushEndpoint=null;persist();
+  if(state.view==="history")renderHistory();
+}
 
 function renderHistory(){
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="history";state.activeTab="train";persist();updatePrimaryTabs();const u=U(),rows=state.history;
   const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
   app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
   <section class="notion-sync"><div class="notion-sync-head"><span class="notion-mark">N</span><div><strong>Notion</strong><small data-sync-status>${syncStatusText()}</small></div></div><div class="notion-sync-actions"><input data-sync-key type="password" autocomplete="new-password" placeholder="${state.lang==="ar"?"مفتاح الاقتران":"Pairing key"}" aria-label="${state.lang==="ar"?"مفتاح مزامنة Notion":"Notion sync pairing key"}"><button data-save-sync-key>${state.lang==="ar"?"اقتران":"Pair"}</button><button data-sync-now>${state.lang==="ar"?"زامن الآن":"Sync now"}</button><button class="quiet" data-forget-sync>${state.lang==="ar"?"نسيان المفتاح":"Forget key"}</button></div><p>${state.lang==="ar"?"تُحفظ الحصص دون إنترنت وتُرسل تلقائياً عند عودة الاتصال.":"Workouts queue offline and upload automatically when your connection returns."}</p></section>
+  <section class="push-card"><div class="push-head"><span class="push-icon">${ICONS.bell}</span><div><strong>${state.lang==="ar"?"تذكير يومي":"Daily reminder"}</strong><small data-push-status>${pushStatusText()}</small></div></div><div class="push-actions"><input type="time" data-push-time value="${state.pushTime}" ${state.pushEndpoint?"disabled":""}><button data-push-toggle>${state.pushEndpoint?(state.lang==="ar"?"إيقاف":"Disable"):(state.lang==="ar"?"تفعيل":"Enable")}</button></div><p>${state.lang==="ar"?"إشعار واحد يومياً في الوقت الذي تختاره — حتى عندما يكون التطبيق مغلقاً.":"One notification a day at the time you choose — even when the app is closed."}</p></section>
   <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تُحفظ البيانات محلياً على جهازك فقط.":"Your data stays on this device unless you export it."}</small><small>${state.lastBackupAt?(state.lang==="ar"?`آخر نسخة احتياطية: ${new Date(state.lastBackupAt).toLocaleDateString("ar-EG",{day:"numeric",month:"short"})}`:`Last backup: ${new Date(state.lastBackupAt).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`):(state.lang==="ar"?"لم تُصدَّر نسخة احتياطية بعد":"No backup exported yet")}</small>${clientErrorCount()?`<button class="quiet" data-diagnostics>${state.lang==="ar"?`سجل الأخطاء (${clientErrorCount()})`:`Error log (${clientErrorCount()})`}</button>`:""}</section>
   ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div><div><strong>${rows.reduce((n,r)=>n+(r.calories||0),0)}</strong><span>${state.lang==="ar"?"سعرة (تقدير)":"kcal (est.)"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const isActivity=r.session==="activity";const details=isActivity?(r.entries?.[0]?.note?`<small>${esc(r.entries[0].note)}</small>`:""):Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");const name=isActivity?esc(r.activityLabel||"Activity"):sessionText(r.session,sessions[r.session]).name;const meta=isActivity?`${formatClock(r.duration)}${r.calories?` · ${r.calories} kcal`:""}`:`${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}${r.calories?` · ~${r.calories} kcal`:""}`;return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${name}</strong><small>${meta}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
-  document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;document.querySelector("[data-save-sync-key]").onclick=savePairingKey;document.querySelector("[data-sync-now]").onclick=syncPending;document.querySelector("[data-forget-sync]").onclick=forgetPairingKey;document.querySelector("[data-diagnostics]")?.addEventListener("click",showDiagnostics);updateSyncPanel();
+  document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;document.querySelector("[data-save-sync-key]").onclick=savePairingKey;document.querySelector("[data-sync-now]").onclick=syncPending;document.querySelector("[data-forget-sync]").onclick=forgetPairingKey;document.querySelector("[data-diagnostics]")?.addEventListener("click",showDiagnostics);document.querySelector("[data-push-toggle]").onclick=togglePushReminders;updateSyncPanel();
 }
 
 function clientErrorCount(){try{return JSON.parse(localStorage.getItem(errorLogKey)||"[]").length;}catch{return 0;}}
@@ -777,6 +821,26 @@ function deleteSleepLog(date){state.sleepLogs=state.sleepLogs.filter(s=>s.date!=
 function recentSleepAvg(days=7){
   const cutoff=Date.now()-days*86400000,recent=state.sleepLogs.filter(s=>new Date(s.date).getTime()>=cutoff);
   return recent.length?Math.round(recent.reduce((n,s)=>n+s.hours,0)/recent.length*10)/10:null;
+}
+function dayHasActivity(dateStr){
+  if(state.history.some(h=>String(h.date).slice(0,10)===dateStr))return true;
+  if(state.foodEntries.some(e=>String(e.date).slice(0,10)===dateStr))return true;
+  if(state.sleepLogs.some(s=>s.date===dateStr))return true;
+  if(state.recoveryCheckins.some(c=>String(c.date).slice(0,10)===dateStr))return true;
+  const hygiene=state.daily?.hygiene?.[dateStr],nutrition=state.daily?.nutrition?.[dateStr];
+  if(hygiene && Object.values(hygiene.checked||{}).some(Boolean))return true;
+  if(nutrition && Object.values(nutrition.checked||{}).some(Boolean))return true;
+  return false;
+}
+function computeStreak(){
+  const todayStr=isoDay();
+  let streak=0,offset=dayHasActivity(todayStr)?0:1;
+  while(true){
+    const d=new Date(Date.now()-(offset+streak)*86400000).toISOString().slice(0,10);
+    if(!dayHasActivity(d))break;
+    streak++;
+  }
+  return streak;
 }
 function sleepTrackerCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;

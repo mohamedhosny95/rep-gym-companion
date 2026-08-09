@@ -1,5 +1,5 @@
-const CACHE = "rep-companion-v36";
-const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=36", "./health-data.js?v=36", "./i18n.js", "./app.js?v=36", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CACHE = "rep-companion-v37";
+const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=37", "./health-data.js?v=37", "./i18n.js", "./app.js?v=37", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const ATLAS_ASSETS = ["./assets/gym-anatomy-atlas.webp", "./assets/mobility-anatomy-atlas.webp", "./assets/core-anatomy-atlas.webp", "./assets/cardio-anatomy-atlas.webp", "./assets/gym-anatomy-front-atlas.webp", "./assets/mobility-anatomy-front-atlas.webp", "./assets/core-anatomy-front-atlas.webp", "./assets/cardio-anatomy-front-atlas.webp", "./assets/priority-motion-atlas.webp"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => {
@@ -17,4 +17,23 @@ self.addEventListener("fetch", event => {
   event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
     const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); return response;
   }).catch(() => caches.match("./index.html"))));
+});
+self.addEventListener("push", event => {
+  let payload = { title: "Health OS", body: "Time to log your day." };
+  try { if (event.data) payload = { ...payload, ...event.data.json() }; } catch {}
+  event.waitUntil(self.registration.showNotification(payload.title, {
+    body: payload.body,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    tag: "rep-daily-reminder"
+  }));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = clientsList.find(c => "focus" in c);
+    if (existing) return existing.focus();
+    return self.clients.openWindow("./");
+  })());
 });
