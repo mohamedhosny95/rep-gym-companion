@@ -66,11 +66,12 @@ function parseModelJson(text) {
 }
 
 async function geminiGenerate(env, parts, jsonMode = true) {
-  if (!env.GEMINI_API_KEY) throw new Error("Food analysis is not configured. Add GEMINI_API_KEY in Cloudflare.");
-  const model = safeText(env.GEMINI_MODEL || "gemini-flash-latest", 100);
+  const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("Food analysis is not configured in the Worker. In Cloudflare, open Settings → Variables and secrets and add a secret named GEMINI_API_KEY.");
+  const model = safeText(env.GEMINI_MODEL || "gemini-2.5-flash", 100);
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+    headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { temperature: .1, maxOutputTokens: jsonMode ? 2048 : 64, ...(jsonMode ? { responseMimeType: "application/json" } : {}) } })
   });
   const data = await response.json().catch(() => ({}));
