@@ -257,6 +257,8 @@ function buildInsights(){
   }
   const sleepAvg=recentSleepAvg(7),minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours;
   if(sleepAvg!==null)out.push({tone:sleepAvg<minSleep?"warn":"good",text:sleepAvg<minSleep?(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — أقل من الحد الأدنى ${minSleep} ساعات.`:`Sleep has averaged ${sleepAvg}h over 7 days — below your ${minSleep}h minimum.`):(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — عند الهدف أو أعلى.`:`Sleep has averaged ${sleepAvg}h over 7 days — at or above target.`)});
+  const todayRecovery=computeRecoveryScore(),yesterdayStrain=computeStrainScore(new Date(Date.now()-86400000).toISOString().slice(0,10));
+  if(todayRecovery?.band==="red"&&yesterdayStrain>=14)out.push({tone:"warn",text:ar?`استشفاء منخفض (${todayRecovery.score}%) بعد يوم إجهاد عالٍ أمس (${yesterdayStrain}). خذ يوماً أخف اليوم.`:`Low recovery (${todayRecovery.score}%) after a high-strain day yesterday (${yesterdayStrain}). Take it lighter today.`});
   return out;
 }
 function sparklineSvg(points,{width=280,height=64,color="var(--acid)"}={}){
@@ -297,6 +299,9 @@ function renderInsights(){
   const weightPoints=[...state.bodyWeights].sort((a,b)=>a.week.localeCompare(b.week)).slice(-12).map(w=>w.kg);
   const sleepCutoff=Date.now()-14*86400000,sleepPoints=[...state.sleepLogs].filter(s=>new Date(s.date).getTime()>=sleepCutoff).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>s.hours);
   const volumeBuckets=weeklyTrainingVolume(6);
+  const todayRecovery=computeRecoveryScore();
+  const strainBuckets=Array.from({length:7},(_,i)=>computeStrainScore(new Date(Date.now()-(6-i)*86400000).toISOString().slice(0,10)));
+  const recoveryPoints=[];for(let i=13;i>=0;i--){const r=computeRecoveryScore(new Date(Date.now()-i*86400000).toISOString().slice(0,10));if(r)recoveryPoints.push(r.score);}
   app.innerHTML=`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
   <section class="insight-stats">
     <article><small>${ar?"سلسلة الأيام":"DAY STREAK"}</small><strong>${computeStreak()}</strong></article>
@@ -305,12 +310,14 @@ function renderInsights(){
     <article><small>${ar?"أيام تسجيل الطعام":"FOOD LOGGED"}</small><strong>${foodDays7}/7</strong></article>
     <article><small>${ar?"اتجاه الوزن":"WEIGHT TREND"}</small><strong>${weightText}</strong></article>
     <article><small>${ar?"متوسط النوم (7 أيام)":"SLEEP AVG (7D)"}</small><strong class="${sleepAvg!==null&&sleepAvg<minSleep?"warn":""}">${sleepAvg!==null?`${sleepAvg}h`:"—"}</strong></article>
-    <article><small>${ar?"الاستشفاء":"RECOVERY"}</small><strong class="${gate.hold?"warn":""}">${gate.hold?(ar?"ثبّت":"Hold"):(ar?"جاهز":"Ready")}</strong></article>
+    <article><small>${ar?"الاستشفاء اليوم":"RECOVERY TODAY"}</small><strong class="${todayRecovery?(todayRecovery.band==="red"?"warn":""):(gate.hold?"warn":"")}">${todayRecovery?`${todayRecovery.score}%`:(gate.hold?(ar?"ثبّت":"Hold"):(ar?"جاهز":"Ready"))}</strong></article>
   </section>
   <div class="section-title"><h2>${ar?"الاتجاهات":"Trends"}</h2><span>${ar?"الوزن · النوم · حجم التدريب":"Weight · sleep · training volume"}</span></div>
   <section class="trends-grid">
     ${trendCard(ar,{kicker:ar?"كجم · آخر التسجيلات":"KG · RECENT ENTRIES",title:ar?"اتجاه الوزن":"Weight trend",points:weightPoints,unit:" kg",color:"var(--blue)",emptyText:ar?"سجّل وزنك لبضعة أسابيع لرؤية الاتجاه.":"Log your weight for a few weeks to see a trend."})}
     ${trendCard(ar,{kicker:ar?"ساعات · آخر 14 يوماً":"HOURS · LAST 14 DAYS",title:ar?"اتجاه النوم":"Sleep trend",points:sleepPoints,unit:"h",color:"#7dc9ff",emptyText:ar?"سجّل نومك لبضع ليالٍ لرؤية الاتجاه.":"Log a few nights of sleep to see a trend."})}
+    ${trendCard(ar,{kicker:ar?"% · آخر 14 يوماً":"% · LAST 14 DAYS",title:ar?"اتجاه الاستشفاء":"Recovery trend",points:recoveryPoints,unit:"%",color:"var(--acid)",emptyText:ar?"سجّل نومك ومراجعتك لرؤية الاتجاه.":"Log sleep and check-ins to see a trend."})}
+    <article class="trend-card"><span class="card-kicker">${ar?"مقياس 0–21 · آخر 7 أيام":"0–21 SCALE · LAST 7 DAYS"}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"#ff8b3d"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
     <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
@@ -332,6 +339,7 @@ function renderHome() {
       <p>${u.heroSub}</p>
     </section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${state.lang==="ar"?"يوم متتالٍ":"day streak"}</span></div>`:""}
+    ${strainRecoveryCard(state.lang==="ar")}
     <div class="today-strip"><span>${state.lang==="ar"?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div>
     ${healthStatusStrip()}
     ${reminderStrip("train")}
@@ -733,7 +741,7 @@ function updateCheckin(){
   saved.checkin=c; persistDebounced();
 }
 function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),ar=state.lang==="ar",decision=gate.hold?(ar?"يوم خفيف إضافي · لا تزيد الحمل":"Extra light day · hold progression"):(ar?"استمر حسب الخطة":"Proceed as planned");return `<section class="decision-card ${gate.hold?"hold":""}"><div><small>${ar?"قرار الاستشفاء":"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${gate.stale?(ar?"سجّل مراجعة حديثة لتفعيل بوابة التقدم.":"Log a fresh check-in to activate progression gating."):(ar?`${gate.flags} علامات خطر في آخر مراجعة.`:`${gate.flags} red flags in the latest check-in.`)}</p></div><div><strong>${ar?`الأسبوع ${p.week}`:`WEEK ${p.week}`}</strong><span>${p.review?(ar?"المراجعة مستحقة":"Review due"):(ar?"المراجعة في الأسبوع 8":"Review at week 8")}</span>${p.stalled.length>=2?`<em>${ar?`${p.stalled.length} تمارين متوقفة`:`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
-function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value;if(saveSleepLog(bedtime,wake)){if(navigator.vibrate)navigator.vibrate(30);renderRecovery();}});document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderRecovery();});}
+function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr)){if(navigator.vibrate)navigator.vibrate(30);renderRecovery();}});document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderRecovery();});}
 function saveRecoveryCheckin(){updateCheckin();const c={...saved.checkin,date:new Date().toISOString()},flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>x.date.slice(0,10)!==isoDay());state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,24);queueHealth("recovery",c);persist();renderRecovery();}
 
 function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
@@ -807,12 +815,13 @@ function computeSleepHours(bedtime,wake){
   let start=bh*60+bm,end=wh*60+wm;if(end<=start)end+=24*60;
   return Math.round((end-start)/60*10)/10;
 }
-function saveSleepLog(bedtime,wake){
+function saveSleepLog(bedtime,wake,hrv,rhr){
   const hours=computeSleepHours(bedtime,wake);
   if(!hours||hours<=0||hours>16)return false;
   const date=isoDay();
+  const hrvValue=Number(hrv),rhrValue=Number(rhr);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
-  state.sleepLogs.unshift({date,bedtime,wake,hours});
+  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:null,rhr:Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:null});
   state.sleepLogs=state.sleepLogs.slice(0,120);
   queueHealth("sleep",{date,sleep:hours});
   persist();return true;
@@ -842,13 +851,61 @@ function computeStreak(){
   }
   return streak;
 }
+// Strain/Recovery are proxies built from data this app already has (sleep,
+// optional manually-logged HRV/resting HR, the weekly check-in, and logged
+// training load) - there's no HealthKit access from a PWA, so this can't
+// match a real wearable's continuous sensor data. It's directionally useful,
+// not clinically precise.
+function metricBaseline(field,days=30,beforeDate=null){
+  const endTime=beforeDate?new Date(beforeDate).getTime():Date.now(),cutoffTime=endTime-days*86400000;
+  const recent=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t>=cutoffTime&&t<endTime&&Number.isFinite(s[field])&&s[field]>0;});
+  return recent.length>=3?Math.round(recent.reduce((n,s)=>n+s[field],0)/recent.length*10)/10:null;
+}
+function computeRecoveryScore(dateStr=isoDay()){
+  const minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours,sleepEntry=state.sleepLogs.find(s=>s.date===dateStr);
+  const components=[];
+  if(sleepEntry)components.push({weight:35,value:Math.max(0,Math.min(100,Math.round(sleepEntry.hours/minSleep*100)))});
+  const hrvBase=metricBaseline("hrv",30,dateStr);
+  if(sleepEntry?.hrv&&hrvBase)components.push({weight:25,value:Math.max(0,Math.min(100,Math.round(50+(sleepEntry.hrv-hrvBase)/hrvBase*250)))});
+  const rhrBase=metricBaseline("rhr",30,dateStr);
+  if(sleepEntry?.rhr&&rhrBase)components.push({weight:20,value:Math.max(0,Math.min(100,Math.round(50-(sleepEntry.rhr-rhrBase)/rhrBase*250)))});
+  const checkin=state.recoveryCheckins.find(c=>String(c.date).slice(0,10)===dateStr);
+  if(checkin)components.push({weight:20,value:Math.max(0,100-recoveryFlags(checkin)*25-(checkin.pain?25:0))});
+  if(!components.length)return null;
+  const totalWeight=components.reduce((n,c)=>n+c.weight,0),score=Math.round(components.reduce((n,c)=>n+c.value*c.weight,0)/totalWeight);
+  return {score,band:score>=67?"green":score>=34?"yellow":"red"};
+}
+function computeStrainScore(dateStr=isoDay()){
+  const sessions=state.history.filter(h=>String(h.date).slice(0,10)===dateStr);
+  if(!sessions.length)return 0;
+  const totalLoad=sessions.reduce((n,s)=>{
+    const rpes=(s.entries||[]).map(e=>Number(e.rpe)).filter(Number.isFinite);
+    const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:6;
+    return n+(s.calories||0)*(rpe/10);
+  },0);
+  return Math.round(21*(1-Math.exp(-totalLoad/220))*10)/10;
+}
+function ringGaugeSvg(percent,color,size=112,strokeWidth=10){
+  const radius=(size-strokeWidth)/2,circumference=2*Math.PI*radius,offset=circumference*(1-Math.max(0,Math.min(100,percent))/100);
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="${strokeWidth}"/><circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
+}
+function strainRecoveryCard(ar){
+  const recovery=computeRecoveryScore(),strain=computeStrainScore();
+  const recColor=recovery?{green:"var(--acid)",yellow:"var(--orange)",red:"#ff6b6b"}[recovery.band]:"var(--muted)";
+  const recNote=!recovery?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):recovery.band==="green"?(ar?"جاهز للدفع":"Ready to push"):recovery.band==="yellow"?(ar?"متوسط، خفف الحمل قليلاً":"Moderate, ease off a little"):(ar?"منخفض، أعطِ الجسم وقتاً":"Low, prioritize rest");
+  return `<section class="vitals-grid">
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"Recovery"}</span></div></div><small>${recNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"#ff8b3d")}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"Strain"}</span></div></div><small>${ar?"من التمارين المسجلة اليوم":"From today's logged training"}</small></article>
+  </section>`;
+}
 function sleepTrackerCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const rows=sorted.slice(0,7).map(s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString(ar?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${ar?"حذف":"Delete"}">×</button></div>`).join("");
   return `<article class="recovery-card wide sleep-card"><span class="card-kicker">${ar?"من ساعة أبل ووتش":"FROM APPLE WATCH"}</span><h2>${ar?"سجل النوم اليومي":"Daily sleep log"}</h2>
     <div class="sleep-summary"><div><small>${ar?"الليلة الماضية":"LAST NIGHT"}</small><strong>${today?`${today.hours}h`:(ar?"لم يُسجَّل بعد":"Not logged yet")}</strong></div>${avg!==null?`<div><small>${ar?"متوسط 7 أيام":"7-DAY AVERAGE"}</small><strong class="${avg<minHours?"warn":""}">${avg}h</strong></div>`:""}</div>
     <form class="sleep-form" data-sleep-form><label>${ar?"وقت النوم":"Bedtime"}<input type="time" data-sleep-bedtime value="${today?.bedtime||REP_HEALTH_GUIDE.rules.targetBedtime}" required></label><label>${ar?"وقت الاستيقاظ":"Wake time"}<input type="time" data-sleep-wake value="${today?.wake||REP_HEALTH_GUIDE.rules.wakeTime}" required></label><button type="submit">${today?(ar?"تحديث":"Update"):(ar?"حفظ":"Save")}</button></form>
-    <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً.":"Read both times off the Apple Watch Health app, then log them here manually."}</p>
+    <div class="sleep-form-optional"><label>${ar?"تقلب معدل ضربات القلب (اختياري)":"HRV ms (optional)"}<input type="number" min="0" max="300" step="1" inputmode="numeric" data-sleep-hrv value="${today?.hrv||""}" placeholder="${ar?"مثال 55":"e.g. 55"}"></label><label>${ar?"نبض الراحة (اختياري)":"Resting HR (optional)"}<input type="number" min="0" max="200" step="1" inputmode="numeric" data-sleep-rhr value="${today?.rhr||""}" placeholder="${ar?"مثال 58":"e.g. 58"}"></label></div>
+    <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. تقلب معدل ضربات القلب ونبض الراحة اختياريان ويحسّنان دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. HRV and resting heart rate are optional and improve the Recovery score's accuracy."}</p>
     ${rows?`<div class="sleep-history">${rows}</div>`:""}</article>`;
 }
 function weightTrackerCard(ar){
