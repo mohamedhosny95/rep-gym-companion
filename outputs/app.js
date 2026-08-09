@@ -237,6 +237,32 @@ function buildInsights(){
   if(sleepAvg!==null)out.push({tone:sleepAvg<minSleep?"warn":"good",text:sleepAvg<minSleep?(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — أقل من الحد الأدنى ${minSleep} ساعات.`:`Sleep has averaged ${sleepAvg}h over 7 days — below your ${minSleep}h minimum.`):(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — عند الهدف أو أعلى.`:`Sleep has averaged ${sleepAvg}h over 7 days — at or above target.`)});
   return out;
 }
+function sparklineSvg(points,{width=280,height=64,color="var(--acid)"}={}){
+  if(points.length<2)return "";
+  const min=Math.min(...points),max=Math.max(...points),range=max-min||1,stepX=width/(points.length-1);
+  const coords=points.map((v,i)=>`${Math.round(i*stepX*10)/10},${Math.round((height-(v-min)/range*height)*10)/10}`);
+  const last=coords.at(-1).split(",");
+  return `<svg class="trend-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-hidden="true"><polyline points="${coords.join(" ")}" fill="none" style="stroke:${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="3.5" style="fill:${color}"/></svg>`;
+}
+function barChartSvg(bars,{width=280,height=64,color="var(--acid)",gap=6}={}){
+  if(!bars.length)return "";
+  const max=Math.max(...bars,1),barWidth=(width-gap*(bars.length-1))/bars.length;
+  const rects=bars.map((v,i)=>{const h=Math.max(2,Math.round(v/max*height)),x=Math.round(i*(barWidth+gap)*10)/10,y=height-h;return `<rect x="${x}" y="${y}" width="${Math.round(barWidth*10)/10}" height="${h}" rx="2" style="fill:${color}"/>`;}).join("");
+  return `<svg class="trend-chart trend-bars" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-hidden="true">${rects}</svg>`;
+}
+function trendCard(ar,{kicker,title,points,unit,color,emptyText}){
+  if(points.length<2)return `<article class="trend-card"><span class="card-kicker">${kicker}</span><h2>${title}</h2><p class="trend-empty">${emptyText}</p></article>`;
+  const first=points[0],last=points.at(-1),delta=Math.round((last-first)*10)/10,deltaText=delta>0?`+${delta}`:delta===0?"±0":`${delta}`;
+  return `<article class="trend-card"><span class="card-kicker">${kicker}</span><h2>${title}</h2><div class="trend-head"><strong>${last}${unit}</strong><small class="${delta>0?"up":delta<0?"down":""}">${deltaText}${unit} · ${ar?"منذ أول تسجيل":"since first entry"}</small></div>${sparklineSvg(points,{color})}</article>`;
+}
+function weeklyTrainingVolume(weeks=6){
+  const now=Date.now(),buckets=[];
+  for(let i=weeks-1;i>=0;i--){
+    const end=now-i*7*86400000,start=end-7*86400000;
+    buckets.push(state.history.filter(h=>{const t=new Date(h.date).getTime();return t>start&&t<=end;}).reduce((n,h)=>n+(h.calories||0),0));
+  }
+  return buckets;
+}
 function renderInsights(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",weekAgo=Date.now()-7*86400000;
@@ -246,6 +272,9 @@ function renderInsights(){
   const weightDelta=weights.length>=2?Math.round((weights[0].kg-weights[weights.length-1].kg)*10)/10:null;
   const weightText=weightDelta===null?(ar?"—":"—"):`${weightDelta>0?"+":""}${weightDelta} kg`;
   const gate=recoveryGate(),items=buildInsights(),sleepAvg=recentSleepAvg(7),minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours;
+  const weightPoints=[...state.bodyWeights].sort((a,b)=>a.week.localeCompare(b.week)).slice(-12).map(w=>w.kg);
+  const sleepCutoff=Date.now()-14*86400000,sleepPoints=[...state.sleepLogs].filter(s=>new Date(s.date).getTime()>=sleepCutoff).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>s.hours);
+  const volumeBuckets=weeklyTrainingVolume(6);
   app.innerHTML=`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
   <section class="insight-stats">
     <article><small>${ar?"الحصص هذا الأسبوع":"SESSIONS THIS WEEK"}</small><strong>${sessions7}</strong></article>
@@ -254,6 +283,12 @@ function renderInsights(){
     <article><small>${ar?"اتجاه الوزن":"WEIGHT TREND"}</small><strong>${weightText}</strong></article>
     <article><small>${ar?"متوسط النوم (7 أيام)":"SLEEP AVG (7D)"}</small><strong class="${sleepAvg!==null&&sleepAvg<minSleep?"warn":""}">${sleepAvg!==null?`${sleepAvg}h`:"—"}</strong></article>
     <article><small>${ar?"الاستشفاء":"RECOVERY"}</small><strong class="${gate.hold?"warn":""}">${gate.hold?(ar?"ثبّت":"Hold"):(ar?"جاهز":"Ready")}</strong></article>
+  </section>
+  <div class="section-title"><h2>${ar?"الاتجاهات":"Trends"}</h2><span>${ar?"الوزن · النوم · حجم التدريب":"Weight · sleep · training volume"}</span></div>
+  <section class="trends-grid">
+    ${trendCard(ar,{kicker:ar?"كجم · آخر التسجيلات":"KG · RECENT ENTRIES",title:ar?"اتجاه الوزن":"Weight trend",points:weightPoints,unit:" kg",color:"var(--blue)",emptyText:ar?"سجّل وزنك لبضعة أسابيع لرؤية الاتجاه.":"Log your weight for a few weeks to see a trend."})}
+    ${trendCard(ar,{kicker:ar?"ساعات · آخر 14 يوماً":"HOURS · LAST 14 DAYS",title:ar?"اتجاه النوم":"Sleep trend",points:sleepPoints,unit:"h",color:"#7dc9ff",emptyText:ar?"سجّل نومك لبضع ليالٍ لرؤية الاتجاه.":"Log a few nights of sleep to see a trend."})}
+    <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
 }
@@ -689,6 +724,7 @@ function saveSleepLog(bedtime,wake){
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
   state.sleepLogs.unshift({date,bedtime,wake,hours});
   state.sleepLogs=state.sleepLogs.slice(0,120);
+  queueHealth("sleep",{date,sleep:hours});
   persist();return true;
 }
 function deleteSleepLog(date){state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);persist();}
