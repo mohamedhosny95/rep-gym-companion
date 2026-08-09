@@ -273,6 +273,13 @@ async function syncHealth(request, env, body) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/pair-check") {
+      if (request.method === "POST") return paired(request, env)
+        ? json({ ok: true, foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), notion: Boolean(env.NOTION_TOKEN) })
+        : json({ ok: false, error: "Pairing key is incorrect." }, 401);
+      if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+      return json({ ok: false, error: "Method not allowed." }, 405);
+    }
     if (url.pathname === "/api/food/analyze") {
       if (request.method === "POST") return analyzeFood(request, env);
       if (request.method === "OPTIONS") return new Response(null, { status: 204 });
