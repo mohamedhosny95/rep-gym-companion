@@ -1,6 +1,6 @@
-# Rep Gym Companion
+# Health OS
 
-A mobile-first, offline-ready Health OS companion built with plain HTML, CSS, and JavaScript. It includes guided exercise movement animations, workout logging, recovery and progression gates, Bad Day fallbacks, nutrition and hygiene checklists, bilingual English/Arabic navigation, and secure Notion synchronization.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. It includes guided exercise movement animations, workout logging, recovery and progression gates, Bad Day fallbacks, nutrition/supplement/weight tracking, hygiene checklists, cross-module reminders and insights, bilingual English/Arabic navigation, and secure Notion synchronization.
 
 ## Open locally
 
