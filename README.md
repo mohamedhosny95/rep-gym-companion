@@ -24,8 +24,26 @@ node scripts/sync-static.mjs
 This copies your changes into `outputs/` and rebuilds
 `outputs/rep-gym-companion.zip`. A GitHub Actions workflow
 (`.github/workflows/verify.yml`) checks on every push that the two folders
-match, along with a syntax check on all JS — it does not deploy anything;
-Cloudflare's own GitHub integration still owns deployment (see below).
+match, along with a syntax check on all JS, and runs a headless end-to-end
+smoke test — it does not deploy anything; Cloudflare's own GitHub
+integration still owns deployment (see below).
+
+## Testing
+
+`scripts/e2e-smoke.mjs` is a headless Playwright test that serves
+`dist/client/` locally and drives a real browser through the core flows:
+loading Home, previewing and starting a training session, completing it,
+logging an activity, saving a sleep log, logging food, and toggling
+language — failing on any assertion or any console/page error. Run it
+locally with:
+
+```sh
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+It runs automatically in CI (the `e2e` job in `verify.yml`) on every push.
 
 If you change any file referenced by the service worker's asset list
 (`dist/client/sw.js`), bump the `CACHE` name and the `?v=` query strings in
@@ -58,8 +76,18 @@ committed file. `.env.example` documents the names only, for reference.
   Cache API) throttles `/api/pair-check`, `/api/food/analyze`, and
   `/api/notion-sync` per client IP. This raises the cost of brute-forcing
   `REP_SYNC_KEY` or running up your Gemini bill, but it is not a hard
-  guarantee across Cloudflare's network. For a guaranteed limit, also add a
-  Cloudflare Rate Limiting Rule on `/api/*` in the dashboard.
+  guarantee across Cloudflare's network — a distributed attacker can land
+  requests on different colos that don't share the same edge cache yet.
+  **For a guaranteed limit, add a Cloudflare Rate Limiting Rule** (this
+  requires dashboard access, so it isn't something that can be set from the
+  code in this repo):
+  1. Cloudflare dashboard → your zone → **Security → WAF → Rate limiting rules**
+  2. Create rule → match path `/api/*`
+  3. Set a threshold, e.g. 60 requests / 60 seconds per IP
+  4. Action: **Block** (or **Managed Challenge** if you'd rather challenge
+     than hard-block)
+  This is free on all plans for a small number of rules and closes the gap
+  the in-code limiter can't guarantee on its own.
 - **Timing-safe key comparison** — `REP_SYNC_KEY` is compared via a hashed,
   constant-time check rather than `===`.
 - **Security headers** — every response (API and static assets) gets a

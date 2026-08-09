@@ -120,7 +120,7 @@ function anatomyVisual(motion) {
       <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
     </div>`;
   }
-  const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.png`;
+  const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
   return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
     <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
     <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
@@ -346,7 +346,11 @@ function renderHome() {
       <div class="section-title"><h2>${u.weekly}</h2><span>${state.lang==="ar"?"الصباح + منتصفه":"AM + mid-morning"}</span></div>
       <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":["Mon","Wed"].includes(d)?"C":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
     </section>`;
-  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => startSession(button.dataset.session)));
+  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
+    const id = button.dataset.session;
+    const continuing = state.session === id && state.index > 0 && state.index < sessions[id].exercises.length && state.sessionStartedAt;
+    continuing ? startSession(id) : showSessionPreview(id);
+  }));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-log-activity]").addEventListener("click", showLogActivity);
   document.querySelector("[data-history]").addEventListener("click", renderHistory);
@@ -363,6 +367,18 @@ function sessionCard(id, s, resume) {
   return `<button class="session-card ${resume?"resume-card":""}" data-session="${id}" style="--card-accent:${s.accent}">
     <span><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
     <span class="session-icon">${ICONS[s.icon]||s.icon}</span><p>${ls.meta}<br>${ls.description}</p><small>${resume?u.continue:`${s.exercises.length} ${u.steps}`}</small></button>`;
+}
+function showSessionPreview(id){
+  const s=sessions[id],ar=state.lang==="ar",ls=sessionText(id,s),u=U();
+  state.previewSession=id;state.view="preview";state.activeTab="train";document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
+  const rows=s.exercises.map((base,i)=>{const item=localizedItem(base);return `<div class="preview-row"><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></div>`}).join("");
+  app.innerHTML=`${moduleHeader(ls.name,ar?"استعرض الخطة قبل البدء.":"Preview the plan before you start.",ls.description)}
+    <section class="preview-meta"><span>${ls.meta}</span><span>${s.exercises.length} ${u.steps}</span></section>
+    <section class="preview-list">${rows}</section>
+    <button class="nav-button primary" data-start-session>${ar?"ابدأ التمرين ←":"Start workout →"}</button>
+    <button class="nav-button" data-cancel-preview>${ar?"رجوع":"Back"}</button>`;
+  document.querySelector("[data-start-session]").onclick=()=>startSession(id);
+  document.querySelector("[data-cancel-preview]").onclick=renderHome;
 }
 function startSession(id) {
   state.activeTab="train";updatePrimaryTabs();
@@ -519,7 +535,7 @@ function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(u
 function stopSessionClock(){if(state.sessionClock)clearInterval(state.sessionClock);state.sessionClock=null;}
 function updateSessionClock(){const el=document.querySelector("#sessionElapsed");if(el&&state.sessionStartedAt)el.textContent=formatClock(Math.floor((Date.now()-state.sessionStartedAt)/1000));}
 function showExitConfirm(){
-  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`;document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();renderHome();};
+  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`;document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");}renderHome();};
 }
 // MET (metabolic equivalent) per session type, used only for a rough estimate -
 // there's no heart-rate or wearable data source here, so this is duration x
@@ -895,7 +911,7 @@ document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
 function showToast(message){
   document.querySelector(".toast")?.remove();
