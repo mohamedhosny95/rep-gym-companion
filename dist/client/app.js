@@ -103,13 +103,15 @@ const state = {
   speed:saved.speed||1, paused:saved.paused||false, muscles:saved.muscles!==false, viewMode:saved.viewMode||"side",
   logs:saved.logs||{}, swaps:saved.swaps||{}, history:saved.history||[], sessionStartedAt:saved.sessionStartedAt||null,
   reviews:saved.reviews||{}, fieldTest:saved.fieldTest||{}, voice:saved.voice!==false,
+  syncQueue:saved.syncQueue||[], syncState:"idle",
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
+const syncKeyStorage="rep-notion-pairing-key-v1";
 const app = document.querySelector("#app");
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:2, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:3, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue }));
 }
 function U(){return REP_I18N[state.lang].ui;}
 function sessionText(id,s){const v=REP_I18N[state.lang].sessions[id];return {name:v?.[0]||s.name,meta:v?.[1]||s.meta,description:v?.[2]||s.description};}
@@ -201,6 +203,13 @@ function progressionAdvice(id){
   if(avgRpe>=9||minReps<8)return state.lang==="ar"?"خفّض 5% أو ثبّت الوزن حتى تعود التقنية والتكرارات.":"Reduce about 5% or hold until form and reps recover.";
   if(allTop){const jump=["Leg Press","Back Extension","Hip Thrust Machine"].includes(id)?5:2.5;return state.lang==="ar"?`${twoWins?"تقدّم مؤكد:":"جاهز للتقدم:"} زد ${jump} كجم في الحصة القادمة.`:`${twoWins?"Progression confirmed:":"Ready to progress:"} add ${jump} kg next session.`;}
   return state.lang==="ar"?"ثبّت الوزن؛ ارفع جودة التكرارات أو أكمل 12 تكراراً عند RPE ≤ 7.5.":"Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
+}
+function progressionCode(id,sets){
+  if(!sets?.length)return state.session==="gym"?"Hold":"Recovery";
+  const valid=sets.filter(s=>Number(s.reps)>0),avg=valid.reduce((n,s)=>n+(Number(s.rpe)||7),0)/(valid.length||1),min=Math.min(...valid.map(s=>Number(s.reps)||0));
+  if(avg>=9||min<8)return "Reduce";
+  if(valid.length>=2&&valid.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5))return "Increase";
+  return state.session==="gym"?"Hold":"Recovery";
 }
 function loadPanel(base,item){
   if(!isLoadExercise(item))return ""; const u=U(),id=exerciseId(base),log=normalizedLog(id,item.sets);
@@ -297,16 +306,40 @@ function showExitConfirm(){
 }
 function recordSession(){
   const sets=Object.entries(state.completed).filter(([k])=>k.startsWith(`${state.session}-`)).reduce((n,[,v])=>n+v.length,0);
-  state.history.unshift({id:Date.now(),date:new Date().toISOString(),session:state.session,duration:Math.max(0,Math.floor((Date.now()-(state.sessionStartedAt||Date.now()))/1000)),sets,loads:JSON.parse(JSON.stringify(state.logs))});state.history=state.history.slice(0,60);state.sessionStartedAt=null;
+  const record={id:Date.now(),date:new Date().toISOString(),session:state.session,duration:Math.max(0,Math.floor((Date.now()-(state.sessionStartedAt||Date.now()))/1000)),sets,loads:JSON.parse(JSON.stringify(state.logs)),entries:[]};
+  const priorBest={};state.history.forEach(h=>Object.entries(h.loads||{}).forEach(([name,log])=>setsFromLog(log).forEach(s=>{priorBest[name]=Math.max(priorBest[name]||0,Number(s.weight)||0);}))); 
+  sessions[state.session].exercises.forEach((base,index)=>{const completed=state.completed[`${state.session}-${index}`]||[],id=base.name==="Back Extension"&&state.swaps.backExtension?"Hip Thrust Machine":base.name,logged=setsFromLog(state.logs[id]);completed.forEach(setIndex=>{const set=logged[setIndex]||{},weight=Number(set.weight)||0;record.entries.push({entry:`${id} · Set ${setIndex+1}`,exercise:id,set:setIndex+1,weight:set.weight||"",reps:set.reps||"",rpe:set.rpe||"",note:set.note||"",duration:!set.reps&&!set.weight?(motionGuide[base.motion]?.[2]||""):"",rest:base.rest||"",progression:progressionCode(id,logged),personalBest:Boolean(weight&&weight>(priorBest[id]||0))});});});
+  state.history.unshift(record);state.history=state.history.slice(0,60);queueWorkout(record);state.sessionStartedAt=null;
 }
+
+function queueWorkout(record){
+  if(!record?.entries?.length)return;const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio"};
+  if(!state.syncQueue.some(item=>String(item.workout.id)===String(record.id)))state.syncQueue.push({workout:{id:String(record.id),date:record.date,type:typeMap[record.session]||"Recovery",duration:record.duration,entries:record.entries},attempts:0,error:""});
+  persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);
+}
+
+async function syncPending(){
+  const key=localStorage.getItem(syncKeyStorage);if(!key||state.syncState==="syncing"||!navigator.onLine)return;
+  state.syncState="syncing";updateSyncPanel();
+  for(const item of [...state.syncQueue]){
+    try{const response=await fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key},body:JSON.stringify({workout:item.workout})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Sync failed (${response.status})`);state.syncQueue=state.syncQueue.filter(q=>String(q.workout.id)!==String(item.workout.id));persist();}
+    catch(error){item.attempts=(item.attempts||0)+1;item.error=String(error.message||error).slice(0,180);state.syncState="failed";persist();updateSyncPanel();return;}
+  }
+  state.syncState="synced";persist();updateSyncPanel();
+}
+function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),pending=state.syncQueue.length;if(!key)return ar?"غير مقترن":"Not paired";if(state.syncState==="syncing")return ar?"جارٍ الإرسال إلى Notion…":"Syncing to Notion…";if(state.syncState==="failed")return ar?`${pending} بانتظار إعادة المحاولة`:`${pending} waiting to retry`;if(pending)return ar?`${pending} حصة بانتظار المزامنة`:`${pending} workout${pending===1?"":"s"} pending`;return ar?"تمت المزامنة مع Notion":"Synced with Notion";}
+function updateSyncPanel(){const status=document.querySelector("[data-sync-status]");if(status)status.textContent=syncStatusText();const button=document.querySelector("[data-sync-now]");if(button)button.disabled=state.syncState==="syncing";}
+function savePairingKey(){const input=document.querySelector("[data-sync-key]"),key=input?.value.trim();if(!key)return;if(key.length<12){alert(state.lang==="ar"?"استخدم مفتاحاً من 12 حرفاً على الأقل.":"Use a pairing key with at least 12 characters.");return;}localStorage.setItem(syncKeyStorage,key);input.value="";state.syncState="idle";updateSyncPanel();syncPending();}
+function forgetPairingKey(){localStorage.removeItem(syncKeyStorage);state.syncState="idle";updateSyncPanel();}
 
 function renderHistory(){
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="history";const u=U(),rows=state.history;
   const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
   app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
+  <section class="notion-sync"><div class="notion-sync-head"><span class="notion-mark">N</span><div><strong>Notion</strong><small data-sync-status>${syncStatusText()}</small></div></div><div class="notion-sync-actions"><input data-sync-key type="password" autocomplete="new-password" placeholder="${state.lang==="ar"?"مفتاح الاقتران":"Pairing key"}" aria-label="${state.lang==="ar"?"مفتاح مزامنة Notion":"Notion sync pairing key"}"><button data-save-sync-key>${state.lang==="ar"?"اقتران":"Pair"}</button><button data-sync-now>${state.lang==="ar"?"زامن الآن":"Sync now"}</button><button class="quiet" data-forget-sync>${state.lang==="ar"?"نسيان المفتاح":"Forget key"}</button></div><p>${state.lang==="ar"?"تُحفظ الحصص دون إنترنت وتُرسل تلقائياً عند عودة الاتصال.":"Workouts queue offline and upload automatically when your connection returns."}</p></section>
   <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تُحفظ البيانات محلياً على جهازك فقط.":"Your data stays on this device unless you export it."}</small></section>
   ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const details=Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${sessionText(r.session,sessions[r.session]).name}</strong><small>${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
-  document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;
+  document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;document.querySelector("[data-save-sync-key]").onclick=savePairingKey;document.querySelector("[data-sync-now]").onclick=syncPending;document.querySelector("[data-forget-sync]").onclick=forgetPairingKey;updateSyncPanel();
 }
 
 function exportData(){
@@ -420,6 +453,7 @@ async function installApp(){
   const box=document.createElement("div");box.className="install-help";box.innerHTML=`<button aria-label="Close">×</button><strong>${U().install}</strong><p>${msg}</p>`;document.body.appendChild(box);box.querySelector("button").onclick=()=>box.remove();
 }
 function network(){const el=document.querySelector("#networkStatus");el.classList.toggle("is-offline",!navigator.onLine);el.lastChild.textContent=` ${navigator.onLine?U().offlineReady:U().offlineMode}`;}
-addEventListener("online",network);addEventListener("offline",network);network();
+addEventListener("online",()=>{network();syncPending();});addEventListener("offline",network);network();
 if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{const reg=await navigator.serviceWorker.register("./sw.js");reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});});
 renderHome();
+if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,800);
