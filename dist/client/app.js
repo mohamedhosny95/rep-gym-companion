@@ -65,17 +65,27 @@ const anatomy = {
 
 const motionGuide = {
   march:["Lift · Switch","ارفع · بدّل",180], catcow:["Inhale: cow · Exhale: cat","شهيق: بقرة · زفير: قطة",0], kneel:["Ease forward · Hold","تقدم برفق · اثبت",45],
-  floor:["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",0], birddog:["Extend · Hold · Return","مد · اثبت · عد",0], plank:["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
+  floor:["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",45], birddog:["Extend · Hold · Return","مد · اثبت · عد",60], plank:["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
   breathe:["Exhale · Draw in · Hold","زفير · اسحب للداخل · اثبت",20], kegel:["Contract 5s · Fully release 5s","شد 5ث · استرخِ 5ث",0], grip:["Close 2s · Open 2s","أغلق 2ث · افتح 2ث",0],
   bike:["Smooth pedal · Easy breath","دوران سلس · تنفس سهل",300], legpress:["Lower 2s · Press 1s","انزل 2ث · ادفع 1ث",0], hinge:["Lower 2s · Neutral 1s","انزل 2ث · محايد 1ث",0],
   chestpress:["Return 2s · Press 1s","عد 2ث · ادفع 1ث",0], row:["Reach 2s · Pull 1s","مد 2ث · اسحب 1ث",0], pulldown:["Rise 2s · Pull 1s","اصعد 2ث · اسحب 1ث",0],
   walk:["Easy stride · Natural arms","خطوة سهلة · ذراعان طبيعيان",300], inclinewalk:["Upright · Short sentences","جسم مستقيم · جمل قصيرة",1500], stretch:["Ease in · Hold · No bounce","ادخل برفق · اثبت · دون ارتداد",30]
 };
 
+const motionAtlasRows = { legpress:0, hinge:1, chestpress:2, row:3, pulldown:4, floor:5, birddog:6 };
+
 function anatomyVisual(motion) {
   const [atlas,size,a,b,muscles,flip] = anatomy[motion] || anatomy.march;
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
+  if(state.viewMode==="side" && motion in motionAtlasRows){
+    const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
+    return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
+      <i class="sprite-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
+      <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
+      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+    </div>`;
+  }
   const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.png`;
   return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
     <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
@@ -92,13 +102,14 @@ const state = {
   completed: saved.completed || {}, muted: saved.muted || false, lang:saved.lang||"en",
   speed:saved.speed||1, paused:saved.paused||false, muscles:saved.muscles!==false, viewMode:saved.viewMode||"side",
   logs:saved.logs||{}, swaps:saved.swaps||{}, history:saved.history||[], sessionStartedAt:saved.sessionStartedAt||null,
+  reviews:saved.reviews||{}, fieldTest:saved.fieldTest||{}, voice:saved.voice!==false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const app = document.querySelector("#app");
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:2, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice }));
 }
 function U(){return REP_I18N[state.lang].ui;}
 function sessionText(id,s){const v=REP_I18N[state.lang].sessions[id];return {name:v?.[0]||s.name,meta:v?.[1]||s.meta,description:v?.[2]||s.description};}
@@ -136,6 +147,7 @@ function renderHome() {
         <p>${u.recoveryDesc}</p><small>${u.openGuide}</small>
       </button>
       <button class="session-card" data-history style="--card-accent:#7dc9ff"><span><small>${u.reference}</small><h2>${u.history}</h2></span><span class="session-icon">↗</span><p>${u.historyDesc}</p><small>${u.openHistory}</small></button>
+      <button class="session-card" data-review style="--card-accent:#ef6f55"><span><small>${state.lang==="ar"?"السلامة والجودة":"SAFETY & QUALITY"}</small><h2>${state.lang==="ar"?"المراجعة والاختبار":"Review & field test"}</h2></span><span class="session-icon">✓</span><p>${state.lang==="ar"?"اعتماد مختص، قائمة فحص الحركة، واختبار الاستخدام داخل الجيم.":"Professional sign-off, movement checklist, and real-gym usability test."}</p><small>${state.lang==="ar"?"افتح قائمة الفحص ←":"Open checklist →"}</small></button>
       <button class="session-card install-card" data-install style="--card-accent:#ffffff"><span><small>PWA</small><h2>${u.install}</h2></span><span class="session-icon">↓</span><p>${u.installDesc}</p><small>${u.installNow} →</small></button>
     </section>
     <section class="weekly">
@@ -145,6 +157,7 @@ function renderHome() {
   document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => startSession(button.dataset.session)));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-history]").addEventListener("click", renderHistory);
+  document.querySelector("[data-review]").addEventListener("click", renderReview);
   document.querySelector("[data-install]").addEventListener("click", installApp);
 }
 function sessionCard(id, s, resume) {
@@ -165,10 +178,36 @@ function currentItem(base){
   return localizedItem(swap);
 }
 function isLoadExercise(item){return ["legpress","hinge","floor","chestpress","row","pulldown"].includes(item.motion)&&state.session==="gym";}
+function exerciseId(base){return base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;}
+function normalizedLog(id,sets=3){
+  const old=state.logs[id]||{};
+  if(!Array.isArray(old.sets)) old.sets=Array.from({length:sets},(_,i)=>i===0&&old.current?{weight:old.current.weight||"",reps:old.current.reps||"",rpe:"",note:""}:{weight:"",reps:"",rpe:"",note:""});
+  while(old.sets.length<sets)old.sets.push({weight:"",reps:"",rpe:"",note:""});
+  old.previousSets=old.previousSets||(old.previous?[{weight:old.previous.weight||"",reps:old.previous.reps||"",rpe:"",note:""}]:[]);
+  state.logs[id]=old;return old;
+}
+function setsFromLog(log){
+  if(Array.isArray(log?.sets))return log.sets;
+  if(log?.current)return [{...log.current,rpe:"",note:""}];
+  return [];
+}
+function progressionAdvice(id){
+  const recent=state.history.filter(h=>h.session==="gym"&&h.loads?.[id]).slice(0,3).map(h=>setsFromLog(h.loads[id])).filter(Boolean);
+  const current=setsFromLog(state.logs[id]);const sample=current.some(s=>s.reps)?current:(recent[0]||[]);
+  if(!sample.length)return state.lang==="ar"?"سجّل التكرارات وRPE للحصول على اقتراح تلقائي.":"Log reps and RPE to unlock an automatic recommendation.";
+  const valid=sample.filter(s=>Number(s.reps)>0),avgRpe=valid.reduce((n,s)=>n+(Number(s.rpe)||7),0)/(valid.length||1),minReps=Math.min(...valid.map(s=>Number(s.reps)||0));
+  const allTop=valid.length>=2&&valid.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5);
+  const twoWins=allTop&&recent.slice(0,2).length===2&&recent.slice(0,2).every(a=>a.length>=2&&a.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5));
+  if(avgRpe>=9||minReps<8)return state.lang==="ar"?"خفّض 5% أو ثبّت الوزن حتى تعود التقنية والتكرارات.":"Reduce about 5% or hold until form and reps recover.";
+  if(allTop){const jump=["Leg Press","Back Extension","Hip Thrust Machine"].includes(id)?5:2.5;return state.lang==="ar"?`${twoWins?"تقدّم مؤكد:":"جاهز للتقدم:"} زد ${jump} كجم في الحصة القادمة.`:`${twoWins?"Progression confirmed:":"Ready to progress:"} add ${jump} kg next session.`;}
+  return state.lang==="ar"?"ثبّت الوزن؛ ارفع جودة التكرارات أو أكمل 12 تكراراً عند RPE ≤ 7.5.":"Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
+}
 function loadPanel(base,item){
-  if(!isLoadExercise(item))return ""; const u=U(),id=base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;
-  const log=state.logs[id]||{current:{weight:"",reps:""},previous:null};
-  return `<section class="load-panel"><div class="load-fields"><label>${u.weight}<span><input data-log="weight" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(log.current?.weight||"")}"><em>kg</em></span></label><label>${u.reps}<span><input data-log="reps" type="number" min="0" step="1" inputmode="numeric" value="${esc(log.current?.reps||"")}"></span></label></div><p>${u.previousLog}: <strong>${log.previous?`${log.previous.weight||"—"} kg × ${log.previous.reps||"—"}`:u.noPrevious}</strong></p></section>`;
+  if(!isLoadExercise(item))return ""; const u=U(),id=exerciseId(base),log=normalizedLog(id,item.sets);
+  const prev=log.previousSets?.map((s,i)=>`${i+1}: ${s.weight||"—"} kg × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
+  return `<section class="load-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل كل مجموعة":"Log every set"}</strong><span>RPE 1–10</span></div><div class="set-log-grid">
+    ${Array.from({length:item.sets},(_,i)=>{const s=log.sets[i]||{};return `<div class="set-log-row"><b>${i+1}</b><label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label><label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label><label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label><label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label></div>`}).join("")}
+  </div><p>${u.previousLog}: <strong>${prev}</strong></p><div class="progression-callout">${progressionAdvice(id)}</div></section>`;
 }
 function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
 
@@ -217,14 +256,19 @@ function motionAction(action){
 }
 function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60).padStart(2,"0");return `${m}:${s}`;}
 function toggleExerciseTimer(motion){
-  if(state.exerciseTimer){clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;renderExercise();return;}
-  const total=motionGuide[motion]?.[2]||30;state.exerciseTimer={remaining:total};
-  const button=document.querySelector("[data-exercise-timer]");button.classList.add("is-running");button.textContent=`${U().stopTimer} · ${formatClock(total)}`;
-  state.exerciseTimer.interval=setInterval(()=>{state.exerciseTimer.remaining--;button.textContent=`${U().stopTimer} · ${formatClock(state.exerciseTimer.remaining)}`;if(state.exerciseTimer.remaining<=0){clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;signalEnd();button.textContent=`✓ ${U().done}`;button.classList.remove("is-running");}},1000);
+  if(state.exerciseTimer){stopExerciseClock();return;}
+  const total=motionGuide[motion]?.[2]||30,item=currentItem(sessions[state.session].exercises[state.index]),sided=["kneel","birddog","stretch"].includes(motion);
+  state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided};
+  const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=`<button class="timed-close" data-timed-close aria-label="Close">×</button><p>${esc(item.name)}</p><strong data-timed-value>${formatClock(total)}</strong><span data-timed-phase>${state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL"}</span><div class="timed-progress"><i data-timed-progress></i></div><div class="timed-actions"><button data-timed-pause>${U().pause}</button><button data-timed-skip>${U().skip}</button></div><label><input type="checkbox" data-voice ${state.voice?"checked":""}> ${state.lang==="ar"?"إرشادات صوتية":"Spoken cues"}</label>`;document.body.appendChild(overlay);
+  document.querySelector("[data-timed-close]").onclick=stopExerciseClock;document.querySelector("[data-timed-skip]").onclick=finishExerciseTimer;document.querySelector("[data-timed-pause]").onclick=e=>{state.exerciseTimer.paused=!state.exerciseTimer.paused;e.currentTarget.textContent=state.exerciseTimer.paused?U().resume:U().pause;};document.querySelector("[data-voice]").onchange=e=>{state.voice=e.target.checked;persist();};
+  speak(state.lang==="ar"?"ابدأ":"Start");updateExerciseTimer();state.exerciseTimer.interval=setInterval(()=>{const t=state.exerciseTimer;if(!t||t.paused)return;t.remaining--;updateExerciseTimer();if(!t.halfway&&t.remaining<=Math.ceil(t.total/2)){t.halfway=true;speak(t.sided?(state.lang==="ar"?"بدّل الجهة":"Switch sides"):(state.lang==="ar"?"منتصف الوقت":"Halfway"));if(navigator.vibrate)navigator.vibrate(100);}if(t.remaining<=3&&t.remaining>0)speak(String(t.remaining));if(t.remaining<=0)finishExerciseTimer();},1000);
 }
+function updateExerciseTimer(){const t=state.exerciseTimer;if(!t)return;document.querySelector("[data-timed-value]").textContent=formatClock(t.remaining);document.querySelector("[data-timed-progress]").style.width=`${Math.max(0,t.remaining/t.total*100)}%`;document.querySelector("[data-timed-phase]").textContent=t.halfway?(t.sided?(state.lang==="ar"?"الجهة الثانية":"SECOND SIDE"):(state.lang==="ar"?"النصف الثاني":"SECOND HALF")):(state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL");}
+function speak(text){if(!state.voice||state.muted||!window.speechSynthesis)return;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang=state.lang==="ar"?"ar-EG":"en-US";utterance.rate=.95;window.speechSynthesis.speak(utterance);}
+function finishExerciseTimer(){if(!state.exerciseTimer)return;const key=`${state.session}-${state.index}`,item=sessions[state.session].exercises[state.index],done=state.completed[key]||[],nextSet=Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();signalEnd();speak(state.lang==="ar"?"تم":"Complete");if(nextSet!==undefined)state.completed[key]=[...done,nextSet];persist();renderExercise();if((state.completed[key]||[]).length===item.sets)setTimeout(()=>{if(state.view==="player")next();},900);else if(item.rest)startTimer(item.rest,nextSet);}
 function saveLog(base,item){
-  const id=base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;
-  const existing=state.logs[id]||{current:{},previous:null}; existing.current={weight:document.querySelector('[data-log="weight"]')?.value||"",reps:document.querySelector('[data-log="reps"]')?.value||""};state.logs[id]=existing;persist();
+  const id=exerciseId(base),log=normalizedLog(id,item.sets);
+  document.querySelectorAll("[data-log-set]").forEach(input=>{const i=Number(input.dataset.logSet);log.sets[i][input.dataset.log]=input.value;});persist();
 }
 function signalEnd(){
   if(navigator.vibrate)navigator.vibrate([180,80,180]);
@@ -243,8 +287,8 @@ function toggleSet(setIndex) {
 }
 function prev(){ stopExerciseClock();if(state.index>0){state.index--;persist();renderExercise();} }
 function next(){ stopExerciseClock();const s=sessions[state.session];if(state.index===s.exercises.length-1){recordSession();if(state.session==="gym")promoteLogs();}state.index++;persist();renderExercise(); }
-function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;}
-function promoteLogs(){Object.values(state.logs).forEach(log=>{if(log.current&&(log.current.weight||log.current.reps))log.previous={...log.current};});}
+function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
+function promoteLogs(){Object.values(state.logs).forEach(log=>{if(log.sets?.some(s=>s.weight||s.reps))log.previousSets=log.sets.map(s=>({...s}));});}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
 function stopSessionClock(){if(state.sessionClock)clearInterval(state.sessionClock);state.sessionClock=null;}
 function updateSessionClock(){const el=document.querySelector("#sessionElapsed");if(el&&state.sessionStartedAt)el.textContent=formatClock(Math.floor((Date.now()-state.sessionStartedAt)/1000));}
@@ -258,8 +302,40 @@ function recordSession(){
 
 function renderHistory(){
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="history";const u=U(),rows=state.history;
-  const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>{const w=Number(l.current?.weight)||0,reps=Number(l.current?.reps)||0;if(!best[name]||w>best[name].weight)best[name]={weight:w,reps};}));
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${b.reps>=12?u.addWeight:u.holdWeight}</span></article>`).join("")}${rows.map(r=>`<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${sessionText(r.session,sessions[r.session]).name}</strong><small>${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}</small></div></article>`).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
+  const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
+  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
+  <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تُحفظ البيانات محلياً على جهازك فقط.":"Your data stays on this device unless you export it."}</small></section>
+  ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const details=Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${sessionText(r.session,sessions[r.session]).name}</strong><small>${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
+  document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;
+}
+
+function exportData(){
+  persist();const payload={app:"Rep Gym Companion",schema:2,exportedAt:new Date().toISOString(),data:JSON.parse(localStorage.getItem(storageKey)||"{}")};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rep-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+async function importData(event){
+  try{const payload=JSON.parse(await event.target.files[0].text());if(payload.app!=="Rep Gym Companion"||![1,2].includes(payload.schema)||typeof payload.data!=="object")throw Error("invalid");
+    if(!confirm(state.lang==="ar"?"سيستبدل هذا بيانات التطبيق الحالية. متابعة؟":"This will replace the current app data. Continue?"))return;
+    localStorage.setItem(storageKey,JSON.stringify(payload.data));location.reload();
+  }catch{alert(state.lang==="ar"?"ملف النسخة غير صالح أو تالف.":"That backup file is invalid or damaged.");event.target.value="";}
+}
+
+const reviewExercises=["Leg Press","Back Extension","Chest Press","Seated Cable Row","Lat Pulldown","Glute Bridges","Bird-Dog"];
+const fieldChecks=[
+  ["bright","Readable in bright gym lighting","واضح في إضاءة الجيم القوية"],["dim","Readable in dim lighting","واضح في الإضاءة الخافتة"],["hands","Usable with sweaty hands","سهل مع اليد المتعرقة"],["onehand","Core actions work one-handed","الوظائف الأساسية بيد واحدة"],["airplane","Full workout works in airplane mode","الحصة كاملة تعمل دون إنترنت"],["muted","Visual/haptic cues work while muted","الإشارات المرئية والاهتزاز تعمل مع كتم الصوت"],["resume","Resumes correctly after phone lock","يستأنف بعد قفل الهاتف"],["languages","English and Arabic checked","تم اختبار العربية والإنجليزية"],["small","No clipping on a small phone","لا يوجد قص على هاتف صغير"]
+];
+function renderReview(){
+  state.view="review";document.body.classList.remove("workout-mode");const ar=state.lang==="ar",r=state.reviews,complete=reviewExercises.filter(x=>r[x]?.signed).length;
+  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${ar?"السلامة والجودة":"SAFETY & QUALITY"}</p><h1>${ar?"المراجعة البشرية، موثّقة.":"Human review, documented."}</h1><p>${ar?"الرسومات والتعليمات تعليمية وليست تشخيصاً طبياً. الاعتماد أدناه يجب أن ينجزه مدرب معتمد أو أخصائي علاج طبيعي بعد الفحص.":"The visuals and cues are educational, not medical diagnosis. Sign-off below must be completed by a certified trainer or physiotherapist after inspection."}</p></section>
+  <section class="review-status"><strong>${complete}/7</strong><div><b>${ar?"تم اعتماد الحركات":"movements signed off"}</b><span>${complete===7?(ar?"اكتملت المراجعة البشرية":"Human review complete"):(ar?"الاعتماد المهني ما زال معلقاً":"Professional sign-off pending")}</span></div></section>
+  <section class="review-list">${reviewExercises.map(name=>{const x=r[name]||{};return `<details class="review-card" ${x.signed?"":"open"}><summary><span>${esc(ar?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</span><b>${x.signed?"✓":"○"}</b></summary><div><label><input type="checkbox" data-review-check="joints" data-review-name="${esc(name)}" ${x.joints?"checked":""}> ${ar?"مسار المفاصل ومدى الحركة صحيحان":"Joint path and range are accurate"}</label><label><input type="checkbox" data-review-check="muscles" data-review-name="${esc(name)}" ${x.muscles?"checked":""}> ${ar?"تظليل العضلات صحيح":"Muscle highlighting is accurate"}</label><label><input type="checkbox" data-review-check="cues" data-review-name="${esc(name)}" ${x.cues?"checked":""}> ${ar?"التعليمات والتحذيرات آمنة":"Cues and warnings are safe"}</label><input data-review-field="reviewer" data-review-name="${esc(name)}" value="${esc(x.reviewer||"")}" placeholder="${ar?"اسم المراجع":"Reviewer name"}"><input data-review-field="credential" data-review-name="${esc(name)}" value="${esc(x.credential||"")}" placeholder="${ar?"الاعتماد / رقم الترخيص":"Credential / licence number"}"><label class="signoff"><input type="checkbox" data-review-check="signed" data-review-name="${esc(name)}" ${x.signed?"checked":""}> ${ar?"أعتمد هذه الحركة بعد مراجعتها":"I sign off this movement after review"}</label></div></details>`}).join("")}</section>
+  <section class="field-test"><h2>${ar?"اختبار داخل الجيم":"Real-gym field test"}</h2><p>${ar?"نفّذ هذا على الهاتف الفعلي أثناء حصة واحدة. لا تُعلّم بنداً إلا بعد تجربته.":"Run this on the actual phone during one workout. Check an item only after testing it."}</p>${fieldChecks.map(([id,en,arabic])=>`<label><input type="checkbox" data-field="${id}" ${state.fieldTest[id]?"checked":""}> ${ar?arabic:en}</label>`).join("")}<textarea data-field-notes placeholder="${ar?"المشكلات، الجهاز، الإضاءة، القفازات...":"Issues, phone model, lighting, gloves…"}">${esc(state.fieldTest.notes||"")}</textarea><input data-field-date type="date" value="${esc(state.fieldTest.date||"")}"></section>
+  <section class="evidence-note"><strong>${ar?"مصادر السلامة":"Safety references"}</strong><p>${ar?"راجع الإرشادات العامة لدى ACSM وCDC، واطلب تقييماً طبياً عند الألم أو الأعراض غير المعتادة.":"Follow general ACSM and CDC guidance, and seek medical assessment for pain or unusual symptoms."}</p><a href="https://www.acsm.org/education-resources/trending-topics-resources/physical-activity-guidelines" target="_blank" rel="noopener">ACSM physical activity guidance ↗</a><a href="https://www.cdc.gov/physical-activity/php/about/index.html" target="_blank" rel="noopener">CDC physical activity basics ↗</a></section>
+  <button class="nav-button primary review-export" data-review-export>${ar?"تصدير حزمة المراجعة":"Export review package"}</button>`;
+  document.querySelectorAll("[data-review-check]").forEach(el=>el.onchange=()=>{const n=el.dataset.reviewName;r[n]=r[n]||{};r[n][el.dataset.reviewCheck]=el.checked;if(el.dataset.reviewCheck==="signed")r[n].date=new Date().toISOString();persist();renderReview();});
+  document.querySelectorAll("[data-review-field]").forEach(el=>el.oninput=()=>{const n=el.dataset.reviewName;r[n]=r[n]||{};r[n][el.dataset.reviewField]=el.value;persist();});
+  document.querySelectorAll("[data-field]").forEach(el=>el.onchange=()=>{state.fieldTest[el.dataset.field]=el.checked;persist();});
+  document.querySelector("[data-field-notes]").oninput=e=>{state.fieldTest.notes=e.target.value;persist();};document.querySelector("[data-field-date]").onchange=e=>{state.fieldTest.date=e.target.value;persist();};document.querySelector("[data-review-export]").onclick=exportData;
 }
 
 function renderComplete() {
@@ -327,7 +403,7 @@ document.querySelector("#timerAdd").addEventListener("click",()=>{if(!state.time
 document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
 document.querySelector("#wakeButton").addEventListener("click",toggleWakeLock);
 async function toggleWakeLock(){
