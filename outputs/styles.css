@@ -62,6 +62,7 @@ main { padding: 12px 18px calc(108px + var(--safe-bottom)); }
 .app-tabs button { position: relative; z-index: 1; min-width: 0; min-height: 60px; border: 0; border-radius: 17px; background: transparent; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 9.5px; font-weight: 900; letter-spacing: .01em; cursor: pointer; transition: color .2s ease; }
 .app-tabs button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-tabs button i { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; color: inherit; font-size: 16px; font-style: normal; transition: transform .3s cubic-bezier(.22,.85,.32,1.1); }
+.app-tabs button i svg { width: 20px; height: 20px; }
 .app-tabs button[aria-current="page"] { color: #101311; }
 .app-tabs button[aria-current="page"] i { transform: scale(1.12); }
 .workout-mode .app-tabs { display: none; }
@@ -80,6 +81,7 @@ h1, h2, h3, p { margin-top: 0; }
 .session-card { min-height: 148px; padding: 20px; border: 1px solid var(--line); border-radius: 22px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr auto; gap: 8px 16px; position: relative; overflow: hidden; }
 .session-card::after { content: ""; position: absolute; width: 120px; height: 120px; right: -35px; bottom: -55px; border: 24px solid var(--card-accent, var(--acid)); border-radius: 50%; opacity: .09; }
 .session-card .session-icon { grid-row: span 2; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--card-accent, var(--acid)); color: #10120f; font-size: 24px; font-weight: 900; }
+.session-card .session-icon svg { width: 28px; height: 28px; }
 .session-card h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 .session-card p { margin: 0; color: var(--muted); line-height: 1.4; }
 .session-card small { color: var(--card-accent, var(--acid)); font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
