@@ -22,8 +22,62 @@ function richText(value) {
   return content ? [{ type: "text", text: { content } }] : [];
 }
 
-function paired(request, env) {
-  return Boolean(env.REP_SYNC_KEY) && (request.headers.get("x-rep-sync-key") || "") === env.REP_SYNC_KEY;
+// Hash-then-compare so string length and content never affect branch timing.
+async function timingSafeEqual(a, b) {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(String(a ?? ""))),
+    crypto.subtle.digest("SHA-256", enc.encode(String(b ?? "")))
+  ]);
+  const va = new Uint8Array(da), vb = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
+async function paired(request, env) {
+  if (!env.REP_SYNC_KEY) return false;
+  return timingSafeEqual(request.headers.get("x-rep-sync-key") || "", env.REP_SYNC_KEY);
+}
+
+const SECURITY_HEADERS = {
+  "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy": "camera=(self), microphone=(self), geolocation=()"
+};
+
+function withSecurityHeaders(response) {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+// Best-effort per-colo fixed-window limiter using the edge Cache API. It is not
+// perfectly consistent across Cloudflare's network, but it materially raises the
+// cost of brute-forcing REP_SYNC_KEY or hammering the paid Gemini endpoint. For a
+// guaranteed limit, also enable a Cloudflare Rate Limiting Rule on /api/* in the dashboard.
+async function rateLimited(request, bucket, limit, windowSeconds) {
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const cacheKey = new Request(`https://rate-limit.internal/${bucket}/${encodeURIComponent(ip)}`);
+  const cache = caches.default;
+  const now = Date.now();
+  let count = 0, resetAt = now + windowSeconds * 1000;
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    const data = await cached.json().catch(() => null);
+    if (data && data.resetAt > now) { count = data.count; resetAt = data.resetAt; }
+  }
+  count++;
+  if (count > limit) return true;
+  const ttl = Math.max(1, Math.ceil((resetAt - now) / 1000));
+  await cache.put(cacheKey, new Response(JSON.stringify({ count, resetAt }), { headers: { "content-type": "application/json", "cache-control": `max-age=${ttl}` } }));
+  return false;
+}
+
+function rateLimitResponse() {
+  return json({ ok: false, error: "Too many requests. Try again shortly." }, 429);
 }
 
 function numberInRange(value, maximum) {
@@ -92,7 +146,8 @@ async function lookupBarcode(barcode) {
 }
 
 async function analyzeFood(request, env) {
-  if (!paired(request, env)) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (await rateLimited(request, "food-analyze", 30, 60)) return rateLimitResponse();
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   const body = await request.json().catch(() => null), mode = safeText(body?.mode, 30), description = safeText(body?.description, 1200);
   if (!body || !["text", "restaurant", "photo", "barcode-image", "barcode"].includes(mode)) return json({ ok: false, error: "Unsupported food input." }, 400);
   try {
@@ -136,14 +191,22 @@ async function notionRequest(env, path, init = {}) {
 }
 
 async function existingEntries(env, workoutId) {
-  const result = await notionRequest(env, `/data_sources/${env.NOTION_DATA_SOURCE_ID}/query`, {
-    method: "POST",
-    body: JSON.stringify({
-      page_size: 100,
-      filter: { property: "Workout ID", rich_text: { equals: safeText(workoutId, 100) } }
-    })
-  });
-  return new Set((result.results || []).map(page => (page.properties?.Entry?.title || []).map(part => part.plain_text || "").join("")));
+  const titles = new Set();
+  let cursor;
+  for (let page = 0; page < 5; page++) {
+    const result = await notionRequest(env, `/data_sources/${env.NOTION_DATA_SOURCE_ID}/query`, {
+      method: "POST",
+      body: JSON.stringify({
+        page_size: 100,
+        start_cursor: cursor,
+        filter: { property: "Workout ID", rich_text: { equals: safeText(workoutId, 100) } }
+      })
+    });
+    for (const item of result.results || []) titles.add((item.properties?.Entry?.title || []).map(part => part.plain_text || "").join(""));
+    if (!result.has_more || !result.next_cursor) break;
+    cursor = result.next_cursor;
+  }
+  return titles;
 }
 
 function notionProperties(workout, row) {
@@ -178,7 +241,7 @@ async function syncWorkout(request, env) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
   const suppliedKey = request.headers.get("x-rep-sync-key") || "";
-  if (suppliedKey !== env.REP_SYNC_KEY) return json({ ok: false, error: "Pairing key is incorrect." }, 401);
+  if (!(await timingSafeEqual(suppliedKey, env.REP_SYNC_KEY))) return json({ ok: false, error: "Pairing key is incorrect." }, 401);
   const body = await request.json().catch(() => null), workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
@@ -258,7 +321,7 @@ async function syncFood(env,payload,source) {
 
 async function syncHealth(request, env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) return json({ok:false,error:"Sync is not configured on the server."},503);
-  if ((request.headers.get("x-rep-sync-key")||"")!==env.REP_SYNC_KEY) return json({ok:false,error:"Pairing key is incorrect."},401);
+  if (!(await timingSafeEqual(request.headers.get("x-rep-sync-key")||"", env.REP_SYNC_KEY))) return json({ok:false,error:"Pairing key is incorrect."},401);
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
   if(kind==="food")return syncFood(env,payload,source);
@@ -270,30 +333,38 @@ async function syncHealth(request, env, body) {
   return json({ok:true,created:pageId?0:1,updated:pageId?1:0});
 }
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname === "/api/pair-check") {
-      if (request.method === "POST") return paired(request, env)
+async function route(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname === "/api/pair-check") {
+    if (request.method === "POST") {
+      if (await rateLimited(request, "pair-check", 20, 60)) return rateLimitResponse();
+      return (await paired(request, env))
         ? json({ ok: true, foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), notion: Boolean(env.NOTION_TOKEN) })
         : json({ ok: false, error: "Pairing key is incorrect." }, 401);
-      if (request.method === "OPTIONS") return new Response(null, { status: 204 });
-      return json({ ok: false, error: "Method not allowed." }, 405);
     }
-    if (url.pathname === "/api/food/analyze") {
-      if (request.method === "POST") return analyzeFood(request, env);
-      if (request.method === "OPTIONS") return new Response(null, { status: 204 });
-      return json({ ok: false, error: "Method not allowed." }, 405);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/food/analyze") {
+    if (request.method === "POST") return analyzeFood(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/notion-sync") {
+    if (request.method === "POST") {
+      if (await rateLimited(request, "notion-sync", 60, 60)) return rateLimitResponse();
+      try { const body=await request.clone().json().catch(()=>null);return body?.workout?await syncWorkout(request, env):await syncHealth(request,env,body); }
+      catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
     }
-    if (url.pathname === "/api/notion-sync") {
-      if (request.method === "POST") {
-        try { const body=await request.clone().json().catch(()=>null);return body?.workout?await syncWorkout(request, env):await syncHealth(request,env,body); }
-        catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
-      }
-      if (request.method === "OPTIONS") return new Response(null, { status: 204 });
-      return json({ ok: false, error: "Method not allowed." }, 405);
-    }
-    if (env.ASSETS && typeof env.ASSETS.fetch === "function") return env.ASSETS.fetch(request);
-    return new Response("Rep Gym Companion", { headers: { "content-type": "text/plain; charset=utf-8" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (env.ASSETS && typeof env.ASSETS.fetch === "function") return env.ASSETS.fetch(request);
+  return new Response("Rep Gym Companion", { headers: { "content-type": "text/plain; charset=utf-8" } });
+}
+
+export default {
+  async fetch(request, env) {
+    return withSecurityHeaders(await route(request, env));
   }
 };
