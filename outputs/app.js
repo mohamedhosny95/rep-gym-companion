@@ -484,9 +484,20 @@ function saveLog(base,item){
   const id=exerciseId(base),log=normalizedLog(id,item.sets);
   document.querySelectorAll("[data-log-set]").forEach(input=>{const i=Number(input.dataset.logSet);log.sets[i][input.dataset.log]=input.value;});persistDebounced();
 }
+let audioCtx=null;
+function ensureAudioContext(){
+  if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch{return null;}}
+  if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+document.addEventListener("pointerdown",()=>ensureAudioContext(),{once:true});
+function playChime(){
+  const ctx=ensureAudioContext();if(!ctx)return;
+  try{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=740;g.gain.value=.12;o.start();o.stop(ctx.currentTime+.25);}catch{}
+}
 function signalEnd(){
   if(navigator.vibrate)navigator.vibrate([180,80,180]);
-  if(!state.muted){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=740;g.gain.value=.12;o.start();o.stop(a.currentTime+.25);}catch{}}
+  if(!state.muted)playChime();
 }
 function toggleSet(setIndex) {
   const key = `${state.session}-${state.index}`;
@@ -886,11 +897,22 @@ document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
 document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
+function showToast(message){
+  document.querySelector(".toast")?.remove();
+  const t=document.createElement("div");t.className="toast";t.textContent=message;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2600);
+}
 document.querySelector("#wakeButton").addEventListener("click",toggleWakeLock);
+if(!("wakeLock" in navigator)){
+  const wb=document.querySelector("#wakeButton");
+  wb.disabled=true;wb.style.opacity=".4";
+  wb.title=state.lang==="ar"?"غير مدعوم في هذا المتصفح":"Not supported in this browser";
+}
 async function toggleWakeLock(){
   const button=document.querySelector("#wakeButton");
   if(state.wakeLock){await state.wakeLock.release();state.wakeLock=null;button.setAttribute("aria-pressed","false");button.classList.remove("is-active");return;}
-  try{state.wakeLock=await navigator.wakeLock.request("screen");button.setAttribute("aria-pressed","true");button.classList.add("is-active");state.wakeLock.addEventListener("release",()=>{state.wakeLock=null;button.classList.remove("is-active");});}catch{button.title=state.lang==="ar"?"يتطلب HTTPS أو تثبيت التطبيق":"Requires HTTPS or installed app";}
+  try{state.wakeLock=await navigator.wakeLock.request("screen");button.setAttribute("aria-pressed","true");button.classList.add("is-active");state.wakeLock.addEventListener("release",()=>{state.wakeLock=null;button.classList.remove("is-active");});}catch{showToast(state.lang==="ar"?"تعذّر إبقاء الشاشة مضاءة على هذا المتصفح.":"Couldn't keep the screen awake on this browser.");}
 }
 document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="visible"&&document.querySelector("#wakeButton").classList.contains("is-active")&&!state.wakeLock)try{state.wakeLock=await navigator.wakeLock.request("screen");}catch{}});
 let installPrompt=null;
