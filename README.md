@@ -68,6 +68,66 @@ Set these as secrets/variables in the Cloudflare dashboard (Settings →
 Variables and secrets) or via `wrangler secret put <NAME>` — never in a
 committed file. `.env.example` documents the names only, for reference.
 
+## Push notifications (daily reminder)
+
+The "Daily reminder" card on the History screen sends one push notification a
+day at a time you choose, even when the app/tab is fully closed. Unlike every
+other feature in this app, this **requires infrastructure that can't be set
+up from this repo alone** — a few one-time manual steps in the Cloudflare
+dashboard:
+
+1. **Create a KV namespace** for subscription storage:
+   ```sh
+   npx wrangler kv namespace create PUSH_KV
+   ```
+   This prints an `id`. Add it to `wrangler.jsonc`:
+   ```json
+   "kv_namespaces": [{ "binding": "PUSH_KV", "id": "<the id from the command above>" }]
+   ```
+   (Deliberately not committed with a placeholder id — a fake id here would
+   break every future deploy, not just push notifications.)
+
+2. **Generate a VAPID keypair** (proves this server's identity to push
+   services like Chrome's/Firefox's; not sensitive to anyone but you, but
+   still a secret — never commit it):
+   ```js
+   // node -e "..." or save as a script and run once
+   const crypto = require("crypto");
+   const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+   const b64url = buf => buf.toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+   const fromB64url = s => Buffer.from(s.replace(/-/g,"+").replace(/_/g,"/"), "base64");
+   const pubJwk = publicKey.export({ format: "jwk" });
+   const rawPublic = Buffer.concat([Buffer.from([0x04]), fromB64url(pubJwk.x), fromB64url(pubJwk.y)]);
+   console.log("VAPID_PUBLIC_KEY:", b64url(rawPublic));
+   console.log("VAPID_PRIVATE_KEY_JWK:", JSON.stringify(privateKey.export({ format: "jwk" })));
+   ```
+
+3. **Set three secrets** in the Cloudflare dashboard (Settings → Variables and
+   secrets) or via `wrangler secret put <NAME>`:
+   - `VAPID_PUBLIC_KEY` — the value printed above
+   - `VAPID_PRIVATE_KEY_JWK` — the JSON string printed above
+   - `VAPID_SUBJECT` — `mailto:you@example.com` (a contact address push
+     services may use if something's wrong with your server)
+
+4. **Redeploy.** The hourly cron trigger in `wrangler.jsonc` is already
+   committed and safe to deploy before this setup is done — the send
+   function no-ops until `PUSH_KV` and both VAPID secrets exist.
+
+Once set up, tapping "Enable" in the app requests notification permission,
+subscribes via the browser's Push API, and sends the subscription + your
+chosen time to `/api/push/subscribe`. The reminder time is converted to UTC
+at subscribe time using your browser's timezone offset, so it can drift by an
+hour across a DST transition until you re-save it — a known, accepted
+simplification for now.
+
+**This is the one feature in this app whose crypto (RFC 8291 payload
+encryption + RFC 8292 VAPID signing, hand-rolled against the Workers
+runtime's Web Crypto API since there's no build step here) could not be
+verified end-to-end** — it was checked by round-tripping the same
+encrypt/decrypt derivation locally, but never against a real deployed push
+service. Test it on your own phone after setup and report back if a
+notification doesn't arrive.
+
 ## Server hardening
 
 `dist/server/index.js` applies a few defenses beyond basic pairing-key auth:
