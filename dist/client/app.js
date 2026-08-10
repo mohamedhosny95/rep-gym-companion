@@ -300,7 +300,7 @@ function metricGuideCard(ar){
     {color:"var(--acid)",title:ar?"الاستشفاء":"Recovery",text:ar?"مدى جاهزية جسمك اليوم، مبني من أداء النوم وتقلب معدل ضربات القلب ونبض الراحة ومعدل التنفس — كل واحد يُقارَن بخط أساسك الشخصي، لا بمعيار عام. أخضر يعني جاهز للدفع، أصفر يعني خفف الحمل قليلاً، أحمر يعني أعطِ الجسم وقتاً. في الأيام الأولى ستظهر كلمة «لا يزال يُعاير»: خطوط الأساس لتقلب القلب والنبض تحتاج 3 ليالٍ سابقة على الأقل، وحتى ذلك الحين تُبنى النتيجة من النوم وحده.":"How ready your body is today, blended from sleep performance plus HRV, resting heart rate, and respiratory rate — each compared against your own recent baseline, not a generic norm. Green means push, yellow means ease off, red means prioritize rest. In your first days it will read \"Still calibrating\": the HRV and heart-rate baselines need at least 3 prior nights, so until then the score rests on sleep alone and shouldn't be read as settled."},
     {color:"var(--blue)",title:ar?"الإجهاد":"Strain",text:ar?"مقياس من 0 إلى 21 لمقدار الحمل القلبي الذي تحمّله جسمك اليوم، من جهد التمارين المسجلة بالإضافة إلى النشاط العرضي من ساعتك. ليس جيداً أو سيئاً في حد ذاته — القراءة المفيدة هي مقارنته بالاستشفاء: إجهاد مرتفع بعد استشفاء منخفض هو ما يسبب الإرهاق فعلياً.":"A 0–21 scale of how much cardiovascular load today has put on your body — from logged training effort plus incidental activity from your Watch. It isn't good or bad by itself; the useful read is against Recovery. High strain stacked on low recovery, repeatedly, is what actually drives burnout — not a single hard day."}
   ];
-  return `<section class="insights-card metric-guide"><div class="insights-head"><small>${ar?"ماذا تعني هذه الأرقام":"WHAT THESE NUMBERS MEAN"}</small></div><div class="metric-guide-grid">${items.map(i=>`<div class="metric-guide-item"><span class="metric-guide-dot" style="background:${i.color}"></span><div><strong>${i.title}</strong><p>${i.text}</p></div></div>`).join("")}</div></section>`;
+  return `<details class="insights-card metric-guide"><summary>${ar?"ماذا تعني هذه الأرقام":"What these numbers mean"}</summary><div class="metric-guide-grid">${items.map(i=>`<div class="metric-guide-item"><span class="metric-guide-dot" style="background:${i.color}"></span><div><strong>${i.title}</strong><p>${i.text}</p></div></div>`).join("")}</div></details>`;
 }
 function renderInsights(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persist();updatePrimaryTabs();
@@ -987,8 +987,8 @@ function sleepSummaryCard(ar){
 }
 function vitalsScreenshotCard(ar){
   const connected=Boolean(localStorage.getItem(syncKeyStorage)),d=state.vitalsDraft;
-  if(d){
-    return `<section class="vitals-import-card is-review"><div class="supplement-head"><div><small>${ar?"راجع القيم المستخرجة":"REVIEW EXTRACTED VALUES"}</small><strong>${ar?"من لقطة صحة أبل":"From Apple Health screenshot"}</strong></div></div>
+  if(!d)return "";
+  return `<section class="vitals-import-card is-review"><div class="supplement-head"><div><small>${ar?"راجع القيم المستخرجة":"REVIEW EXTRACTED VALUES"}</small><strong>${ar?"من لقطة صحة أبل":"From Apple Health screenshot"}</strong></div></div>
     <div class="vitals-review-grid">
       <label><span>${ar?"ساعات النوم":"Sleep hours"}</span><input type="number" min="0" max="16" step="0.1" inputmode="decimal" data-vitals-field="sleep_hours" value="${d.sleep_hours??""}"></label>
       <label><span>${ar?"وقت النوم":"Bedtime"}</span><input type="time" data-vitals-field="bedtime" value="${d.bedtime||""}"></label>
@@ -1001,11 +1001,31 @@ function vitalsScreenshotCard(ar){
     ${d.notes?`<p class="vitals-note">${esc(d.notes)}</p>`:""}
     <div class="vitals-review-actions"><button class="quiet" data-vitals-discard type="button">${ar?"تجاهل":"Discard"}</button><button data-vitals-save type="button">${ar?"حفظ في سجل اليوم":"Save to today's log"}</button></div>
     ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
-  }
-  return `<section class="vitals-import-card"><div class="supplement-head"><div><small>${ar?"استيراد سريع":"QUICK IMPORT"}</small><strong>${ar?"لقطة شاشة من صحة أبل":"Apple Health screenshot"}</strong></div></div>
-    <p class="vitals-import-copy">${ar?"التقط شاشة من تطبيق الصحة أو ساعة أبل (النوم، تقلب القلب، نبض الراحة، معدل التنفس، الطاقة النشطة) وسنقرأ الأرقام تلقائياً لمراجعتها قبل الحفظ.":"Screenshot the Health app or your Apple Watch face (sleep, HRV, resting HR, respiratory rate, active energy) and we'll read the numbers for you to review before saving."}</p>
-    ${connected?`<label class="vitals-upload-button">${state.vitalsBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"⬆ اختر لقطة الشاشة":"⬆ Choose screenshot")}<input type="file" accept="image/*" data-vitals-screenshot ${state.vitalsBusy?"disabled":""}></label>`
-      :`<button class="quiet vitals-connect-button" data-vitals-connect type="button">${ar?"اتصل من تبويب التغذية لتفعيل الاستيراد ←":"Connect in the Nutrition tab to enable import →"}</button>`}
+}
+// Screenshot upload + Shortcuts automation are setup tools you touch once,
+// not daily content - tucked behind a disclosure so the daily-use sleep/
+// energy forms below get the visual weight instead. The sync-health line and
+// any stale-sync warning stay outside it since those need to stay visible.
+function importCard(ar){
+  const connected=Boolean(localStorage.getItem(syncKeyStorage));
+  const last=state.lastVitalsImportDate,stale=daysSinceVitalsImport();
+  const staleWarning=stale!==null&&stale>=2?`<p class="vitals-status is-error">${ar?`لم تصل بيانات جديدة منذ ${stale} أيام. تحقق من أن أتمتة الاختصار ما زالت تعمل في تطبيق الاختصارات ← تبويب الأتمتة.`:`No new data for ${stale} days. Check that the Shortcuts automation is still enabled under Shortcuts → Automation.`}</p>`:"";
+  return `<section class="vitals-import-card import-card"><div class="supplement-head"><div><small>${ar?"استيراد":"IMPORT"}</small><strong>${last?(ar?`آخر مزامنة: ${last}`:`Last synced: ${last}`):(ar?"لم يُعدّ بعد":"Not set up yet")}</strong></div></div>
+    ${staleWarning}
+    <details class="import-details">
+      <summary>${ar?"لقطة شاشة أو أتمتة كاملة ←":"Screenshot import or full automation →"}</summary>
+      <div class="import-details-body">
+        <div class="import-option">
+          <p class="vitals-import-copy">${ar?"التقط شاشة من تطبيق الصحة أو ساعة أبل وسنقرأ الأرقام تلقائياً لمراجعتها قبل الحفظ.":"Screenshot the Health app or your Apple Watch face and we'll read the numbers for you to review before saving."}</p>
+          ${connected?`<label class="vitals-upload-button">${state.vitalsBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"⬆ اختر لقطة الشاشة":"⬆ Choose screenshot")}<input type="file" accept="image/*" data-vitals-screenshot ${state.vitalsBusy?"disabled":""}></label>`
+            :`<button class="quiet vitals-connect-button" data-vitals-connect type="button">${ar?"اتصل من تبويب التغذية لتفعيل الاستيراد ←":"Connect in the Nutrition tab to enable import →"}</button>`}
+        </div>
+        <div class="import-option">
+          <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Set up an Apple Shortcuts automation to send your Health data here automatically every morning, without opening the app — see the README for full setup steps."}</p>
+          <button class="quiet vitals-connect-button" data-vitals-check-now type="button">${ar?"تحقق الآن":"Check now"}</button>
+        </div>
+      </div>
+    </details>
     ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
 }
 async function analyzeVitalsImage(file){
@@ -1126,15 +1146,6 @@ function daysSinceVitalsImport(){
   const diff=Math.floor((new Date(isoDay()).getTime()-new Date(last).getTime())/86400000);
   return Number.isFinite(diff)&&diff>=0?diff:null;
 }
-function automatedImportCard(ar){
-  const last=state.lastVitalsImportDate,stale=daysSinceVitalsImport();
-  const staleWarning=stale!==null&&stale>=2?`<p class="vitals-status is-error">${ar?`لم تصل بيانات جديدة منذ ${stale} أيام. تحقق من أن أتمتة الاختصار ما زالت تعمل في تطبيق الاختصارات ← تبويب الأتمتة.`:`No new data for ${stale} days. Check that the Shortcuts automation is still enabled under Shortcuts → Automation.`}</p>`:"";
-  return `<section class="active-energy-card automated-import-card"><div class="supplement-head"><div><small>${ar?"استيراد تلقائي":"AUTOMATED IMPORT"}</small><strong>${last?(ar?`آخر مزامنة: ${last}`:`Last synced: ${last}`):(ar?"لم يُعدّ بعد":"Not set up yet")}</strong></div></div>
-    ${staleWarning}
-    <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Set up an Apple Shortcuts automation to send your Health data here automatically every morning, without opening the app — see the README for full setup steps."}</p>
-    <button class="quiet vitals-connect-button" data-vitals-check-now type="button">${ar?"تحقق الآن":"Check now"}</button>
-    ${state.vitalsImportStatus?`<p class="vitals-status ${state.vitalsImportError?"is-error":""}">${esc(state.vitalsImportStatus)}</p>`:""}</section>`;
-}
 function saveActiveEnergy(kcal){const value=Math.max(0,Math.round(Number(kcal)||0));if(!value)return;state.activeEnergy[isoDay()]=value;persist();renderVitals();}
 function activeEnergyCard(ar){
   const value=state.activeEnergy?.[isoDay()];
@@ -1158,9 +1169,9 @@ function renderVitals(){
   app.innerHTML=`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
   ${strainRecoveryCard(ar)}
   ${vitalsScreenshotCard(ar)}
-  ${automatedImportCard(ar)}
+  ${sleepTrackerCard(ar)}
   ${activeEnergyCard(ar)}
-  ${sleepTrackerCard(ar)}`;
+  ${importCard(ar)}`;
   bindVitalsTools();
 }
 function weightTrackerCard(ar){
