@@ -245,6 +245,78 @@ async function importVitals(request, env) {
   return json({ ok: true });
 }
 
+// Health Auto Export (https://www.healthyapps.dev) is a third-party App
+// Store app whose REST API automation feature already does what our own
+// Shortcut instructions ask a user to build by hand - it exports a
+// documented JSON shape: {"data":{"metrics":[{"name","units","data":[{"qty","date"}]}],"sleep":[{...}]}}.
+// This adapter accepts that shape directly and reduces it to the same
+// per-day objects normalizeVitalsImport() already produces, so it reuses
+// every bit of the storage/pending/merge pipeline built for manual import.
+const HAE_METRIC_FIELDS = [
+  { test: name => /heartratevariab|hrv/.test(name), field: "hrv_ms", agg: "avg" },
+  { test: name => /restingheartrate/.test(name), field: "resting_hr_bpm", agg: "avg" },
+  { test: name => /respiratoryrate|breathingrate|breathrate/.test(name), field: "respiratory_rate_bpm", agg: "avg" },
+  { test: name => /activeenergy/.test(name), field: "active_energy_kcal", agg: "sum" }
+];
+
+function haeDateParts(raw) {
+  const match = String(raw || "").match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+  return match ? { date: match[1], time: match[2] } : null;
+}
+
+function parseHaeExport(body) {
+  const byDate = new Map();
+  const entryFor = date => {
+    if (!byDate.has(date)) byDate.set(date, { date, sleep_hours: null, bedtime: null, wake_time: null, hrv_ms: null, resting_hr_bpm: null, respiratory_rate_bpm: null, active_energy_kcal: null });
+    return byDate.get(date);
+  };
+  for (const metric of Array.isArray(body?.data?.metrics) ? body.data.metrics : []) {
+    const name = String(metric?.name || "").toLowerCase().replace(/[^a-z]/g, "");
+    const mapping = HAE_METRIC_FIELDS.find(candidate => candidate.test(name));
+    if (!mapping || !Array.isArray(metric.data)) continue;
+    const perDay = new Map();
+    for (const point of metric.data) {
+      const parts = haeDateParts(point?.date), qty = Number(point?.qty);
+      if (!parts || !Number.isFinite(qty)) continue;
+      if (!perDay.has(parts.date)) perDay.set(parts.date, []);
+      perDay.get(parts.date).push(qty);
+    }
+    for (const [date, values] of perDay) {
+      const total = values.reduce((a, b) => a + b, 0);
+      entryFor(date)[mapping.field] = mapping.agg === "sum" ? Math.round(total) : Math.round((total / values.length) * 10) / 10;
+    }
+  }
+  for (const record of Array.isArray(body?.data?.sleep) ? body.data.sleep : []) {
+    const wake = haeDateParts(record?.sleepEnd || record?.inBedEnd || record?.date);
+    if (!wake) continue;
+    const entry = entryFor(wake.date);
+    entry.wake_time = wake.time;
+    entry.bedtime = haeDateParts(record?.sleepStart || record?.inBedStart)?.time || entry.bedtime;
+    const hours = Number(record?.totalSleep) || Number(record?.asleep) || null;
+    if (Number.isFinite(hours) && hours > 0) entry.sleep_hours = Math.round(hours * 10) / 10;
+  }
+  return [...byDate.values()].filter(e => e.sleep_hours || e.bedtime || e.hrv_ms || e.resting_hr_bpm || e.respiratory_rate_bpm || e.active_energy_kcal);
+}
+
+async function importVitalsHae(request, env) {
+  if (await rateLimited(request, "vitals-import-hae", 30, 3600)) return rateLimitResponse();
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") return json({ ok: false, error: "Invalid JSON body." }, 400);
+  let entries;
+  try { entries = parseHaeExport(body); } catch { return json({ ok: false, error: "Could not parse the Health Auto Export payload." }, 400); }
+  if (!entries.length) return json({ ok: false, error: "No recognizable Sleep, HRV, Resting Heart Rate, Respiratory Rate, or Active Energy data found in this export." }, 400);
+  let imported = 0;
+  for (const entry of entries) {
+    const normalized = normalizeVitalsImport(entry);
+    if (!normalized.date) continue;
+    await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${normalized.date}`, JSON.stringify(normalized), { expirationTtl: 60 * 60 * 24 * 30 });
+    imported++;
+  }
+  return json({ ok: true, imported });
+}
+
 async function pendingVitals(request, env) {
   if (await rateLimited(request, "vitals-pending", 60, 60)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
@@ -598,6 +670,11 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/vitals/import") {
     if (request.method === "POST") return importVitals(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/vitals/import-hae") {
+    if (request.method === "POST") return importVitalsHae(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
