@@ -211,17 +211,48 @@ async function analyzeVitalsScreenshot(request, env) {
 const VITALS_IMPORT_PREFIX = "vitals:";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+// Shortcuts' "Format Date" action has no exact-format option on the phones
+// we've tested against - only locale-driven presets (Short/Medium/Long).
+// Rather than forcing a specific device locale, these accept whatever a
+// reasonable Short-format date/time looks like and normalize it, alongside
+// the exact ISO/24-hour strings other import paths already send.
+function parseFlexibleDate(raw) {
+  const value = String(raw || "").trim();
+  if (DATE_PATTERN.test(value)) return value;
+  const dmy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmy) {
+    const day = Number(dmy[1]), month = Number(dmy[2]), year = dmy[3];
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  const mdy = value.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdy) {
+    const month = Number(mdy[1]), day = Number(mdy[2]), year = mdy[3];
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  return null;
+}
+function parseFlexibleTime(raw) {
+  const value = String(raw || "").trim();
+  if (TIME_PATTERN.test(value)) return value;
+  const twelveHour = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (twelveHour) {
+    let hour = Number(twelveHour[1]) % 12;
+    if (/pm/i.test(twelveHour[3])) hour += 12;
+    return `${String(hour).padStart(2, "0")}:${twelveHour[2]}`;
+  }
+  return null;
+}
+
 function normalizeVitalsImport(value = {}) {
   const clampOrNull = (raw, max) => {
     const number = Number(raw);
     return Number.isFinite(number) && number > 0 ? Math.min(number, max) : null;
   };
-  const time = raw => TIME_PATTERN.test(String(raw || "")) ? raw : null;
   return {
-    date: DATE_PATTERN.test(value.date) ? value.date : null,
+    date: parseFlexibleDate(value.date),
     sleep_hours: clampOrNull(value.sleep_hours, 16),
-    bedtime: time(value.bedtime),
-    wake_time: time(value.wake_time),
+    bedtime: parseFlexibleTime(value.bedtime),
+    wake_time: parseFlexibleTime(value.wake_time),
     hrv_ms: clampOrNull(value.hrv_ms, 300),
     resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
     respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 60),
