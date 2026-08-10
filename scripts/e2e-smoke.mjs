@@ -95,8 +95,8 @@ try {
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".activity-panel").count() === 0, "Activity panel closes after save");
 
-  // recovery + sleep
-  await page.click("[data-recovery]");
+  // recovery + sleep (sleep tracker lives on the Vitals tab)
+  await page.click('[data-app-tab="vitals"]');
   await page.waitForTimeout(300);
   await page.fill("[data-sleep-bedtime]", "23:00");
   await page.fill("[data-sleep-wake]", "06:00");

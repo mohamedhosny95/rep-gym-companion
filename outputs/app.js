@@ -290,6 +290,14 @@ function weeklyTrainingVolume(weeks=6){
   }
   return buckets;
 }
+function metricGuideCard(ar){
+  const items=[
+    {color:"#7dc9ff",title:ar?"النوم":"Sleep performance",text:ar?"نسبة ما نمته الليلة الماضية مقابل حاجتك الشخصية من النوم — 100% تعني أنك استوفيت الحاجة. الحاجة نفسها ليست رقماً ثابتاً: تُبنى من متوسط نومك المتجدد على 14 يوماً، وتزيد مع إجهاد الأمس ودَين النوم المتراكم من ليالٍ قصيرة.":"How much of your personal sleep need you actually got last night. 100% means you met it — the need itself isn't a fixed number, it's your rolling 14-day average, adjusted up by yesterday's training strain and any sleep debt from recent short nights."},
+    {color:"var(--acid)",title:ar?"الاستشفاء":"Recovery",text:ar?"مدى جاهزية جسمك اليوم، مبني من أداء النوم وتقلب معدل ضربات القلب ونبض الراحة ومعدل التنفس — كل واحد يُقارَن بخط أساسك الشخصي، لا بمعيار عام. أخضر يعني جاهز للدفع، أصفر يعني خفف الحمل قليلاً، أحمر يعني أعطِ الجسم وقتاً.":"How ready your body is today, blended from sleep performance plus HRV, resting heart rate, and respiratory rate — each compared against your own recent baseline, not a generic norm. Green means push, yellow means ease off, red means prioritize rest. Components only count once you have a few days of history to compare against."},
+    {color:"var(--blue)",title:ar?"الإجهاد":"Strain",text:ar?"مقياس من 0 إلى 21 لمقدار الحمل القلبي الذي تحمّله جسمك اليوم، من جهد التمارين المسجلة بالإضافة إلى النشاط العرضي من ساعتك. ليس جيداً أو سيئاً في حد ذاته — القراءة المفيدة هي مقارنته بالاستشفاء: إجهاد مرتفع بعد استشفاء منخفض هو ما يسبب الإرهاق فعلياً.":"A 0–21 scale of how much cardiovascular load today has put on your body — from logged training effort plus incidental activity from your Watch. It isn't good or bad by itself; the useful read is against Recovery. High strain stacked on low recovery, repeatedly, is what actually drives burnout — not a single hard day."}
+  ];
+  return `<section class="insights-card metric-guide"><div class="insights-head"><small>${ar?"ماذا تعني هذه الأرقام":"WHAT THESE NUMBERS MEAN"}</small></div><div class="metric-guide-grid">${items.map(i=>`<div class="metric-guide-item"><span class="metric-guide-dot" style="background:${i.color}"></span><div><strong>${i.title}</strong><p>${i.text}</p></div></div>`).join("")}</div></section>`;
+}
 function renderInsights(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",weekAgo=Date.now()-7*86400000;
@@ -320,9 +328,10 @@ function renderInsights(){
     ${trendCard(ar,{kicker:ar?"كجم · آخر التسجيلات":"KG · RECENT ENTRIES",title:ar?"اتجاه الوزن":"Weight trend",points:weightPoints,unit:" kg",color:"var(--blue)",emptyText:ar?"سجّل وزنك لبضعة أسابيع لرؤية الاتجاه.":"Log your weight for a few weeks to see a trend."})}
     ${trendCard(ar,{kicker:ar?"ساعات · آخر 14 يوماً":"HOURS · LAST 14 DAYS",title:ar?"اتجاه النوم":"Sleep trend",points:sleepPoints,unit:"h",color:"#7dc9ff",emptyText:ar?"سجّل نومك لبضع ليالٍ لرؤية الاتجاه.":"Log a few nights of sleep to see a trend."})}
     ${trendCard(ar,{kicker:ar?"% · آخر 14 يوماً":"% · LAST 14 DAYS",title:ar?"اتجاه الاستشفاء":"Recovery trend",points:recoveryPoints,unit:"%",color:"var(--acid)",emptyText:ar?"سجّل نومك ومراجعتك لرؤية الاتجاه.":"Log sleep and check-ins to see a trend."})}
-    <article class="trend-card"><span class="card-kicker">${ar?"مقياس 0–21 · آخر 7 أيام":"0–21 SCALE · LAST 7 DAYS"}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"#ff8b3d"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
+    <article class="trend-card"><span class="card-kicker">${ar?"مقياس 0–21 · آخر 7 أيام":"0–21 SCALE · LAST 7 DAYS"}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"var(--blue)"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
     <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
+  ${metricGuideCard(ar)}
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
 }
 function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
@@ -830,8 +839,9 @@ function saveSleepLog(bedtime,wake,hrv,rhr,resp){
   persist();return true;
 }
 function deleteSleepLog(date){state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);persist();}
-function recentSleepAvg(days=7){
-  const cutoff=Date.now()-days*86400000,recent=state.sleepLogs.filter(s=>new Date(s.date).getTime()>=cutoff);
+function recentSleepAvg(days=7,beforeDate=null){
+  const endTime=beforeDate?new Date(beforeDate).getTime():Date.now(),cutoff=endTime-days*86400000;
+  const recent=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t>=cutoff&&t<endTime;});
   return recent.length?Math.round(recent.reduce((n,s)=>n+s.hours,0)/recent.length*10)/10:null;
 }
 function dayHasActivity(dateStr){
@@ -869,7 +879,7 @@ function metricBaseline(field,days=30,beforeDate=null){
 // fixed number), plus extra need from yesterday's training strain, plus a
 // capped debt carried from recent short nights.
 function computeSleepNeed(dateStr=isoDay()){
-  const baseline=recentSleepAvg(14)??REP_HEALTH_GUIDE.rules.minimumSleepHours;
+  const baseline=recentSleepAvg(14,dateStr)??REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const prevDate=new Date(new Date(dateStr).getTime()-86400000).toISOString().slice(0,10);
   const strainDebt=Math.round((computeStrainScore(prevDate)/21)*10)/10;
   const cutoffTime=new Date(dateStr).getTime();
@@ -932,10 +942,11 @@ function strainRecoveryCard(ar){
   const recNote=!recovery?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):recovery.band==="green"?(ar?"جاهز للدفع":"Ready to push"):recovery.band==="yellow"?(ar?"متوسط، خفف الحمل قليلاً":"Moderate, ease off a little"):(ar?"منخفض، أعطِ الجسم وقتاً":"Low, prioritize rest");
   const sleepColor=!sleepPerf?"var(--muted)":sleepPerf.performance>=90?"var(--acid)":sleepPerf.performance>=70?"var(--orange)":"#ff6b6b";
   const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
-  return `<section class="vitals-hero"><article class="vital-ring-card vital-ring-hero"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor,148,13)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article></section>
-  <section class="vitals-grid">
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"#ff8b3d")}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"STRAIN"}</span></div></div><small>${ar?"من التمارين المسجلة اليوم":"From today's logged training"}</small></article>
+  const strainNote=strain>=14?(ar?"إجهاد مرتفع اليوم":"High load today"):strain>=7?(ar?"إجهاد معتدل":"Moderate load"):(ar?"من التمارين المسجلة اليوم":"From today's logged training");
+  return `<section class="vitals-trio">
     <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"var(--blue)")}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"STRAIN"}</span></div></div><small>${strainNote}</small></article>
   </section>`;
 }
 function vitalsTeaserStrip(ar){
