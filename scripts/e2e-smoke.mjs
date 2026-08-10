@@ -41,8 +41,14 @@ try {
   page.on("console", msg => { if (msg.type() === "error") consoleErrors.push(`console.error: ${msg.text()}`); });
 
   await page.goto(baseUrl, { waitUntil: "load" });
+  await page.waitForSelector("text=HOME", { timeout: 10000 });
+  assertTrue(true, "Home tab loads on cold start");
+  assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Home tab is marked active on cold start");
+
+  await page.click('[data-app-tab="train"]');
+  await page.waitForTimeout(300);
   await page.waitForSelector("text=Move well.", { timeout: 10000 });
-  assertTrue(true, "Home loads");
+  assertTrue(true, "Training tab loads");
 
   // Regression guard: tapping a session must show a preview, not jump straight in.
   await page.click('[data-session="gym"]');

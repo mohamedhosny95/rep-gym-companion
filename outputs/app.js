@@ -338,9 +338,31 @@ function renderInsights(){
   ${metricGuideCard(ar)}
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
 }
-function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
-function setPrimaryTab(tab){state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else if(tab==="insights")renderInsights();else if(tab==="vitals")renderVitals();else renderHome();}
+function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"الرئيسية":"Home",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
+function setPrimaryTab(tab){state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="home")renderOverview();else if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else if(tab==="insights")renderInsights();else if(tab==="vitals")renderVitals();else renderHome();}
 function renderCareHub(){renderHygiene();}
+// The one screen you land on every time you open the app - a single Recovery/
+// Sleep/Strain glance plus today's plan, instead of the Training tab's full
+// session picker. Deliberately thin: it reuses the same components Vitals and
+// Training already render, rather than building parallel versions of them.
+function greetingLine(ar){
+  const hour=new Date().getHours();
+  const key=hour<5?"night":hour<12?"morning":hour<17?"afternoon":hour<21?"evening":"night";
+  return {morning:ar?"صباح الخير.":"Good morning.",afternoon:ar?"مساء الخير.":"Good afternoon.",evening:ar?"مساء الخير.":"Good evening.",night:ar?"طابت ليلتك.":"Good night."}[key];
+}
+function renderOverview(){
+  stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="home-overview";state.activeTab="home";persist();updatePrimaryTabs();
+  const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore();
+  const items=buildInsights(),note=items[0];
+  const resume=state.session&&sessions[state.session]&&state.index<sessions[state.session].exercises.length;
+  document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
+  app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"الرئيسية":"HOME"}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
+    ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
+    ${strainRecoveryCard(ar)}
+    <section class="today-strip home-today-card"><div><span>${ar?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?(ar?"متابعة ←":"Resume →"):(ar?"ابدأ ←":"Start →")}</button></section>
+    ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
+  document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
+}
 
 function renderHome() {
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view = "home";state.activeTab="train";persist();updatePrimaryTabs();
@@ -1300,7 +1322,7 @@ document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):state.view==="insights"?renderInsights():state.view==="vitals"?renderVitals():renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):state.view==="insights"?renderInsights():state.view==="vitals"?renderVitals():state.view==="home-overview"?renderOverview():renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
 function showToast(message){
   document.querySelector(".toast")?.remove();
@@ -1341,6 +1363,9 @@ if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEven
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update().catch(()=>{});});
   addEventListener("pageshow",()=>reg.update().catch(()=>{}));
 });
-updatePrimaryTabs();state.activeTab==="food"?renderNutrition():state.activeTab==="care"?renderHygiene():state.activeTab==="insights"?renderInsights():state.activeTab==="vitals"?renderVitals():renderHome();
+// Always land on Home on a fresh app open, regardless of which tab was last
+// active - that's the whole point of a dedicated landing screen. Mid-session
+// tab switches (setPrimaryTab) still work normally and aren't affected.
+renderOverview();
 if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,800);
 if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(fetchPendingVitals,1200);
