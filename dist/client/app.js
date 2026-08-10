@@ -883,14 +883,14 @@ function metricBaseline(field,days=30,beforeDate=null){
 // fixed number), plus extra need from yesterday's training strain, plus a
 // capped debt carried from recent short nights.
 function computeSleepNeed(dateStr=isoDay()){
-  const baseline=recentSleepAvg(14,dateStr)??REP_HEALTH_GUIDE.rules.minimumSleepHours;
+  const rollingAvg=recentSleepAvg(14,dateStr),baseline=rollingAvg??REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const prevDate=new Date(new Date(dateStr).getTime()-86400000).toISOString().slice(0,10);
   const strainDebt=Math.round((computeStrainScore(prevDate)/21)*10)/10;
   const cutoffTime=new Date(dateStr).getTime();
   const recentNights=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t<cutoffTime&&t>=cutoffTime-7*86400000;});
   const shortfall=recentNights.reduce((sum,s)=>sum+Math.max(0,baseline-(s.hours||0)),0);
   const sleepDebt=Math.min(Math.round(shortfall*10)/10,3);
-  return {baseline:Math.round(baseline*10)/10,strainDebt,sleepDebt,need:Math.round((baseline+strainDebt+sleepDebt)*10)/10};
+  return {baseline:Math.round(baseline*10)/10,strainDebt,sleepDebt,need:Math.round((baseline+strainDebt+sleepDebt)*10)/10,estimatedBaseline:rollingAvg===null};
 }
 function computeSleepPerformance(dateStr=isoDay()){
   const entry=state.sleepLogs.find(s=>s.date===dateStr);
@@ -949,7 +949,7 @@ function strainRecoveryCard(ar){
   const recColor=recovery?{green:"var(--acid)",yellow:"var(--orange)",red:"#ff6b6b"}[recovery.band]:"var(--muted)";
   const recNote=!recovery?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):recovery.calibrating?(ar?"لا يزال يُعاير":"Still calibrating"):recovery.band==="green"?(ar?"جاهز للدفع":"Ready to push"):recovery.band==="yellow"?(ar?"متوسط، خفف الحمل قليلاً":"Moderate, ease off a little"):(ar?"منخفض، أعطِ الجسم وقتاً":"Low, prioritize rest");
   const sleepColor=!sleepPerf?"var(--muted)":sleepPerf.performance>=90?"var(--acid)":sleepPerf.performance>=70?"var(--orange)":"#ff6b6b";
-  const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
+  const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):sleepPerf.estimatedBaseline?(ar?`يُبنى خط الأساس — مقابل تقدير ${sleepPerf.need}h مؤقت`:`Building baseline — vs a temporary ${sleepPerf.need}h estimate`):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
   const strainNote=strain>=14?(ar?"إجهاد مرتفع اليوم":"High load today"):strain>=7?(ar?"إجهاد معتدل":"Moderate load"):(ar?"من التمارين المسجلة اليوم":"From today's logged training");
   return `<section class="vitals-trio">
     <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor,82,8)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
@@ -969,14 +969,16 @@ function vitalsTeaserStrip(ar){
 function sleepTrackerCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const perf=computeSleepPerformance();
-  const rows=sorted.slice(0,7).map(s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString(ar?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${ar?"حذف":"Delete"}">×</button></div>`).join("");
+  const sleepRow=s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString(ar?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${ar?"حذف":"Delete"}">×</button></div>`;
+  const visibleRows=sorted.slice(0,3).map(sleepRow).join(""),restEntries=sorted.slice(3,7),restRows=restEntries.map(sleepRow).join("");
   return `<article class="recovery-card wide sleep-card"><span class="card-kicker">${ar?"من ساعة أبل ووتش":"FROM APPLE WATCH"}</span><h2>${ar?"سجل النوم اليومي":"Daily sleep log"}</h2>
     <div class="sleep-summary"><div><small>${ar?"الليلة الماضية":"LAST NIGHT"}</small><strong>${today?`${today.hours}h`:(ar?"لم يُسجَّل بعد":"Not logged yet")}</strong></div>${avg!==null?`<div><small>${ar?"متوسط 7 أيام":"7-DAY AVERAGE"}</small><strong class="${avg<minHours?"warn":""}">${avg}h</strong></div>`:""}${perf?`<div><small>${ar?"أداء النوم":"SLEEP PERFORMANCE"}</small><strong class="${perf.performance<85?"warn":""}">${perf.performance}%</strong></div>`:""}</div>
-    ${perf?`<p class="sleep-need-breakdown">${ar?`الحاجة الليلة: ${perf.need}h (أساس ${perf.baseline}h${perf.strainDebt?` + ${perf.strainDebt}h إجهاد أمس`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h دين نوم`:""})`:`Tonight's need: ${perf.need}h (${perf.baseline}h baseline${perf.strainDebt?` + ${perf.strainDebt}h from yesterday's strain`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h sleep debt`:""})`}</p>`:""}
+    ${perf?`<p class="sleep-need-breakdown">${ar?`الحاجة الليلة: ${perf.need}h (أساس ${perf.baseline}h${perf.estimatedBaseline?" تقديري":""}${perf.strainDebt?` + ${perf.strainDebt}h إجهاد أمس`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h دين نوم`:""})`:`Tonight's need: ${perf.need}h (${perf.baseline}h ${perf.estimatedBaseline?"estimated ":""}baseline${perf.strainDebt?` + ${perf.strainDebt}h from yesterday's strain`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h sleep debt`:""})`}</p>`:""}
     <form class="sleep-form" data-sleep-form><label>${ar?"وقت النوم":"Bedtime"}<input type="time" data-sleep-bedtime value="${today?.bedtime||REP_HEALTH_GUIDE.rules.targetBedtime}" required></label><label>${ar?"وقت الاستيقاظ":"Wake time"}<input type="time" data-sleep-wake value="${today?.wake||REP_HEALTH_GUIDE.rules.wakeTime}" required></label><button type="submit">${today?(ar?"تحديث":"Update"):(ar?"حفظ":"Save")}</button></form>
     <div class="sleep-form-optional"><label>${ar?"تقلب معدل ضربات القلب (اختياري)":"HRV ms (optional)"}<input type="number" min="0" max="300" step="1" inputmode="numeric" data-sleep-hrv value="${today?.hrv||""}" placeholder="${ar?"مثال 55":"e.g. 55"}"></label><label>${ar?"نبض الراحة (اختياري)":"Resting HR (optional)"}<input type="number" min="0" max="200" step="1" inputmode="numeric" data-sleep-rhr value="${today?.rhr||""}" placeholder="${ar?"مثال 58":"e.g. 58"}"></label><label>${ar?"معدل التنفس (اختياري)":"Respiratory rate (optional)"}<input type="number" min="0" max="60" step="0.1" inputmode="decimal" data-sleep-resp value="${today?.resp||""}" placeholder="${ar?"مثال 15":"e.g. 15"}"></label></div>
     <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. الحقول الاختيارية تحسّن دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. The optional fields improve the Recovery score's accuracy."}</p>
-    ${rows?`<div class="sleep-history">${rows}</div>`:""}</article>`;
+    ${visibleRows?`<div class="sleep-history">${visibleRows}</div>`:""}
+    ${restRows?`<details class="sleep-history-more"><summary>${ar?`عرض ${restEntries.length} ليالٍ إضافية`:`Show ${restEntries.length} more night${restEntries.length===1?"":"s"}`}</summary><div class="sleep-history">${restRows}</div></details>`:""}</article>`;
 }
 function sleepSummaryCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
@@ -1327,7 +1329,18 @@ async function installApp(){
 }
 function network(){const el=document.querySelector("#networkStatus");el.classList.toggle("is-offline",!navigator.onLine);el.lastChild.textContent=` ${navigator.onLine?U().offlineReady:U().offlineMode}`;}
 addEventListener("online",()=>{network();syncPending();fetchPendingVitals();});addEventListener("offline",network);network();
-if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{const reg=await navigator.serviceWorker.register("./sw.js");reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});});
+// iOS home-screen PWAs check for a new service worker lazily (often only on a
+// full relaunch), so shipping a fix and reopening the app the normal way
+// frequently never surfaces the update banner below. Forcing an active
+// registration.update() whenever the app is actually opened/foregrounded
+// makes that check happen every time, not just on the browser's own schedule.
+if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{
+  const reg=await navigator.serviceWorker.register("./sw.js");
+  reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});
+  reg.update().catch(()=>{});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update().catch(()=>{});});
+  addEventListener("pageshow",()=>reg.update().catch(()=>{}));
+});
 updatePrimaryTabs();state.activeTab==="food"?renderNutrition():state.activeTab==="care"?renderHygiene():state.activeTab==="insights"?renderInsights():state.activeTab==="vitals"?renderVitals():renderHome();
 if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,800);
 if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(fetchPendingVitals,1200);
