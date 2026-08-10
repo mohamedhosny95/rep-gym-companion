@@ -952,9 +952,9 @@ function strainRecoveryCard(ar){
   const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
   const strainNote=strain>=14?(ar?"إجهاد مرتفع اليوم":"High load today"):strain>=7?(ar?"إجهاد معتدل":"Moderate load"):(ar?"من التمارين المسجلة اليوم":"From today's logged training");
   return `<section class="vitals-trio">
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article>
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"var(--blue)")}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"STRAIN"}</span></div></div><small>${strainNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor,82,8)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor,82,8)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"var(--blue)",82,8)}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"STRAIN"}</span></div></div><small>${strainNote}</small></article>
   </section>`;
 }
 function vitalsTeaserStrip(ar){
