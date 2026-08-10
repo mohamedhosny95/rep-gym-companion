@@ -128,6 +128,97 @@ encrypt/decrypt derivation locally, but never against a real deployed push
 service. Test it on your own phone after setup and report back if a
 notification doesn't arrive.
 
+## Automated Health data import (no screenshots, no app-opening)
+
+The Vitals tab's screenshot importer is manual — you take a screenshot, pick
+it, review the numbers. This section sets up a fully automatic path instead:
+an on-device Apple Shortcuts automation reads your sleep, HRV, resting heart
+rate, respiratory rate, and active energy straight from the Health app every
+morning and sends it to the server, which the app then picks up the next
+time you open it. No screenshot, no manual save, no app-opening required for
+the export step itself.
+
+Because a Cloudflare Worker has no memory between requests, the Shortcut
+writes into KV storage and the app reads from it — it does **not** push data
+into the app directly.
+
+### 1. Server setup (reuses the push-notification KV, if you already have it)
+
+If you already completed the **Push notifications** setup above, you already
+have a `PUSH_KV` namespace bound in `wrangler.jsonc` — nothing more to do
+here, skip to step 2.
+
+Otherwise:
+```sh
+npx wrangler kv namespace create PUSH_KV
+```
+and add the printed id to `wrangler.jsonc`:
+```json
+"kv_namespaces": [{ "binding": "PUSH_KV", "id": "<the id from the command above>" }]
+```
+Then redeploy. `/api/vitals/import` and `/api/vitals/pending` return a clear
+"not configured" error until this binding exists — safe to have shipped
+before you set this up.
+
+### 2. Build the Shortcut (Shortcuts app, on your iPhone)
+
+Create a new Shortcut and add these actions in order. Exact action names can
+shift slightly between iOS versions — search the action library for the
+bolded name if it's not an exact match.
+
+1. **Health Sample** — Sample Type: `Sleep Analysis`, Within: `Last 24 Hours`.
+2. **Sort** the result by `Start Date`, ascending.
+3. Take the **first** item's `Start Date` → **Format Date** as `HH:mm` →
+   name this variable `bedtime`.
+4. Take the **last** item's `End Date` → **Format Date** as `HH:mm` → name it
+   `wake_time`. (The app derives sleep duration from these two, the same way
+   manual entry does — you don't need to compute hours separately.)
+5. **Health Sample** — Sample Type: `Heart Rate Variability`, Within:
+   `Last 24 Hours` → **Calculate Statistics**: Average → name it `hrv_ms`.
+6. **Health Sample** — Sample Type: `Resting Heart Rate`, Within: `Today` →
+   **Calculate Statistics**: Average → name it `resting_hr_bpm`.
+7. **Health Sample** — Sample Type: `Respiratory Rate`, Within:
+   `Last 24 Hours` → **Calculate Statistics**: Average → name it
+   `respiratory_rate_bpm`.
+8. **Health Sample** — Sample Type: `Active Energy`, Within: `Today` →
+   **Calculate Statistics**: **Sum** (not average — Active Energy is many
+   small increments through the day) → name it `active_energy_kcal`.
+9. **Current Date** → **Format Date** as `yyyy-MM-dd` → name it `date`.
+10. **Dictionary** — build one with keys `date`, `bedtime`, `wake_time`,
+    `hrv_ms`, `resting_hr_bpm`, `respiratory_rate_bpm`, `active_energy_kcal`,
+    each set to its matching variable from above. Leave a key out entirely
+    if you don't want to send it — every field is optional.
+11. **Get Contents of URL**:
+    - URL: `https://<your-worker-domain>/api/vitals/import`
+    - Method: `POST`
+    - Headers: `x-rep-sync-key` → your `REP_SYNC_KEY` value (the same one
+      you paired the app with), `Content-Type` → `application/json`
+    - Request Body: `JSON`, set to the Dictionary from step 10
+
+### 3. Automate it
+
+Shortcuts app → **Automation** tab → **+** → **Create Personal Automation**
+→ **Time of Day** → pick a morning time after you're normally awake → next →
+**Add Action** → choose the Shortcut you just built → **turn off "Ask Before
+Running"**. That last toggle is the one that actually makes it silent — with
+it on, iOS prompts you to confirm every single morning, which defeats the
+point.
+
+### Notes
+
+- This writes data directly with no review step, unlike the screenshot
+  importer — it's real sensor data from your Watch, not an AI guess off an
+  image, so no review is needed. Both import paths remain available; use
+  whichever you prefer, including neither.
+- **This Shortcut was designed from Apple's documented action set, not
+  verified against a real iPhone** — I don't have a device to test on. The
+  server side (`/api/vitals/import`, `/api/vitals/pending`) was verified
+  against a real Cloudflare Workers runtime with a hand-crafted JSON payload.
+  If a step doesn't match what you see in the Shortcuts app, or the request
+  fails, use the **"Check now"** button on the Vitals tab to test the pull
+  side independently, and check the Shortcut's run log (tap the Shortcut →
+  the "i" info button → recent runs) for the actual error.
+
 ## Server hardening
 
 `dist/server/index.js` applies a few defenses beyond basic pairing-key auth:

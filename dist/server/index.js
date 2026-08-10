@@ -208,6 +208,66 @@ async function analyzeVitalsScreenshot(request, env) {
   }
 }
 
+const VITALS_IMPORT_PREFIX = "vitals:";
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeVitalsImport(value = {}) {
+  const clampOrNull = (raw, max) => {
+    const number = Number(raw);
+    return Number.isFinite(number) && number > 0 ? Math.min(number, max) : null;
+  };
+  const time = raw => TIME_PATTERN.test(String(raw || "")) ? raw : null;
+  return {
+    date: DATE_PATTERN.test(value.date) ? value.date : null,
+    sleep_hours: clampOrNull(value.sleep_hours, 16),
+    bedtime: time(value.bedtime),
+    wake_time: time(value.wake_time),
+    hrv_ms: clampOrNull(value.hrv_ms, 300),
+    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
+    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 60),
+    active_energy_kcal: clampOrNull(value.active_energy_kcal, 10000)
+  };
+}
+
+// Automated import from an on-device Apple Shortcuts automation (or an
+// export tool like Health Auto Export). A Worker has no memory between
+// requests, so the Shortcut writes into KV here and the client picks up
+// anything new the next time it opens - reuses the same optional PUSH_KV
+// binding the push-reminder feature already uses, under a distinct prefix.
+async function importVitals(request, env) {
+  if (await rateLimited(request, "vitals-import", 30, 3600)) return rateLimitResponse();
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
+  const body = await request.json().catch(() => null);
+  const vitals = normalizeVitalsImport(body || {});
+  if (!vitals.date) return json({ ok: false, error: "A valid date (YYYY-MM-DD) is required." }, 400);
+  await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${vitals.date}`, JSON.stringify(vitals), { expirationTtl: 60 * 60 * 24 * 30 });
+  return json({ ok: true });
+}
+
+async function pendingVitals(request, env) {
+  if (await rateLimited(request, "vitals-pending", 60, 60)) return rateLimitResponse();
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (!env.PUSH_KV) return json({ ok: true, entries: [] });
+  const url = new URL(request.url), sinceParam = url.searchParams.get("since");
+  const since = DATE_PATTERN.test(sinceParam || "") ? sinceParam : "2000-01-01";
+  const entries = [];
+  let cursor;
+  for (let page = 0; page < 10; page++) {
+    const list = await env.PUSH_KV.list({ prefix: VITALS_IMPORT_PREFIX, cursor });
+    for (const key of list.keys) {
+      const date = key.name.slice(VITALS_IMPORT_PREFIX.length);
+      if (date <= since) continue;
+      const raw = await env.PUSH_KV.get(key.name);
+      if (raw) entries.push(JSON.parse(raw));
+    }
+    if (list.list_complete) break;
+    cursor = list.cursor;
+  }
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+  return json({ ok: true, entries });
+}
+
 async function notionRequest(env, path, init = {}) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const response = await fetch(`https://api.notion.com/v1${path}`, {
@@ -495,7 +555,7 @@ async function sendScheduledReminders(env) {
   const nowHour = new Date().getUTCHours();
   let cursor;
   while (true) {
-    const list = await env.PUSH_KV.list({ cursor });
+    const list = await env.PUSH_KV.list({ cursor, prefix: "sub:" });
     for (const key of list.keys) {
       const raw = await env.PUSH_KV.get(key.name);
       if (!raw) continue;
@@ -533,6 +593,16 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/vitals/analyze") {
     if (request.method === "POST") return analyzeVitalsScreenshot(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/vitals/import") {
+    if (request.method === "POST") return importVitals(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/vitals/pending") {
+    if (request.method === "GET") return pendingVitals(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }

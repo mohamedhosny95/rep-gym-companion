@@ -147,8 +147,8 @@ const state = {
   pairBusy:false, pairMessage:"", reminderExpanded:{}, newTemplateOpen:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
-  activeEnergy:saved.activeEnergy||{},
-  vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false,
+  activeEnergy:saved.activeEnergy||{}, lastVitalsImportDate:saved.lastVitalsImportDate||null,
+  vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false, vitalsImportStatus:"", vitalsImportError:false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -157,7 +157,7 @@ new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidt
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate }));
 }
 let persistTimer=null;
 function persistDebounced(){
@@ -1029,6 +1029,56 @@ function saveVitalsFromDraft(){
   persist();renderVitals();
 }
 function discardVitalsDraft(){state.vitalsDraft=null;state.vitalsStatus="";state.vitalsError=false;renderVitals();}
+// Applies one day of data pushed by an automated Apple Shortcuts export (no
+// review step, unlike the screenshot flow - this is direct sensor data, not
+// an AI guess). Keeps the same "a sleepLogs entry always has valid hours"
+// invariant as manual/screenshot entry: skips the sleep side if no duration
+// can be determined, but still applies active energy independently.
+function applyVitalsEntry(entry){
+  const existing=state.sleepLogs.find(s=>s.date===entry.date);
+  const bedtime=entry.bedtime||existing?.bedtime||"",wake=entry.wake_time||existing?.wake||"";
+  let hours=computeSleepHours(bedtime,wake);
+  if((!hours||hours<=0)&&Number.isFinite(Number(entry.sleep_hours))&&Number(entry.sleep_hours)>0)hours=Math.round(Number(entry.sleep_hours)*10)/10;
+  if((!hours||hours<=0)&&existing?.hours)hours=existing.hours;
+  const hrvValue=Number(entry.hrv_ms),rhrValue=Number(entry.resting_hr_bpm),respValue=Number(entry.respiratory_rate_bpm);
+  const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null),resp=Number.isFinite(respValue)&&respValue>0?respValue:(existing?.resp||null);
+  if(hours&&hours>0){
+    state.sleepLogs=state.sleepLogs.filter(s=>s.date!==entry.date);
+    state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours,hrv,rhr,resp});
+    state.sleepLogs=state.sleepLogs.slice(0,120);
+  }
+  const activeEnergyValue=Number(entry.active_energy_kcal);
+  if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
+}
+async function fetchPendingVitals(showStatus=false){
+  const key=localStorage.getItem(syncKeyStorage);
+  if(!key||!navigator.onLine){
+    if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"اتصل من تبويب التغذية أولاً.":"Connect in the Nutrition tab first.";state.vitalsImportError=true;renderVitals();}
+    return;
+  }
+  try{
+    const since=state.lastVitalsImportDate||"2000-01-01";
+    const response=await fetch(`/api/vitals/pending?since=${encodeURIComponent(since)}`,{headers:{"x-rep-sync-key":key}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.ok)throw Error(data.error||`Check failed (${response.status})`);
+    if(data.entries.length){
+      data.entries.forEach(applyVitalsEntry);
+      state.lastVitalsImportDate=data.entries[data.entries.length-1].date;
+      if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"تم استيراد بيانات جديدة.":"New data imported.";state.vitalsImportError=false;}
+    }else if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"لا توجد بيانات جديدة بعد.":"No new data yet.";state.vitalsImportError=false;}
+    persist();
+    if(showStatus||state.view==="vitals")renderVitals();
+  }catch(error){
+    if(showStatus){state.vitalsImportStatus=String(error.message||error);state.vitalsImportError=true;renderVitals();}
+  }
+}
+function automatedImportCard(ar){
+  const last=state.lastVitalsImportDate;
+  return `<section class="active-energy-card automated-import-card"><div class="supplement-head"><div><small>${ar?"استيراد تلقائي":"AUTOMATED IMPORT"}</small><strong>${last?(ar?`آخر مزامنة: ${last}`:`Last synced: ${last}`):(ar?"لم يُعدّ بعد":"Not set up yet")}</strong></div></div>
+    <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Set up an Apple Shortcuts automation to send your Health data here automatically every morning, without opening the app — see the README for full setup steps."}</p>
+    <button class="quiet vitals-connect-button" data-vitals-check-now type="button">${ar?"تحقق الآن":"Check now"}</button>
+    ${state.vitalsImportStatus?`<p class="vitals-status ${state.vitalsImportError?"is-error":""}">${esc(state.vitalsImportStatus)}</p>`:""}</section>`;
+}
 function saveActiveEnergy(kcal){const value=Math.max(0,Math.round(Number(kcal)||0));if(!value)return;state.activeEnergy[isoDay()]=value;persist();renderVitals();}
 function activeEnergyCard(ar){
   const value=state.activeEnergy?.[isoDay()];
@@ -1042,6 +1092,7 @@ function bindVitalsTools(){
   document.querySelector("[data-vitals-save]")?.addEventListener("click",saveVitalsFromDraft);
   document.querySelector("[data-vitals-discard]")?.addEventListener("click",discardVitalsDraft);
   document.querySelector("[data-active-energy-form]")?.addEventListener("submit",e=>{e.preventDefault();saveActiveEnergy(document.querySelector("[data-active-energy-input]").value);});
+  document.querySelector("[data-vitals-check-now]")?.addEventListener("click",()=>fetchPendingVitals(true));
   document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value,resp=document.querySelector("[data-sleep-resp]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr,resp)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
   document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderVitals();});
 }
@@ -1051,6 +1102,7 @@ function renderVitals(){
   app.innerHTML=`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
   ${strainRecoveryCard(ar)}
   ${vitalsScreenshotCard(ar)}
+  ${automatedImportCard(ar)}
   ${activeEnergyCard(ar)}
   ${sleepTrackerCard(ar)}`;
   bindVitalsTools();
@@ -1207,7 +1259,8 @@ async function installApp(){
   const box=document.createElement("div");box.className="install-help";box.innerHTML=`<button aria-label="Close">×</button><strong>${U().install}</strong><p>${msg}</p>`;document.body.appendChild(box);box.querySelector("button").onclick=()=>box.remove();
 }
 function network(){const el=document.querySelector("#networkStatus");el.classList.toggle("is-offline",!navigator.onLine);el.lastChild.textContent=` ${navigator.onLine?U().offlineReady:U().offlineMode}`;}
-addEventListener("online",()=>{network();syncPending();});addEventListener("offline",network);network();
+addEventListener("online",()=>{network();syncPending();fetchPendingVitals();});addEventListener("offline",network);network();
 if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{const reg=await navigator.serviceWorker.register("./sw.js");reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});});
 updatePrimaryTabs();state.activeTab==="food"?renderNutrition():state.activeTab==="care"?renderHygiene():state.activeTab==="insights"?renderInsights():state.activeTab==="vitals"?renderVitals():renderHome();
 if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,800);
+if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(fetchPendingVitals,1200);
