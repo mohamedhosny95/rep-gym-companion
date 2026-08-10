@@ -57,7 +57,7 @@ The deployed server expects these environment variables (see `.env.example`):
 - `NOTION_TOKEN` — secret Notion integration token
 - `NOTION_DATA_SOURCE_ID` — workout database data-source ID
 - `REP_SYNC_KEY` — private pairing key entered in the app
-- `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis
+- `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
 Recovery, nutrition, hygiene, and food databases use their checked-in public
 data-source IDs by default. They can be overridden with
@@ -127,6 +127,147 @@ verified end-to-end** — it was checked by round-tripping the same
 encrypt/decrypt derivation locally, but never against a real deployed push
 service. Test it on your own phone after setup and report back if a
 notification doesn't arrive.
+
+## Automated Health data import (no screenshots, no app-opening)
+
+The Vitals tab's screenshot importer is manual — you take a screenshot, pick
+it, review the numbers. This section sets up a fully automatic path instead:
+your sleep, HRV, resting heart rate, respiratory rate, and active energy get
+read from the Health app every day and sent to the server, which the app
+then picks up the next time you open it. No screenshot, no manual save, no
+app-opening required for the export step itself.
+
+Because a Cloudflare Worker has no memory between requests, the export
+writes into KV storage and the app reads from it — it does **not** push
+data into the app directly.
+
+Two ways to do the export side — pick one:
+
+- **Option A — [Health Auto Export](https://apps.apple.com/us/app/health-auto-export-json-csv/id1115567069)**
+  (App Store, one-time purchase, roughly $15-20): a mature app built
+  specifically for this. Pick your metrics, point its REST API automation
+  at our server, done — no Shortcut-building, and its own background
+  scheduling is more reliable than a hand-built Personal Automation.
+  **Recommended.**
+- **Option B — a free DIY Apple Shortcuts automation**: no cost, but you
+  build and maintain the Shortcut yourself.
+
+Both write to the same server-side queue, so the rest of the app (the
+Vitals tab, "Check now", the background pull on open) works identically
+either way.
+
+### 1. Server setup (reuses the push-notification KV, if you already have it)
+
+If you already completed the **Push notifications** setup above, you already
+have a `PUSH_KV` namespace bound in `wrangler.jsonc` — nothing more to do
+here, skip to step 2.
+
+Otherwise:
+```sh
+npx wrangler kv namespace create PUSH_KV
+```
+and add the printed id to `wrangler.jsonc`:
+```json
+"kv_namespaces": [{ "binding": "PUSH_KV", "id": "<the id from the command above>" }]
+```
+Then redeploy. `/api/vitals/import`, `/api/vitals/import-hae`, and
+`/api/vitals/pending` return a clear "not configured" error until this
+binding exists — safe to have shipped before you set this up.
+
+### 2. Option A — Health Auto Export (recommended)
+
+1. Install [Health Auto Export - JSON+CSV](https://apps.apple.com/us/app/health-auto-export-json-csv/id1115567069)
+   from the App Store.
+2. In the app, create a new **Automation** → **REST API** export.
+3. Select these metrics (leave anything else off — extra metrics are
+   ignored, not rejected): **Heart Rate Variability**, **Resting Heart
+   Rate**, **Respiratory Rate**, **Active Energy**, and enable **Sleep**
+   data.
+4. Set the destination:
+   - URL: `https://<your-worker-domain>/api/vitals/import-hae`
+   - Method: `POST`
+   - Header: `x-rep-sync-key` → your `REP_SYNC_KEY` value (the same one
+     you paired the app with)
+5. Set it to run automatically (the app has its own daily/periodic
+   scheduling — no separate Shortcuts automation needed for this path).
+
+The server expects Health Auto Export's own documented JSON export shape
+(`{"data":{"metrics":[...],"sleep":[...]}}`) directly — parses per-metric
+data points, averages HRV/resting-HR/respiratory-rate per calendar day,
+sums Active Energy per day, and pulls bedtime/wake from the sleep records.
+Nothing needs to match our schema on your end; that's the point of this
+option.
+
+**Skip to step 4 ("Notes") if you're using this option** — step 3 below is
+only for the free DIY route.
+
+### 3. Option B — free DIY Shortcut (Shortcuts app, on your iPhone)
+
+Create a new Shortcut and add these actions in order. Exact action names can
+shift slightly between iOS versions — search the action library for the
+bolded name if it's not an exact match.
+
+1. **Health Sample** — Sample Type: `Sleep Analysis`, Within: `Last 24 Hours`.
+2. **Sort** the result by `Start Date`, ascending.
+3. Take the **first** item's `Start Date` → **Format Date** as `HH:mm` →
+   name this variable `bedtime`.
+4. Take the **last** item's `End Date` → **Format Date** as `HH:mm` → name it
+   `wake_time`. (The app derives sleep duration from these two, the same way
+   manual entry does — you don't need to compute hours separately.)
+5. **Health Sample** — Sample Type: `Heart Rate Variability`, Within:
+   `Last 24 Hours` → **Calculate Statistics**: Average → name it `hrv_ms`.
+6. **Health Sample** — Sample Type: `Resting Heart Rate`, Within: `Today` →
+   **Calculate Statistics**: Average → name it `resting_hr_bpm`.
+7. **Health Sample** — Sample Type: `Respiratory Rate`, Within:
+   `Last 24 Hours` → **Calculate Statistics**: Average → name it
+   `respiratory_rate_bpm`.
+8. **Health Sample** — Sample Type: `Active Energy`, Within: `Today` →
+   **Calculate Statistics**: **Sum** (not average — Active Energy is many
+   small increments through the day) → name it `active_energy_kcal`.
+9. **Current Date** → **Format Date** as `yyyy-MM-dd` → name it `date`.
+10. **Dictionary** — build one with keys `date`, `bedtime`, `wake_time`,
+    `hrv_ms`, `resting_hr_bpm`, `respiratory_rate_bpm`, `active_energy_kcal`,
+    each set to its matching variable from above. Leave a key out entirely
+    if you don't want to send it — every field is optional.
+11. **Get Contents of URL**:
+    - URL: `https://<your-worker-domain>/api/vitals/import`
+    - Method: `POST`
+    - Headers: `x-rep-sync-key` → your `REP_SYNC_KEY` value (the same one
+      you paired the app with), `Content-Type` → `application/json`
+    - Request Body: `JSON`, set to the Dictionary from step 10
+
+### 4. Automate it
+
+Shortcuts app → **Automation** tab → **+** → **Create Personal Automation**
+→ **Time of Day** → pick a morning time after you're normally awake → next →
+**Add Action** → choose the Shortcut you just built → **turn off "Ask Before
+Running"**. That last toggle is the one that actually makes it silent — with
+it on, iOS prompts you to confirm every single morning, which defeats the
+point.
+
+### Notes
+
+- Both options write data directly with no review step, unlike the
+  screenshot importer — it's real sensor data, not an AI guess off an
+  image, so no review is needed. The screenshot importer stays available
+  too; use whichever combination you prefer, including neither.
+- **Server side verified, on-device side not.** `/api/vitals/import`,
+  `/api/vitals/import-hae`, and `/api/vitals/pending` were all verified
+  against a real Cloudflare Workers runtime — for the Health Auto Export
+  adapter specifically, with a hand-crafted payload matching that app's
+  own [publicly documented JSON export format](https://github.com/Lybron/health-auto-export/wiki/API-Export---JSON-Format)
+  (multi-day, multi-metric, including an unrecognized metric to confirm
+  it's safely ignored rather than rejected) — the math (HRV/RHR/respiratory
+  rate averaged per day, Active Energy summed per day, sleep bucketed by
+  wake date) checked out exactly. What's **not** verified is either app
+  actually running on a real iPhone and sending its real payload, since I
+  don't have a device to test on — the DIY Shortcut in particular was
+  written from Apple's documented action set, not click-tested. If Health
+  Auto Export's real export ever drifts from its documented format, or a
+  Shortcut step doesn't match what you see, use the **"Check now"** button
+  on the Vitals tab to test the pull
+  side independently, and check the Shortcut's run log (tap the Shortcut →
+  the "i" info button → recent runs) for the actual error.
 
 ## Server hardening
 

@@ -14,5 +14,8 @@
   },
   "triggers": {
     "crons": ["0 * * * *"]
-  }
+  },
+  "kv_namespaces": [
+    { "binding": "PUSH_KV", "id": "3bea037a1d7b43de9b9994f43a48d843" }
+  ]
 }
