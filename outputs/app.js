@@ -147,6 +147,7 @@ const state = {
   pairBusy:false, pairMessage:"", reminderExpanded:{}, newTemplateOpen:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
+  activeEnergy:saved.activeEnergy||{},
   vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
@@ -156,7 +157,7 @@ new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidt
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy }));
 }
 let persistTimer=null;
 function persistDebounced(){
@@ -817,13 +818,13 @@ function computeSleepHours(bedtime,wake){
   let start=bh*60+bm,end=wh*60+wm;if(end<=start)end+=24*60;
   return Math.round((end-start)/60*10)/10;
 }
-function saveSleepLog(bedtime,wake,hrv,rhr){
+function saveSleepLog(bedtime,wake,hrv,rhr,resp){
   const hours=computeSleepHours(bedtime,wake);
   if(!hours||hours<=0||hours>16)return false;
   const date=isoDay();
-  const hrvValue=Number(hrv),rhrValue=Number(rhr);
+  const hrvValue=Number(hrv),rhrValue=Number(rhr),respValue=Number(resp);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
-  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:null,rhr:Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:null});
+  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:null,rhr:Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:null,resp:Number.isFinite(respValue)&&respValue>0?respValue:null});
   state.sleepLogs=state.sleepLogs.slice(0,120);
   queueHealth("sleep",{date,sleep:hours});
   persist();return true;
@@ -863,28 +864,59 @@ function metricBaseline(field,days=30,beforeDate=null){
   const recent=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t>=cutoffTime&&t<endTime&&Number.isFinite(s[field])&&s[field]>0;});
   return recent.length>=3?Math.round(recent.reduce((n,s)=>n+s[field],0)/recent.length*10)/10:null;
 }
+// Sleep Need mirrors Whoop's model at a level a manually-logged PWA can
+// actually support: a personalized baseline (rolling 14-day average, not a
+// fixed number), plus extra need from yesterday's training strain, plus a
+// capped debt carried from recent short nights.
+function computeSleepNeed(dateStr=isoDay()){
+  const baseline=recentSleepAvg(14)??REP_HEALTH_GUIDE.rules.minimumSleepHours;
+  const prevDate=new Date(new Date(dateStr).getTime()-86400000).toISOString().slice(0,10);
+  const strainDebt=Math.round((computeStrainScore(prevDate)/21)*10)/10;
+  const cutoffTime=new Date(dateStr).getTime();
+  const recentNights=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t<cutoffTime&&t>=cutoffTime-7*86400000;});
+  const shortfall=recentNights.reduce((sum,s)=>sum+Math.max(0,baseline-(s.hours||0)),0);
+  const sleepDebt=Math.min(Math.round(shortfall*10)/10,3);
+  return {baseline:Math.round(baseline*10)/10,strainDebt,sleepDebt,need:Math.round((baseline+strainDebt+sleepDebt)*10)/10};
+}
+function computeSleepPerformance(dateStr=isoDay()){
+  const entry=state.sleepLogs.find(s=>s.date===dateStr);
+  if(!entry?.hours)return null;
+  const need=computeSleepNeed(dateStr);
+  return {...need,actual:entry.hours,performance:Math.max(0,Math.round(entry.hours/need.need*100))};
+}
 function computeRecoveryScore(dateStr=isoDay()){
-  const minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours,sleepEntry=state.sleepLogs.find(s=>s.date===dateStr);
+  const sleepEntry=state.sleepLogs.find(s=>s.date===dateStr);
   const components=[];
-  if(sleepEntry?.hours)components.push({weight:35,value:Math.max(0,Math.min(100,Math.round(sleepEntry.hours/minSleep*100)))});
+  const sleepPerf=computeSleepPerformance(dateStr);
+  if(sleepPerf)components.push({weight:30,value:Math.min(100,sleepPerf.performance)});
   const hrvBase=metricBaseline("hrv",30,dateStr);
   if(sleepEntry?.hrv&&hrvBase)components.push({weight:25,value:Math.max(0,Math.min(100,Math.round(50+(sleepEntry.hrv-hrvBase)/hrvBase*250)))});
   const rhrBase=metricBaseline("rhr",30,dateStr);
   if(sleepEntry?.rhr&&rhrBase)components.push({weight:20,value:Math.max(0,Math.min(100,Math.round(50-(sleepEntry.rhr-rhrBase)/rhrBase*250)))});
+  const respBase=metricBaseline("resp",30,dateStr);
+  if(sleepEntry?.resp&&respBase)components.push({weight:10,value:Math.max(0,Math.min(100,Math.round(50-(sleepEntry.resp-respBase)/respBase*250)))});
   const checkin=state.recoveryCheckins.find(c=>String(c.date).slice(0,10)===dateStr);
-  if(checkin)components.push({weight:20,value:Math.max(0,100-recoveryFlags(checkin)*25-(checkin.pain?25:0))});
+  if(checkin)components.push({weight:15,value:Math.max(0,100-recoveryFlags(checkin)*25-(checkin.pain?25:0))});
   if(!components.length)return null;
   const totalWeight=components.reduce((n,c)=>n+c.weight,0),score=Math.round(components.reduce((n,c)=>n+c.value*c.weight,0)/totalWeight);
   return {score,band:score>=67?"green":score>=34?"yellow":"red"};
 }
+// Whoop scores cardiovascular load for the whole day, not just structured
+// workouts. We have no continuous heart-rate feed to do that from a PWA, so
+// logged sessions remain the base load, and an optional "active energy
+// today" (read off the Watch's Activity rings) adds the rest of the day's
+// incidental load at a lower per-calorie weight than a structured workout.
 function computeStrainScore(dateStr=isoDay()){
   const sessions=state.history.filter(h=>String(h.date).slice(0,10)===dateStr);
-  if(!sessions.length)return 0;
-  const totalLoad=sessions.reduce((n,s)=>{
+  const sessionCalories=sessions.reduce((n,s)=>n+(s.calories||0),0);
+  let totalLoad=sessions.reduce((n,s)=>{
     const rpes=(s.entries||[]).map(e=>Number(e.rpe)).filter(Number.isFinite);
     const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:6;
     return n+(s.calories||0)*(rpe/10);
   },0);
+  const activeEnergy=Number(state.activeEnergy?.[dateStr]);
+  if(Number.isFinite(activeEnergy)&&activeEnergy>0)totalLoad+=Math.max(0,activeEnergy-sessionCalories)*.4;
+  if(!totalLoad)return 0;
   return Math.round(21*(1-Math.exp(-totalLoad/220))*10)/10;
 }
 function ringGaugeSvg(percent,color,size=112,strokeWidth=10){
@@ -914,12 +946,14 @@ function vitalsTeaserStrip(ar){
 }
 function sleepTrackerCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
+  const perf=computeSleepPerformance();
   const rows=sorted.slice(0,7).map(s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString(ar?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${ar?"حذف":"Delete"}">×</button></div>`).join("");
   return `<article class="recovery-card wide sleep-card"><span class="card-kicker">${ar?"من ساعة أبل ووتش":"FROM APPLE WATCH"}</span><h2>${ar?"سجل النوم اليومي":"Daily sleep log"}</h2>
-    <div class="sleep-summary"><div><small>${ar?"الليلة الماضية":"LAST NIGHT"}</small><strong>${today?`${today.hours}h`:(ar?"لم يُسجَّل بعد":"Not logged yet")}</strong></div>${avg!==null?`<div><small>${ar?"متوسط 7 أيام":"7-DAY AVERAGE"}</small><strong class="${avg<minHours?"warn":""}">${avg}h</strong></div>`:""}</div>
+    <div class="sleep-summary"><div><small>${ar?"الليلة الماضية":"LAST NIGHT"}</small><strong>${today?`${today.hours}h`:(ar?"لم يُسجَّل بعد":"Not logged yet")}</strong></div>${avg!==null?`<div><small>${ar?"متوسط 7 أيام":"7-DAY AVERAGE"}</small><strong class="${avg<minHours?"warn":""}">${avg}h</strong></div>`:""}${perf?`<div><small>${ar?"أداء النوم":"SLEEP PERFORMANCE"}</small><strong class="${perf.performance<85?"warn":""}">${perf.performance}%</strong></div>`:""}</div>
+    ${perf?`<p class="sleep-need-breakdown">${ar?`الحاجة الليلة: ${perf.need}h (أساس ${perf.baseline}h${perf.strainDebt?` + ${perf.strainDebt}h إجهاد أمس`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h دين نوم`:""})`:`Tonight's need: ${perf.need}h (${perf.baseline}h baseline${perf.strainDebt?` + ${perf.strainDebt}h from yesterday's strain`:""}${perf.sleepDebt?` + ${perf.sleepDebt}h sleep debt`:""})`}</p>`:""}
     <form class="sleep-form" data-sleep-form><label>${ar?"وقت النوم":"Bedtime"}<input type="time" data-sleep-bedtime value="${today?.bedtime||REP_HEALTH_GUIDE.rules.targetBedtime}" required></label><label>${ar?"وقت الاستيقاظ":"Wake time"}<input type="time" data-sleep-wake value="${today?.wake||REP_HEALTH_GUIDE.rules.wakeTime}" required></label><button type="submit">${today?(ar?"تحديث":"Update"):(ar?"حفظ":"Save")}</button></form>
-    <div class="sleep-form-optional"><label>${ar?"تقلب معدل ضربات القلب (اختياري)":"HRV ms (optional)"}<input type="number" min="0" max="300" step="1" inputmode="numeric" data-sleep-hrv value="${today?.hrv||""}" placeholder="${ar?"مثال 55":"e.g. 55"}"></label><label>${ar?"نبض الراحة (اختياري)":"Resting HR (optional)"}<input type="number" min="0" max="200" step="1" inputmode="numeric" data-sleep-rhr value="${today?.rhr||""}" placeholder="${ar?"مثال 58":"e.g. 58"}"></label></div>
-    <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. تقلب معدل ضربات القلب ونبض الراحة اختياريان ويحسّنان دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. HRV and resting heart rate are optional and improve the Recovery score's accuracy."}</p>
+    <div class="sleep-form-optional"><label>${ar?"تقلب معدل ضربات القلب (اختياري)":"HRV ms (optional)"}<input type="number" min="0" max="300" step="1" inputmode="numeric" data-sleep-hrv value="${today?.hrv||""}" placeholder="${ar?"مثال 55":"e.g. 55"}"></label><label>${ar?"نبض الراحة (اختياري)":"Resting HR (optional)"}<input type="number" min="0" max="200" step="1" inputmode="numeric" data-sleep-rhr value="${today?.rhr||""}" placeholder="${ar?"مثال 58":"e.g. 58"}"></label><label>${ar?"معدل التنفس (اختياري)":"Respiratory rate (optional)"}<input type="number" min="0" max="60" step="0.1" inputmode="decimal" data-sleep-resp value="${today?.resp||""}" placeholder="${ar?"مثال 15":"e.g. 15"}"></label></div>
+    <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. الحقول الثلاثة اختيارية وتحسّن دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. All three extra fields are optional and improve the Recovery score's accuracy."}</p>
     ${rows?`<div class="sleep-history">${rows}</div>`:""}</article>`;
 }
 function vitalsScreenshotCard(ar){
@@ -932,13 +966,15 @@ function vitalsScreenshotCard(ar){
       <label><span>${ar?"وقت الاستيقاظ":"Wake time"}</span><input type="time" data-vitals-field="wake_time" value="${d.wake_time||""}"></label>
       <label><span>${ar?"تقلب القلب (ms)":"HRV (ms)"}</span><input type="number" min="0" max="300" step="1" inputmode="numeric" data-vitals-field="hrv_ms" value="${d.hrv_ms??""}"></label>
       <label><span>${ar?"نبض الراحة (bpm)":"Resting HR (bpm)"}</span><input type="number" min="0" max="200" step="1" inputmode="numeric" data-vitals-field="resting_hr_bpm" value="${d.resting_hr_bpm??""}"></label>
+      <label><span>${ar?"معدل التنفس (نفس/د)":"Respiratory rate (bpm)"}</span><input type="number" min="0" max="60" step="0.1" inputmode="decimal" data-vitals-field="respiratory_rate_bpm" value="${d.respiratory_rate_bpm??""}"></label>
+      <label><span>${ar?"طاقة نشطة (kcal)":"Active energy (kcal)"}</span><input type="number" min="0" max="10000" step="1" inputmode="numeric" data-vitals-field="active_energy_kcal" value="${d.active_energy_kcal??""}"></label>
     </div>
     ${d.notes?`<p class="vitals-note">${esc(d.notes)}</p>`:""}
     <div class="vitals-review-actions"><button class="quiet" data-vitals-discard type="button">${ar?"تجاهل":"Discard"}</button><button data-vitals-save type="button">${ar?"حفظ في سجل اليوم":"Save to today's log"}</button></div>
     ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
   }
   return `<section class="vitals-import-card"><div class="supplement-head"><div><small>${ar?"استيراد سريع":"QUICK IMPORT"}</small><strong>${ar?"لقطة شاشة من صحة أبل":"Apple Health screenshot"}</strong></div></div>
-    <p class="vitals-import-copy">${ar?"التقط شاشة من تطبيق الصحة أو ساعة أبل (النوم، تقلب القلب، نبض الراحة) وسنقرأ الأرقام تلقائياً لمراجعتها قبل الحفظ.":"Screenshot the Health app or your Apple Watch face (sleep, HRV, resting HR) and we'll read the numbers for you to review before saving."}</p>
+    <p class="vitals-import-copy">${ar?"التقط شاشة من تطبيق الصحة أو ساعة أبل (النوم، تقلب القلب، نبض الراحة، معدل التنفس، الطاقة النشطة) وسنقرأ الأرقام تلقائياً لمراجعتها قبل الحفظ.":"Screenshot the Health app or your Apple Watch face (sleep, HRV, resting HR, respiratory rate, active energy) and we'll read the numbers for you to review before saving."}</p>
     ${connected?`<label class="vitals-upload-button">${state.vitalsBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"⬆ اختر لقطة الشاشة":"⬆ Choose screenshot")}<input type="file" accept="image/*" data-vitals-screenshot ${state.vitalsBusy?"disabled":""}></label>`
       :`<button class="quiet vitals-connect-button" data-vitals-connect type="button">${ar?"اتصل من تبويب التغذية لتفعيل الاستيراد ←":"Connect in the Nutrition tab to enable import →"}</button>`}
     ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
@@ -971,22 +1007,32 @@ function saveVitalsFromDraft(){
   if((!hours||hours<=0)&&Number.isFinite(Number(d.sleep_hours))&&Number(d.sleep_hours)>0)hours=Math.round(Number(d.sleep_hours)*10)/10;
   if((!hours||hours<=0)&&existing?.hours)hours=existing.hours;
   if(!hours||hours<=0){state.vitalsStatus=state.lang==="ar"?"لم يتم العثور على مدة نوم صالحة. أضف وقت النوم/الاستيقاظ أعلاه ثم احفظ مرة أخرى.":"No valid sleep duration found. Fill in bedtime/wake above, then save again.";state.vitalsError=true;renderVitals();return;}
-  const hrvValue=Number(d.hrv_ms),rhrValue=Number(d.resting_hr_bpm);
-  const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null);
+  const hrvValue=Number(d.hrv_ms),rhrValue=Number(d.resting_hr_bpm),respValue=Number(d.respiratory_rate_bpm);
+  const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null),resp=Number.isFinite(respValue)&&respValue>0?respValue:(existing?.resp||null);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
-  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv,rhr});
+  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv,rhr,resp});
   state.sleepLogs=state.sleepLogs.slice(0,120);
   queueHealth("sleep",{date,sleep:hours});
+  const activeEnergyValue=Number(d.active_energy_kcal);
+  if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0)state.activeEnergy[date]=Math.round(activeEnergyValue);
   state.vitalsDraft=null;state.vitalsStatus=state.lang==="ar"?"تم الحفظ في سجل اليوم.":"Saved to today's log.";state.vitalsError=false;
   persist();renderVitals();
 }
 function discardVitalsDraft(){state.vitalsDraft=null;state.vitalsStatus="";state.vitalsError=false;renderVitals();}
+function saveActiveEnergy(kcal){const value=Math.max(0,Math.round(Number(kcal)||0));if(!value)return;state.activeEnergy[isoDay()]=value;persist();renderVitals();}
+function activeEnergyCard(ar){
+  const value=state.activeEnergy?.[isoDay()];
+  return `<section class="active-energy-card"><div class="supplement-head"><div><small>${ar?"طاقة اليوم النشطة":"ACTIVE ENERGY TODAY"}</small><strong>${value?`${value} kcal`:(ar?"لم تُسجَّل بعد":"Not logged yet")}</strong></div></div>
+    <p class="vitals-import-copy">${ar?"من حلقات النشاط في ساعتك أو «الطاقة النشطة» في تطبيق الصحة. يضيف حِمل اليوم كله — وليس التمارين المسجلة فقط — إلى نتيجة الإجهاد.":"From your Watch's Activity rings or the Health app's Active Energy total. Adds your whole day's load — not just logged workouts — to the Strain score."}</p>
+    <form class="active-energy-form" data-active-energy-form><input type="number" min="0" max="10000" step="1" inputmode="numeric" value="${value||""}" placeholder="${ar?"مثال 620":"e.g. 620"}" data-active-energy-input aria-label="${ar?"الطاقة النشطة اليوم بالكيلوكالوري":"Today's active energy in kilocalories"}"><button type="submit">${ar?"حفظ":"Save"}</button></form></section>`;
+}
 function bindVitalsTools(){
   document.querySelector("[data-vitals-screenshot]")?.addEventListener("change",e=>analyzeVitalsImage(e.target.files?.[0]));
   document.querySelector("[data-vitals-connect]")?.addEventListener("click",()=>setPrimaryTab("food"));
   document.querySelector("[data-vitals-save]")?.addEventListener("click",saveVitalsFromDraft);
   document.querySelector("[data-vitals-discard]")?.addEventListener("click",discardVitalsDraft);
-  document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
+  document.querySelector("[data-active-energy-form]")?.addEventListener("submit",e=>{e.preventDefault();saveActiveEnergy(document.querySelector("[data-active-energy-input]").value);});
+  document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value,resp=document.querySelector("[data-sleep-resp]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr,resp)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
   document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderVitals();});
 }
 function renderVitals(){
@@ -995,6 +1041,7 @@ function renderVitals(){
   app.innerHTML=`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
   ${strainRecoveryCard(ar)}
   ${vitalsScreenshotCard(ar)}
+  ${activeEnergyCard(ar)}
   ${sleepTrackerCard(ar)}`;
   bindVitalsTools();
 }

@@ -10,7 +10,7 @@ const HEALTH_DATA_SOURCES = {
 
 const FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion_size (string), estimated_weight_g (number), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), sugar_g (number), sodium_mg (number), confidence (High, Medium, or Low), confidence_pct (0-100 integer), notes (string), recognizable (boolean). All nutrition values are estimates. Use 0 instead of null. Sum multiple foods. If the input is Arabic, understand it natively and include the Arabic name after the English name.`;
 
-const VITALS_SCHEMA = `Return only a JSON object with: sleep_hours (number or null), bedtime (string "HH:MM" 24-hour or null), wake_time (string "HH:MM" 24-hour or null), hrv_ms (number or null), resting_hr_bpm (number or null), confidence (High, Medium, or Low), notes (string), recognizable (boolean). Extract only values that are clearly visible in the screenshot; use null for anything not shown or ambiguous. Never guess or estimate a value that isn't legible.`;
+const VITALS_SCHEMA = `Return only a JSON object with: sleep_hours (number or null), bedtime (string "HH:MM" 24-hour or null), wake_time (string "HH:MM" 24-hour or null), hrv_ms (number or null), resting_hr_bpm (number or null), respiratory_rate_bpm (number or null), active_energy_kcal (number or null), confidence (High, Medium, or Low), notes (string), recognizable (boolean). active_energy_kcal is the total active/move calories for the day, e.g. from Activity rings or the Health app's Active Energy stat - not a single workout's calories. Extract only values that are clearly visible in the screenshot; use null for anything not shown or ambiguous. Never guess or estimate a value that isn't legible.`;
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -129,6 +129,8 @@ function normalizeVitals(value = {}) {
     wake_time: time(value.wake_time),
     hrv_ms: clampOrNull(value.hrv_ms, 300),
     resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
+    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 60),
+    active_energy_kcal: clampOrNull(value.active_energy_kcal, 10000),
     confidence: ["High", "Medium", "Low"].includes(value.confidence) ? value.confidence : "Low",
     notes: safeText(value.notes, 400),
     recognizable: value.recognizable !== false
@@ -198,7 +200,7 @@ async function analyzeVitalsScreenshot(request, env) {
   const image = safeText(body?.image, 12_000_000), mimeType = /^image\/(jpeg|png|webp|heic|heif)$/i.test(body?.mimeType || "") ? body.mimeType : "image/jpeg";
   if (!image) return json({ ok: false, error: "Image data is missing." }, 400);
   try {
-    const prompt = `This is a screenshot from the Apple Health app or an Apple Watch face. Read sleep duration, bedtime, wake time, Heart Rate Variability (HRV), and Resting Heart Rate wherever they are visible. ${VITALS_SCHEMA}`;
+    const prompt = `This is a screenshot from the Apple Health app or an Apple Watch face. Read sleep duration, bedtime, wake time, Heart Rate Variability (HRV), Resting Heart Rate, Respiratory Rate, and Active Energy (total daily active/move calories, e.g. from Activity rings) wherever they are visible. ${VITALS_SCHEMA}`;
     const raw = await geminiGenerate(env, [{ text: prompt }, { inlineData: { mimeType, data: image } }], true);
     return json({ ok: true, vitals: normalizeVitals(parseModelJson(raw)) });
   } catch (error) {
