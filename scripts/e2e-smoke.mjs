@@ -33,7 +33,7 @@ function assertTrue(condition, label) {
 await new Promise(resolve => server.listen(port, resolve));
 const baseUrl = `http://localhost:${port}`;
 
-const browser = await chromium.launch({ args: ["--no-sandbox"], executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const consoleErrors = [];
 try {
   const page = await (await browser.newContext({ viewport: { width: 390, height: 900 } })).newPage();
