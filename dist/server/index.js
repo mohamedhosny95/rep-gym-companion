@@ -360,7 +360,7 @@ async function pendingVitals(request, env) {
     const list = await env.PUSH_KV.list({ prefix: VITALS_IMPORT_PREFIX, cursor });
     for (const key of list.keys) {
       const date = key.name.slice(VITALS_IMPORT_PREFIX.length);
-      if (date <= since) continue;
+      if (date < since) continue;
       const raw = await env.PUSH_KV.get(key.name);
       if (raw) entries.push(JSON.parse(raw));
     }
