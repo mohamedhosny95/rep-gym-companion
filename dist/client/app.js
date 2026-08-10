@@ -302,6 +302,18 @@ function metricGuideCard(ar){
   ];
   return `<details class="insights-card metric-guide"><summary>${ar?"ماذا تعني هذه الأرقام":"What these numbers mean"}</summary><div class="metric-guide-grid">${items.map(i=>`<div class="metric-guide-item"><span class="metric-guide-dot" style="background:${i.color}"></span><div><strong>${i.title}</strong><p>${i.text}</p></div></div>`).join("")}</div></details>`;
 }
+function journalInsightsCard(ar){
+  const results=journalCorrelations();
+  return `<section class="insights-card journal-insights"><div class="insights-head"><small>${ar?"دفتر اليومية":"JOURNAL"}</small></div>
+    ${results.length?`<div class="journal-correlations">${results.map(f=>{
+      const bad=f.diff>0,label=ar?f.ar:f.en,impact=bad?-f.diff:Math.abs(f.diff);
+      const text=bad
+        ?(ar?`الاستشفاء أقل بمعدل ${f.diff} نقطة في الليالي التي تضمنت: ${label}.`:`Recovery averages ${f.diff}pp lower on nights with ${label.toLowerCase()}.`)
+        :(ar?`الاستشفاء أعلى بمعدل ${Math.abs(f.diff)} نقطة في الليالي التي تضمنت: ${label}.`:`Recovery averages ${Math.abs(f.diff)}pp higher on nights with ${label.toLowerCase()}.`);
+      return `<div class="journal-correlation"><strong class="${bad?"up":"down"}">${impact>0?"+":""}${impact}pp</strong><p>${esc(text)}</p></div>`;
+    }).join("")}</div>`
+    :`<p class="journal-empty">${ar?"سجّل دفتر اليومية من تبويب الحيوية لبضعة أيام لتظهر هنا أنماط مرتبطة بالاستشفاء.":"Log the Journal from the Vitals tab for a few days, and any patterns tied to Recovery will show up here."}</p>`}</section>`;
+}
 function renderInsights(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",weekAgo=Date.now()-7*86400000;
@@ -336,6 +348,7 @@ function renderInsights(){
     <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
   ${metricGuideCard(ar)}
+  ${journalInsightsCard(ar)}
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
 }
 function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"الرئيسية":"Home",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
@@ -352,13 +365,14 @@ function greetingLine(ar){
 }
 function renderOverview(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="home-overview";state.activeTab="home";persist();updatePrimaryTabs();
-  const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore();
+  const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore(),bedtime=computeBedtimeSuggestion();
   const items=buildInsights(),note=items[0];
   const resume=state.session&&sessions[state.session]&&state.index<sessions[state.session].exercises.length;
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
   app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"الرئيسية":"HOME"}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
     ${strainRecoveryCard(ar)}
+    <section class="bedtime-card"><div class="bedtime-row"><span>${ar?"موعد النوم الليلة":"BEDTIME TONIGHT"}</span><strong>${bedtime.time}</strong></div><small>${ar?`لاستيقاظ ${bedtime.wakeTime} · ${bedtime.need}h مطلوبة`:`For your ${bedtime.wakeTime} wake-up · ${bedtime.need}h needed`}</small></section>
     <section class="today-strip home-today-card"><div><span>${ar?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?(ar?"متابعة ←":"Resume →"):(ar?"ابدأ ←":"Start →")}</button></section>
     ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
   document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
@@ -920,6 +934,40 @@ function computeSleepPerformance(dateStr=isoDay()){
   const need=computeSleepNeed(dateStr);
   return {...need,actual:entry.hours,performance:Math.max(0,Math.round(entry.hours/need.need*100))};
 }
+// A Sleep Coach-style proactive nudge, not a retrospective grade: works
+// backward from tomorrow's Sleep Need (which already factors in today's
+// strain and any recent sleep debt) and your usual wake time to say when
+// to actually go to bed tonight.
+function computeBedtimeSuggestion(){
+  const tomorrow=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  const need=computeSleepNeed(tomorrow),wakeTime=REP_HEALTH_GUIDE.rules.wakeTime;
+  const [wh,wm]=wakeTime.split(":").map(Number);
+  const minutes=(((wh*60+wm)-Math.round(need.need*60))%1440+1440)%1440;
+  const time=`${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+  return {time,wakeTime,need:need.need};
+}
+// A small, low-friction set of behavior factors rather than WHOOP's ~100 -
+// journal compliance drops fast past a handful of daily toggles, and a
+// correlation is only worth showing once enough days exist either way.
+const JOURNAL_FACTORS=[
+  {key:"caffeineLate",en:"Caffeine after 2pm",ar:"كافيين بعد الساعة 2 ظهراً"},
+  {key:"screenLate",en:"Screen right before bed",ar:"شاشة قبل النوم مباشرة"},
+  {key:"heavyMeal",en:"A heavy or late meal",ar:"وجبة ثقيلة أو متأخرة"},
+  {key:"relaxed",en:"Stretched or relaxed before bed",ar:"تمدد أو استرخاء قبل النوم"}
+];
+function journalCorrelations(){
+  const byFactor=JOURNAL_FACTORS.map(f=>({...f,with:[],without:[]}));
+  for(const [date,day] of Object.entries(state.daily?.journal||{})){
+    const rec=computeRecoveryScore(date);
+    if(!rec||rec.calibrating)continue;
+    for(const f of byFactor)(day.checked?.[f.key]?f.with:f.without).push(rec.score);
+  }
+  const avg=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+  return byFactor.filter(f=>f.with.length>=3&&f.without.length>=3).map(f=>{
+    const withAvg=avg(f.with),withoutAvg=avg(f.without),diff=Math.round(withoutAvg-withAvg);
+    return {...f,diff,withAvg:Math.round(withAvg),withoutAvg:Math.round(withoutAvg),days:f.with.length+f.without.length};
+  }).filter(f=>Math.abs(f.diff)>=5).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+}
 function computeRecoveryScore(dateStr=isoDay()){
   const sleepEntry=state.sleepLogs.find(s=>s.date===dateStr);
   const components=[];
@@ -1001,6 +1049,14 @@ function sleepTrackerCard(ar){
     <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. الحقول الاختيارية تحسّن دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. The optional fields improve the Recovery score's accuracy."}</p>
     ${visibleRows?`<div class="sleep-history">${visibleRows}</div>`:""}
     ${restRows?`<details class="sleep-history-more"><summary>${ar?`عرض ${restEntries.length} ليالٍ إضافية`:`Show ${restEntries.length} more night${restEntries.length===1?"":"s"}`}</summary><div class="sleep-history">${restRows}</div></details>`:""}</article>`;
+}
+// Logs against last night specifically (not "today"), since these factors
+// describe the evening that led into the sleep just recorded above.
+function journalCard(ar){
+  const b=dailyBucket("journal");
+  return `<section class="recovery-card wide journal-card"><span class="card-kicker">${ar?"عن الليلة الماضية":"ABOUT LAST NIGHT"}</span><h2>${ar?"دفتر اليومية":"Journal"}</h2>
+    <div class="module-checklist journal-list">${JOURNAL_FACTORS.map(f=>`<label><input type="checkbox" data-daily-key="${f.key}" ${b.checked[f.key]?"checked":""}><span><strong>${esc(ar?f.ar:f.en)}</strong></span></label>`).join("")}</div>
+    <p class="sleep-hint">${ar?"سجّل ما ينطبق، وستظهر أنماط الاستشفاء المرتبطة بها في التحليلات بعد بضعة أيام.":"Log what applied, and any Recovery patterns tied to them will show up in Insights after a few days."}</p></section>`;
 }
 function sleepSummaryCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
@@ -1186,6 +1242,7 @@ function bindVitalsTools(){
   document.querySelector("[data-vitals-check-now]")?.addEventListener("click",()=>fetchPendingVitals(true));
   document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value,resp=document.querySelector("[data-sleep-resp]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr,resp)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
   document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderVitals();});
+  document.querySelectorAll(".journal-list [data-daily-key]").forEach(el=>el.onchange=()=>{if(el.checked&&navigator.vibrate)navigator.vibrate(30);const b=dailyBucket("journal");b.checked[el.dataset.dailyKey]=el.checked;persist();renderVitals();});
 }
 function renderVitals(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="vitals";state.activeTab="vitals";persist();updatePrimaryTabs();
@@ -1194,6 +1251,7 @@ function renderVitals(){
   ${strainRecoveryCard(ar)}
   ${vitalsScreenshotCard(ar)}
   ${sleepTrackerCard(ar)}
+  ${journalCard(ar)}
   ${activeEnergyCard(ar)}
   ${importCard(ar)}`;
   bindVitalsTools();
