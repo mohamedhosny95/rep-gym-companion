@@ -14,7 +14,8 @@ const ICONS={
   download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7,10 12,15 17,10"/><line x1="4" y1="20" x2="20" y2="20"/></svg>',
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg>',
   flame:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1.5 3-2 4.5-2 8a2 2 0 0 0 4 0c0-1-.5-2-.5-2.5 2 1.5 3.5 4 3.5 6.5a5 5 0 0 1-10 0c0-4.5 3-6 3-9 .5.5 1.5 1.5 2 3z"/></svg>',
-  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>'
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
+  heartbeat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-10-9.5C.5 7.5 3 4 6.5 4c2 0 3.5 1.2 4.5 2.8C12 5.2 13.5 4 15.5 4 19 4 21.5 7.5 20 11.5 17.5 16.4 12 21 12 21z"/><polyline points="6,13 9,13 10.5,10 12.5,16 14,13 18,13"/></svg>'
 };
 const sessions = {
   morning: {
@@ -146,6 +147,7 @@ const state = {
   pairBusy:false, pairMessage:"", reminderExpanded:{}, newTemplateOpen:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
+  vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -322,8 +324,8 @@ function renderInsights(){
   </section>
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
 }
-function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
-function setPrimaryTab(tab){state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else if(tab==="insights")renderInsights();else renderHome();}
+function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
+function setPrimaryTab(tab){state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else if(tab==="insights")renderInsights();else if(tab==="vitals")renderVitals();else renderHome();}
 function renderCareHub(){renderHygiene();}
 
 function renderHome() {
@@ -339,7 +341,7 @@ function renderHome() {
       <p>${u.heroSub}</p>
     </section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${state.lang==="ar"?"يوم متتالٍ":"day streak"}</span></div>`:""}
-    ${strainRecoveryCard(state.lang==="ar")}
+    ${vitalsTeaserStrip(state.lang==="ar")}
     <div class="today-strip"><span>${state.lang==="ar"?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div>
     ${healthStatusStrip()}
     ${reminderStrip("train")}
@@ -365,6 +367,7 @@ function renderHome() {
     const continuing = state.session === id && state.index > 0 && state.index < sessions[id].exercises.length && state.sessionStartedAt;
     continuing ? startSession(id) : showSessionPreview(id);
   }));
+  document.querySelector("[data-goto-vitals]")?.addEventListener("click", ()=>setPrimaryTab("vitals"));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-log-activity]").addEventListener("click", showLogActivity);
   document.querySelector("[data-history]").addEventListener("click", renderHistory);
@@ -708,7 +711,7 @@ function renderRecovery() {
   const check = saved.checkin || {};
   app.innerHTML = `<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
     <section class="recovery-grid">
-      ${sleepTrackerCard(false)}
+      <article class="recovery-card" data-goto-vitals style="cursor:pointer"><span class="card-kicker">FROM APPLE WATCH</span><h2>Sleep &amp; vitals log</h2><p>Log bedtime/wake, HRV, and resting heart rate — or import them from an Apple Health screenshot — in the Vitals tab.</p></article>
       <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:15 AM wake, aim for 9:15 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Sun · Tue · Thu</span><h2>After lifting</h2><ul><li>Foam roll lower body + back in the evening, ~8 min.</li><li>Massage gun before sleep, targeted, ~6–8 min.</li><li>Skip routine icing; use ice only for actual joint pain.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Friday</span><h2>Active recovery</h2><ul><li>No gym and no morning circuit.</li><li>Optional light walking and 5–10 min gentle stretching.</li><li><strong>Legs up the wall:</strong> 5 min, breathe slowly.</li><li>Soreness should resolve, not accumulate.</li></ul></article>
@@ -722,7 +725,7 @@ function renderRecovery() {
 }
 function renderRecoveryArabic(){
   app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}<section class="recovery-grid">
-  ${sleepTrackerCard(true)}
+  <article class="recovery-card" data-goto-vitals style="cursor:pointer"><span class="card-kicker">من ساعة أبل ووتش</span><h2>سجل النوم والحيوية</h2><p>سجّل وقت النوم والاستيقاظ وتقلب معدل القلب ونبض الراحة — أو استوردها من لقطة شاشة صحة أبل — من تبويب الحيوية.</p></article>
   <article class="recovery-card"><span class="card-kicker">كل يوم</span><h2>الأساسيات</h2><ul><li><strong>النوم:</strong> 7 ساعات على الأقل؛ مع الاستيقاظ 4:15 ص استهدف 9:15 م.</li><li><strong>الماء:</strong> عند الاستيقاظ وطوال الصباح، خصوصاً مع حرارة القاهرة.</li><li><strong>الإفطار:</strong> بروتين وكربوهيدرات بعد تمرين الصباح.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الأحد · الثلاثاء · الخميس</span><h2>بعد الجيم</h2><ul><li>Foam roller للجسم السفلي والظهر مساءً، نحو 8 دقائق.</li><li>مسدس المساج قبل النوم، 6–8 دقائق.</li><li>لا تستخدم الثلج روتينياً؛ فقط لألم مفصل حقيقي.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الجمعة</span><h2>استشفاء نشط</h2><ul><li>لا جيم ولا دائرة صباحية.</li><li>مشي خفيف وإطالة 5–10 دقائق اختياريان.</li><li><strong>الرجلان على الحائط:</strong> 5 دقائق مع تنفس بطيء.</li><li>يجب أن يقل الإجهاد لا أن يتراكم.</li></ul></article>
@@ -741,7 +744,7 @@ function updateCheckin(){
   saved.checkin=c; persistDebounced();
 }
 function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),ar=state.lang==="ar",decision=gate.hold?(ar?"يوم خفيف إضافي · لا تزيد الحمل":"Extra light day · hold progression"):(ar?"استمر حسب الخطة":"Proceed as planned");return `<section class="decision-card ${gate.hold?"hold":""}"><div><small>${ar?"قرار الاستشفاء":"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${gate.stale?(ar?"سجّل مراجعة حديثة لتفعيل بوابة التقدم.":"Log a fresh check-in to activate progression gating."):(ar?`${gate.flags} علامات خطر في آخر مراجعة.`:`${gate.flags} red flags in the latest check-in.`)}</p></div><div><strong>${ar?`الأسبوع ${p.week}`:`WEEK ${p.week}`}</strong><span>${p.review?(ar?"المراجعة مستحقة":"Review due"):(ar?"المراجعة في الأسبوع 8":"Review at week 8")}</span>${p.stalled.length>=2?`<em>${ar?`${p.stalled.length} تمارين متوقفة`:`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
-function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr)){if(navigator.vibrate)navigator.vibrate(30);renderRecovery();}});document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderRecovery();});}
+function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));document.querySelector("[data-goto-vitals]")?.addEventListener("click",()=>setPrimaryTab("vitals"));}
 function saveRecoveryCheckin(){updateCheckin();const c={...saved.checkin,date:new Date().toISOString()},flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>x.date.slice(0,10)!==isoDay());state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,24);queueHealth("recovery",c);persist();renderRecovery();}
 
 function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
@@ -863,7 +866,7 @@ function metricBaseline(field,days=30,beforeDate=null){
 function computeRecoveryScore(dateStr=isoDay()){
   const minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours,sleepEntry=state.sleepLogs.find(s=>s.date===dateStr);
   const components=[];
-  if(sleepEntry)components.push({weight:35,value:Math.max(0,Math.min(100,Math.round(sleepEntry.hours/minSleep*100)))});
+  if(sleepEntry?.hours)components.push({weight:35,value:Math.max(0,Math.min(100,Math.round(sleepEntry.hours/minSleep*100)))});
   const hrvBase=metricBaseline("hrv",30,dateStr);
   if(sleepEntry?.hrv&&hrvBase)components.push({weight:25,value:Math.max(0,Math.min(100,Math.round(50+(sleepEntry.hrv-hrvBase)/hrvBase*250)))});
   const rhrBase=metricBaseline("rhr",30,dateStr);
@@ -900,6 +903,15 @@ function strainRecoveryCard(ar){
     <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"#ff8b3d")}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"Strain"}</span></div></div><small>${ar?"من التمارين المسجلة اليوم":"From today's logged training"}</small></article>
   </section>`;
 }
+function vitalsTeaserStrip(ar){
+  const recovery=computeRecoveryScore(),strain=computeStrainScore();
+  const recColor=recovery?{green:"var(--acid)",yellow:"var(--orange)",red:"#ff6b6b"}[recovery.band]:"var(--muted)";
+  return `<button class="vitals-teaser" data-goto-vitals type="button">
+    ${miniRing(recovery?recovery.score:0,recColor,44,5)}
+    <span class="vitals-teaser-copy"><small>${ar?"الاستشفاء اليوم":"RECOVERY TODAY"}</small><strong>${recovery?`${recovery.score}%`:"—"} · ${ar?"إجهاد":"Strain"} ${strain}</strong></span>
+    <span class="vitals-teaser-arrow" aria-hidden="true">${ICONS.heartbeat}</span>
+  </button>`;
+}
 function sleepTrackerCard(ar){
   const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const rows=sorted.slice(0,7).map(s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString(ar?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${ar?"حذف":"Delete"}">×</button></div>`).join("");
@@ -909,6 +921,82 @@ function sleepTrackerCard(ar){
     <div class="sleep-form-optional"><label>${ar?"تقلب معدل ضربات القلب (اختياري)":"HRV ms (optional)"}<input type="number" min="0" max="300" step="1" inputmode="numeric" data-sleep-hrv value="${today?.hrv||""}" placeholder="${ar?"مثال 55":"e.g. 55"}"></label><label>${ar?"نبض الراحة (اختياري)":"Resting HR (optional)"}<input type="number" min="0" max="200" step="1" inputmode="numeric" data-sleep-rhr value="${today?.rhr||""}" placeholder="${ar?"مثال 58":"e.g. 58"}"></label></div>
     <p class="sleep-hint">${ar?"اقرأ الوقتين من تطبيق الصحة على أبل ووتش، ثم سجّلهما هنا يدوياً. تقلب معدل ضربات القلب ونبض الراحة اختياريان ويحسّنان دقة نتيجة الاستشفاء.":"Read both times off the Apple Watch Health app, then log them here manually. HRV and resting heart rate are optional and improve the Recovery score's accuracy."}</p>
     ${rows?`<div class="sleep-history">${rows}</div>`:""}</article>`;
+}
+function vitalsScreenshotCard(ar){
+  const connected=Boolean(localStorage.getItem(syncKeyStorage)),d=state.vitalsDraft;
+  if(d){
+    return `<section class="vitals-import-card is-review"><div class="supplement-head"><div><small>${ar?"راجع القيم المستخرجة":"REVIEW EXTRACTED VALUES"}</small><strong>${ar?"من لقطة صحة أبل":"From Apple Health screenshot"}</strong></div></div>
+    <div class="vitals-review-grid">
+      <label><span>${ar?"ساعات النوم":"Sleep hours"}</span><input type="number" min="0" max="16" step="0.1" inputmode="decimal" data-vitals-field="sleep_hours" value="${d.sleep_hours??""}"></label>
+      <label><span>${ar?"وقت النوم":"Bedtime"}</span><input type="time" data-vitals-field="bedtime" value="${d.bedtime||""}"></label>
+      <label><span>${ar?"وقت الاستيقاظ":"Wake time"}</span><input type="time" data-vitals-field="wake_time" value="${d.wake_time||""}"></label>
+      <label><span>${ar?"تقلب القلب (ms)":"HRV (ms)"}</span><input type="number" min="0" max="300" step="1" inputmode="numeric" data-vitals-field="hrv_ms" value="${d.hrv_ms??""}"></label>
+      <label><span>${ar?"نبض الراحة (bpm)":"Resting HR (bpm)"}</span><input type="number" min="0" max="200" step="1" inputmode="numeric" data-vitals-field="resting_hr_bpm" value="${d.resting_hr_bpm??""}"></label>
+    </div>
+    ${d.notes?`<p class="vitals-note">${esc(d.notes)}</p>`:""}
+    <div class="vitals-review-actions"><button class="quiet" data-vitals-discard type="button">${ar?"تجاهل":"Discard"}</button><button data-vitals-save type="button">${ar?"حفظ في سجل اليوم":"Save to today's log"}</button></div>
+    ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
+  }
+  return `<section class="vitals-import-card"><div class="supplement-head"><div><small>${ar?"استيراد سريع":"QUICK IMPORT"}</small><strong>${ar?"لقطة شاشة من صحة أبل":"Apple Health screenshot"}</strong></div></div>
+    <p class="vitals-import-copy">${ar?"التقط شاشة من تطبيق الصحة أو ساعة أبل (النوم، تقلب القلب، نبض الراحة) وسنقرأ الأرقام تلقائياً لمراجعتها قبل الحفظ.":"Screenshot the Health app or your Apple Watch face (sleep, HRV, resting HR) and we'll read the numbers for you to review before saving."}</p>
+    ${connected?`<label class="vitals-upload-button">${state.vitalsBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"⬆ اختر لقطة الشاشة":"⬆ Choose screenshot")}<input type="file" accept="image/*" data-vitals-screenshot ${state.vitalsBusy?"disabled":""}></label>`
+      :`<button class="quiet vitals-connect-button" data-vitals-connect type="button">${ar?"اتصل من تبويب التغذية لتفعيل الاستيراد ←":"Connect in the Nutrition tab to enable import →"}</button>`}
+    ${state.vitalsStatus?`<p class="vitals-status ${state.vitalsError?"is-error":""}">${esc(state.vitalsStatus)}</p>`:""}</section>`;
+}
+async function analyzeVitalsImage(file){
+  if(!file)return;
+  const key=localStorage.getItem(syncKeyStorage);
+  if(!key){state.vitalsStatus=state.lang==="ar"?"اتصل أولاً من تبويب التغذية.":"Connect in the Nutrition tab first.";state.vitalsError=true;renderVitals();return;}
+  try{
+    const image=await prepareFoodImage(file);
+    state.vitalsBusy=true;state.vitalsError=false;state.vitalsStatus=state.lang==="ar"?"جارٍ قراءة اللقطة…":"Reading screenshot…";renderVitals();
+    const response=await fetch("/api/vitals/analyze",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key},body:JSON.stringify(image)}),data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.ok){const error=Error(data.error||`Analysis failed (${response.status})`);error.auth=response.status===401;throw error;}
+    if(data.vitals?.recognizable===false)throw Error(data.vitals.notes||(state.lang==="ar"?"تعذّرت قراءة أي بيانات من هذه الصورة.":"Couldn't read any vitals from this image."));
+    state.vitalsDraft=data.vitals;state.vitalsStatus="";
+  }catch(error){
+    state.vitalsError=true;
+    if(error.auth){localStorage.removeItem(syncKeyStorage);state.syncState="auth";state.vitalsStatus=state.lang==="ar"?"مفتاح الاقتران غير صحيح أو تغيّر. أعد الاتصال من تبويب التغذية.":"The pairing key is incorrect or changed. Reconnect from the Nutrition tab.";}
+    else state.vitalsStatus=String(error.message||error);
+  }finally{
+    state.vitalsBusy=false;persist();renderVitals();
+  }
+}
+function saveVitalsFromDraft(){
+  const d=state.vitalsDraft;if(!d)return;
+  document.querySelectorAll("[data-vitals-field]").forEach(input=>{const f=input.dataset.vitalsField,v=input.value;d[f]=v===""?null:(input.type==="number"?Number(v):v);});
+  const date=isoDay(),existing=state.sleepLogs.find(s=>s.date===date);
+  const bedtime=d.bedtime||existing?.bedtime||"",wake=d.wake_time||existing?.wake||"";
+  let hours=computeSleepHours(bedtime,wake);
+  if((!hours||hours<=0)&&Number.isFinite(Number(d.sleep_hours))&&Number(d.sleep_hours)>0)hours=Math.round(Number(d.sleep_hours)*10)/10;
+  if((!hours||hours<=0)&&existing?.hours)hours=existing.hours;
+  if(!hours||hours<=0){state.vitalsStatus=state.lang==="ar"?"لم يتم العثور على مدة نوم صالحة. أضف وقت النوم/الاستيقاظ أعلاه ثم احفظ مرة أخرى.":"No valid sleep duration found. Fill in bedtime/wake above, then save again.";state.vitalsError=true;renderVitals();return;}
+  const hrvValue=Number(d.hrv_ms),rhrValue=Number(d.resting_hr_bpm);
+  const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null);
+  state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
+  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv,rhr});
+  state.sleepLogs=state.sleepLogs.slice(0,120);
+  queueHealth("sleep",{date,sleep:hours});
+  state.vitalsDraft=null;state.vitalsStatus=state.lang==="ar"?"تم الحفظ في سجل اليوم.":"Saved to today's log.";state.vitalsError=false;
+  persist();renderVitals();
+}
+function discardVitalsDraft(){state.vitalsDraft=null;state.vitalsStatus="";state.vitalsError=false;renderVitals();}
+function bindVitalsTools(){
+  document.querySelector("[data-vitals-screenshot]")?.addEventListener("change",e=>analyzeVitalsImage(e.target.files?.[0]));
+  document.querySelector("[data-vitals-connect]")?.addEventListener("click",()=>setPrimaryTab("food"));
+  document.querySelector("[data-vitals-save]")?.addEventListener("click",saveVitalsFromDraft);
+  document.querySelector("[data-vitals-discard]")?.addEventListener("click",discardVitalsDraft);
+  document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
+  document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderVitals();});
+}
+function renderVitals(){
+  stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="vitals";state.activeTab="vitals";persist();updatePrimaryTabs();
+  const ar=state.lang==="ar";
+  app.innerHTML=`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
+  ${strainRecoveryCard(ar)}
+  ${vitalsScreenshotCard(ar)}
+  ${sleepTrackerCard(ar)}`;
+  bindVitalsTools();
 }
 function weightTrackerCard(ar){
   const current=currentWeekWeight(),sorted=[...state.bodyWeights].sort((a,b)=>b.week.localeCompare(a.week));
@@ -1034,7 +1122,7 @@ document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):state.view==="insights"?renderInsights():state.view==="vitals"?renderVitals():renderHome();network();});
 document.querySelector("#langButton").textContent=U().language;
 function showToast(message){
   document.querySelector(".toast")?.remove();
@@ -1064,5 +1152,5 @@ async function installApp(){
 function network(){const el=document.querySelector("#networkStatus");el.classList.toggle("is-offline",!navigator.onLine);el.lastChild.textContent=` ${navigator.onLine?U().offlineReady:U().offlineMode}`;}
 addEventListener("online",()=>{network();syncPending();});addEventListener("offline",network);network();
 if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{const reg=await navigator.serviceWorker.register("./sw.js");reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});});
-updatePrimaryTabs();state.activeTab==="food"?renderNutrition():state.activeTab==="care"?renderHygiene():renderHome();
+updatePrimaryTabs();state.activeTab==="food"?renderNutrition():state.activeTab==="care"?renderHygiene():state.activeTab==="insights"?renderInsights():state.activeTab==="vitals"?renderVitals():renderHome();
 if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,800);

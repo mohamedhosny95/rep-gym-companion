@@ -10,6 +10,8 @@ const HEALTH_DATA_SOURCES = {
 
 const FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion_size (string), estimated_weight_g (number), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), sugar_g (number), sodium_mg (number), confidence (High, Medium, or Low), confidence_pct (0-100 integer), notes (string), recognizable (boolean). All nutrition values are estimates. Use 0 instead of null. Sum multiple foods. If the input is Arabic, understand it natively and include the Arabic name after the English name.`;
 
+const VITALS_SCHEMA = `Return only a JSON object with: sleep_hours (number or null), bedtime (string "HH:MM" 24-hour or null), wake_time (string "HH:MM" 24-hour or null), hrv_ms (number or null), resting_hr_bpm (number or null), confidence (High, Medium, or Low), notes (string), recognizable (boolean). Extract only values that are clearly visible in the screenshot; use null for anything not shown or ambiguous. Never guess or estimate a value that isn't legible.`;
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
@@ -113,6 +115,26 @@ function normalizeNutrition(value = {}) {
   return nutrition;
 }
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function normalizeVitals(value = {}) {
+  const clampOrNull = (raw, max) => {
+    const number = Number(raw);
+    return Number.isFinite(number) && number > 0 ? Math.min(number, max) : null;
+  };
+  const time = raw => TIME_PATTERN.test(String(raw || "")) ? raw : null;
+  return {
+    sleep_hours: clampOrNull(value.sleep_hours, 16),
+    bedtime: time(value.bedtime),
+    wake_time: time(value.wake_time),
+    hrv_ms: clampOrNull(value.hrv_ms, 300),
+    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
+    confidence: ["High", "Medium", "Low"].includes(value.confidence) ? value.confidence : "Low",
+    notes: safeText(value.notes, 400),
+    recognizable: value.recognizable !== false
+  };
+}
+
 function parseModelJson(text) {
   const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const match = cleaned.match(/\{[\s\S]*\}/);
@@ -166,6 +188,21 @@ async function analyzeFood(request, env) {
     return json({ ok: true, nutrition, logMethod: mode === "photo" ? "Photo" : mode === "restaurant" ? "Restaurant" : "Ingredients" });
   } catch (error) {
     return json({ ok: false, error: safeText(error?.message || "Food analysis failed.", 300) }, 502);
+  }
+}
+
+async function analyzeVitalsScreenshot(request, env) {
+  if (await rateLimited(request, "vitals-analyze", 20, 60)) return rateLimitResponse();
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  const body = await request.json().catch(() => null);
+  const image = safeText(body?.image, 12_000_000), mimeType = /^image\/(jpeg|png|webp|heic|heif)$/i.test(body?.mimeType || "") ? body.mimeType : "image/jpeg";
+  if (!image) return json({ ok: false, error: "Image data is missing." }, 400);
+  try {
+    const prompt = `This is a screenshot from the Apple Health app or an Apple Watch face. Read sleep duration, bedtime, wake time, Heart Rate Variability (HRV), and Resting Heart Rate wherever they are visible. ${VITALS_SCHEMA}`;
+    const raw = await geminiGenerate(env, [{ text: prompt }, { inlineData: { mimeType, data: image } }], true);
+    return json({ ok: true, vitals: normalizeVitals(parseModelJson(raw)) });
+  } catch (error) {
+    return json({ ok: false, error: safeText(error?.message || "Screenshot analysis failed.", 300) }, 502);
   }
 }
 
@@ -489,6 +526,11 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/food/analyze") {
     if (request.method === "POST") return analyzeFood(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/vitals/analyze") {
+    if (request.method === "POST") return analyzeVitalsScreenshot(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }

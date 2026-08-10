@@ -57,7 +57,7 @@ The deployed server expects these environment variables (see `.env.example`):
 - `NOTION_TOKEN` — secret Notion integration token
 - `NOTION_DATA_SOURCE_ID` — workout database data-source ID
 - `REP_SYNC_KEY` — private pairing key entered in the app
-- `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis
+- `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
 Recovery, nutrition, hygiene, and food databases use their checked-in public
 data-source IDs by default. They can be overridden with
