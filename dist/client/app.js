@@ -262,6 +262,10 @@ function buildInsights(){
   if(sleepAvg!==null)out.push({tone:sleepAvg<minSleep?"warn":"good",text:sleepAvg<minSleep?(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — أقل من الحد الأدنى ${minSleep} ساعات.`:`Sleep has averaged ${sleepAvg}h over 7 days — below your ${minSleep}h minimum.`):(ar?`متوسط النوم ${sleepAvg} ساعة خلال 7 أيام — عند الهدف أو أعلى.`:`Sleep has averaged ${sleepAvg}h over 7 days — at or above target.`)});
   const todayRecovery=computeRecoveryScore(),yesterdayStrain=computeStrainScore(new Date(Date.now()-86400000).toISOString().slice(0,10));
   if(todayRecovery?.band==="red"&&yesterdayStrain>=14)out.push({tone:"warn",text:ar?`استشفاء منخفض (${todayRecovery.score}%) بعد يوم إجهاد عالٍ أمس (${yesterdayStrain}). خذ يوماً أخف اليوم.`:`Low recovery (${todayRecovery.score}%) after a high-strain day yesterday (${yesterdayStrain}). Take it lighter today.`});
+  const last7=Array.from({length:7},(_,i)=>{const d=new Date(Date.now()-(6-i)*86400000).toISOString().slice(0,10);return {strain:computeStrainScore(d),recovery:computeRecoveryScore(d)};});
+  const strainedDays=last7.filter(d=>d.strain>=14),strainedNotGreen=strainedDays.filter(d=>d.recovery&&d.recovery.band!=="green").length;
+  if(strainedNotGreen>=3)out.push({tone:"warn",text:ar?`${strainedNotGreen} أيام من آخر 7 جمعت بين إجهاد مرتفع واستشفاء غير جاهز (أصفر أو أحمر). هذا النمط الأسبوعي هو ما يؤدي للإرهاق فعلياً — فكّر في أسبوع أخف أو يوم راحة إضافي قريباً.`:`${strainedNotGreen} of the last 7 days combined high strain with recovery that wasn't green. That weekly pattern — not any single hard day — is what actually compounds into burnout. Consider a lighter week or an extra rest day soon.`});
+  else if(strainedDays.length>=3&&strainedNotGreen===0)out.push({tone:"good",text:ar?"عدة أيام إجهاد مرتفع هذا الأسبوع والاستشفاء ظل جاهزاً (أخضر) — التوازن بين الحمل والراحة جيد الآن.":"Several high-strain days this week and recovery has stayed green — load and recovery are well balanced right now."});
   return out;
 }
 function sparklineSvg(points,{width=280,height=64,color="var(--acid)"}={}){
