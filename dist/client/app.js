@@ -297,7 +297,7 @@ function weeklyTrainingVolume(weeks=6){
 function metricGuideCard(ar){
   const items=[
     {color:"#7dc9ff",title:ar?"النوم":"Sleep performance",text:ar?"نسبة ما نمته الليلة الماضية مقابل حاجتك الشخصية من النوم — 100% تعني أنك استوفيت الحاجة. الحاجة نفسها ليست رقماً ثابتاً: تُبنى من متوسط نومك المتجدد على 14 يوماً، وتزيد مع إجهاد الأمس ودَين النوم المتراكم من ليالٍ قصيرة.":"How much of your personal sleep need you actually got last night. 100% means you met it — the need itself isn't a fixed number, it's your rolling 14-day average, adjusted up by yesterday's training strain and any sleep debt from recent short nights."},
-    {color:"var(--acid)",title:ar?"الاستشفاء":"Recovery",text:ar?"مدى جاهزية جسمك اليوم، مبني من أداء النوم وتقلب معدل ضربات القلب ونبض الراحة ومعدل التنفس — كل واحد يُقارَن بخط أساسك الشخصي، لا بمعيار عام. أخضر يعني جاهز للدفع، أصفر يعني خفف الحمل قليلاً، أحمر يعني أعطِ الجسم وقتاً.":"How ready your body is today, blended from sleep performance plus HRV, resting heart rate, and respiratory rate — each compared against your own recent baseline, not a generic norm. Green means push, yellow means ease off, red means prioritize rest. Components only count once you have a few days of history to compare against."},
+    {color:"var(--acid)",title:ar?"الاستشفاء":"Recovery",text:ar?"مدى جاهزية جسمك اليوم، مبني من أداء النوم وتقلب معدل ضربات القلب ونبض الراحة ومعدل التنفس — كل واحد يُقارَن بخط أساسك الشخصي، لا بمعيار عام. أخضر يعني جاهز للدفع، أصفر يعني خفف الحمل قليلاً، أحمر يعني أعطِ الجسم وقتاً. في الأيام الأولى ستظهر كلمة «لا يزال يُعاير»: خطوط الأساس لتقلب القلب والنبض تحتاج 3 ليالٍ سابقة على الأقل، وحتى ذلك الحين تُبنى النتيجة من النوم وحده.":"How ready your body is today, blended from sleep performance plus HRV, resting heart rate, and respiratory rate — each compared against your own recent baseline, not a generic norm. Green means push, yellow means ease off, red means prioritize rest. In your first days it will read \"Still calibrating\": the HRV and heart-rate baselines need at least 3 prior nights, so until then the score rests on sleep alone and shouldn't be read as settled."},
     {color:"var(--blue)",title:ar?"الإجهاد":"Strain",text:ar?"مقياس من 0 إلى 21 لمقدار الحمل القلبي الذي تحمّله جسمك اليوم، من جهد التمارين المسجلة بالإضافة إلى النشاط العرضي من ساعتك. ليس جيداً أو سيئاً في حد ذاته — القراءة المفيدة هي مقارنته بالاستشفاء: إجهاد مرتفع بعد استشفاء منخفض هو ما يسبب الإرهاق فعلياً.":"A 0–21 scale of how much cardiovascular load today has put on your body — from logged training effort plus incidental activity from your Watch. It isn't good or bad by itself; the useful read is against Recovery. High strain stacked on low recovery, repeatedly, is what actually drives burnout — not a single hard day."}
   ];
   return `<section class="insights-card metric-guide"><div class="insights-head"><small>${ar?"ماذا تعني هذه الأرقام":"WHAT THESE NUMBERS MEAN"}</small></div><div class="metric-guide-grid">${items.map(i=>`<div class="metric-guide-item"><span class="metric-guide-dot" style="background:${i.color}"></span><div><strong>${i.title}</strong><p>${i.text}</p></div></div>`).join("")}</div></section>`;
@@ -913,7 +913,11 @@ function computeRecoveryScore(dateStr=isoDay()){
   if(checkin)components.push({weight:15,value:Math.max(0,100-recoveryFlags(checkin)*25-(checkin.pain?25:0))});
   if(!components.length)return null;
   const totalWeight=components.reduce((n,c)=>n+c.weight,0),score=Math.round(components.reduce((n,c)=>n+c.value*c.weight,0)/totalWeight);
-  return {score,band:score>=67?"green":score>=34?"yellow":"red"};
+  // Sleep performance alone can carry the score before HRV/RHR baselines exist
+  // (those need 3+ prior nights). Flag that so an early score isn't read as a
+  // settled one - it's directionally right but built from one signal, not four.
+  const calibrating=totalWeight<=45;
+  return {score,band:score>=67?"green":score>=34?"yellow":"red",calibrating};
 }
 // Whoop scores cardiovascular load for the whole day, not just structured
 // workouts. We have no continuous heart-rate feed to do that from a PWA, so
@@ -943,7 +947,7 @@ function miniRing(percent,color,size=56,strokeWidth=6){
 function strainRecoveryCard(ar){
   const recovery=computeRecoveryScore(),strain=computeStrainScore(),sleepPerf=computeSleepPerformance();
   const recColor=recovery?{green:"var(--acid)",yellow:"var(--orange)",red:"#ff6b6b"}[recovery.band]:"var(--muted)";
-  const recNote=!recovery?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):recovery.band==="green"?(ar?"جاهز للدفع":"Ready to push"):recovery.band==="yellow"?(ar?"متوسط، خفف الحمل قليلاً":"Moderate, ease off a little"):(ar?"منخفض، أعطِ الجسم وقتاً":"Low, prioritize rest");
+  const recNote=!recovery?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):recovery.calibrating?(ar?"لا يزال يُعاير":"Still calibrating"):recovery.band==="green"?(ar?"جاهز للدفع":"Ready to push"):recovery.band==="yellow"?(ar?"متوسط، خفف الحمل قليلاً":"Moderate, ease off a little"):(ar?"منخفض، أعطِ الجسم وقتاً":"Low, prioritize rest");
   const sleepColor=!sleepPerf?"var(--muted)":sleepPerf.performance>=90?"var(--acid)":sleepPerf.performance>=70?"var(--orange)":"#ff6b6b";
   const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
   const strainNote=strain>=14?(ar?"إجهاد مرتفع اليوم":"High load today"):strain>=7?(ar?"إجهاد معتدل":"Moderate load"):(ar?"من التمارين المسجلة اليوم":"From today's logged training");
@@ -1049,21 +1053,39 @@ function discardVitalsDraft(){state.vitalsDraft=null;state.vitalsStatus="";state
 // an AI guess). Keeps the same "a sleepLogs entry always has valid hours"
 // invariant as manual/screenshot entry: skips the sleep side if no duration
 // can be determined, but still applies active energy independently.
+// Physiologically plausible ranges for an adult at rest. A value outside these
+// means the import pipeline broke (a missing field, a mis-mapped Shortcut
+// variable), not that something remarkable happened - so drop it rather than
+// letting it silently skew a Recovery baseline for the next 30 days.
+const VITALS_SANE_RANGES={hrv:[5,300],rhr:[30,120],resp:[5,40]};
+function saneVital(raw,key){
+  const value=Number(raw),[min,max]=VITALS_SANE_RANGES[key];
+  return Number.isFinite(value)&&value>=min&&value<=max?value:null;
+}
 function applyVitalsEntry(entry){
   const existing=state.sleepLogs.find(s=>s.date===entry.date);
   const bedtime=entry.bedtime||existing?.bedtime||"",wake=entry.wake_time||existing?.wake||"";
   let hours=computeSleepHours(bedtime,wake);
   if((!hours||hours<=0)&&Number.isFinite(Number(entry.sleep_hours))&&Number(entry.sleep_hours)>0)hours=Math.round(Number(entry.sleep_hours)*10)/10;
   if((!hours||hours<=0)&&existing?.hours)hours=existing.hours;
-  const hrvValue=Number(entry.hrv_ms),rhrValue=Number(entry.resting_hr_bpm),respValue=Number(entry.respiratory_rate_bpm);
-  const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null),resp=Number.isFinite(respValue)&&respValue>0?respValue:(existing?.resp||null);
+  if(hours>16)hours=existing?.hours||null;
+  const dropped=[];
+  const readVital=(raw,key,label,fallback)=>{
+    const value=saneVital(raw,key);
+    if(value===null&&raw!==null&&raw!==undefined&&raw!=="")dropped.push(label);
+    return value??fallback??null;
+  };
+  const hrv=readVital(entry.hrv_ms,"hrv","HRV",existing?.hrv);
+  const rhr=readVital(entry.resting_hr_bpm,"rhr","resting HR",existing?.rhr);
+  const resp=readVital(entry.respiratory_rate_bpm,"resp","respiratory rate",existing?.resp);
   if(hours&&hours>0){
     state.sleepLogs=state.sleepLogs.filter(s=>s.date!==entry.date);
     state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours,hrv,rhr,resp});
     state.sleepLogs=state.sleepLogs.slice(0,120);
   }
   const activeEnergyValue=Number(entry.active_energy_kcal);
-  if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
+  if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0&&activeEnergyValue<=10000)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
+  return {date:entry.date,dropped,noSleep:!(hours&&hours>0)};
 }
 async function fetchPendingVitals(showStatus=false){
   const key=localStorage.getItem(syncKeyStorage);
@@ -1077,9 +1099,18 @@ async function fetchPendingVitals(showStatus=false){
     const data=await response.json().catch(()=>({}));
     if(!response.ok||!data.ok)throw Error(data.error||`Check failed (${response.status})`);
     if(data.entries.length){
-      data.entries.forEach(applyVitalsEntry);
+      const reports=data.entries.map(applyVitalsEntry);
       state.lastVitalsImportDate=data.entries[data.entries.length-1].date;
-      if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"تم استيراد بيانات جديدة.":"New data imported.";state.vitalsImportError=false;}
+      const ar=state.lang==="ar";
+      const problems=reports.filter(r=>r.dropped.length||r.noSleep);
+      if(problems.length){
+        const dropped=[...new Set(problems.flatMap(r=>r.dropped))];
+        const parts=[];
+        if(dropped.length)parts.push(ar?`قيم خارج النطاق المعقول تم تجاهلها: ${dropped.join("، ")}`:`Ignored out-of-range values: ${dropped.join(", ")}`);
+        if(problems.some(r=>r.noSleep))parts.push(ar?"لم تصل مدة نوم صالحة":"no valid sleep duration arrived");
+        state.vitalsImportStatus=(ar?"تم الاستيراد مع تحذيرات — ":"Imported with warnings — ")+parts.join(ar?" · ":" · ")+(ar?". تحقق من إعداد الاختصار.":". Check the Shortcut's setup.");
+        state.vitalsImportError=true;
+      }else if(showStatus){state.vitalsImportStatus=ar?"تم استيراد بيانات جديدة.":"New data imported.";state.vitalsImportError=false;}
     }else if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"لا توجد بيانات جديدة بعد.":"No new data yet.";state.vitalsImportError=false;}
     persist();
     if(showStatus||state.view==="vitals")renderVitals();
@@ -1087,9 +1118,19 @@ async function fetchPendingVitals(showStatus=false){
     if(showStatus){state.vitalsImportStatus=String(error.message||error);state.vitalsImportError=true;renderVitals();}
   }
 }
-function automatedImportCard(ar){
+// Days since the last automated import landed. Returns null when nothing has
+// ever synced (a different, non-alarming state than "your automation broke").
+function daysSinceVitalsImport(){
   const last=state.lastVitalsImportDate;
+  if(!last)return null;
+  const diff=Math.floor((new Date(isoDay()).getTime()-new Date(last).getTime())/86400000);
+  return Number.isFinite(diff)&&diff>=0?diff:null;
+}
+function automatedImportCard(ar){
+  const last=state.lastVitalsImportDate,stale=daysSinceVitalsImport();
+  const staleWarning=stale!==null&&stale>=2?`<p class="vitals-status is-error">${ar?`لم تصل بيانات جديدة منذ ${stale} أيام. تحقق من أن أتمتة الاختصار ما زالت تعمل في تطبيق الاختصارات ← تبويب الأتمتة.`:`No new data for ${stale} days. Check that the Shortcuts automation is still enabled under Shortcuts → Automation.`}</p>`:"";
   return `<section class="active-energy-card automated-import-card"><div class="supplement-head"><div><small>${ar?"استيراد تلقائي":"AUTOMATED IMPORT"}</small><strong>${last?(ar?`آخر مزامنة: ${last}`:`Last synced: ${last}`):(ar?"لم يُعدّ بعد":"Not set up yet")}</strong></div></div>
+    ${staleWarning}
     <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Set up an Apple Shortcuts automation to send your Health data here automatically every morning, without opening the app — see the README for full setup steps."}</p>
     <button class="quiet vitals-connect-button" data-vitals-check-now type="button">${ar?"تحقق الآن":"Check now"}</button>
     ${state.vitalsImportStatus?`<p class="vitals-status ${state.vitalsImportError?"is-error":""}">${esc(state.vitalsImportStatus)}</p>`:""}</section>`;
