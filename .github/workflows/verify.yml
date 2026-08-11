@@ -1,5 +1,12 @@
 name: Verify
 
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
 # Safety net only: catches syntax errors, dist/outputs drift, and functional
 # regressions (via a headless Playwright smoke test) before they reach
 # Cloudflare, which deploys straight from `main` on every push via its own
@@ -37,6 +44,13 @@ jobs:
 
       - name: Run Worker and state regression tests
         run: npm test
+
+      - name: Reject committed secret values
+        run: |
+          if git grep -nE '(NOTION_TOKEN|GEMINI_API_KEY|REP_SYNC_KEY)=[^[:space:]]+' -- ':!README.md' ':!.env.example'; then
+            echo "A secret-like value is committed."
+            exit 1
+          fi
 
       - name: Check outputs/ matches dist/client/ (run scripts/sync-static.mjs if this fails)
         run: |

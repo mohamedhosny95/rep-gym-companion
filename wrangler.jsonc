@@ -12,6 +12,14 @@
   "observability": {
     "enabled": true
   },
+  "durable_objects": {
+    "bindings": [
+      { "name": "PAIRING_COORDINATOR", "class_name": "PairingCoordinator" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-pairing-coordinator", "new_sqlite_classes": ["PairingCoordinator"] }
+  ],
   "triggers": {
     "crons": ["* * * * *"]
   },
