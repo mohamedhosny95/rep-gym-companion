@@ -18,8 +18,8 @@ test("every local script in the document exists",async()=>{
   assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
 });
 
-test("the v61 service worker precaches authentication and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v61/); assert.match(sw,/auth\.js\?v=61/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v62 service worker precaches authentication and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v62/); assert.match(sw,/auth\.js\?v=62/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
@@ -31,6 +31,8 @@ test("health navigation stays in document flow and food sync requires a verified
   assert.match(css,/\.health-subnav\{[^}]*position:relative/); assert.doesNotMatch(css,/\.health-subnav\{[^}]*position:sticky/);
   assert.match(js,/Notion did not return a verified save receipt/); assert.match(js,/Confirmed in Notion/);
   assert.match(js,/syncPending=async function\(force=false\)/); assert.match(js,/delete item\.nextAttemptAt/); assert.match(js,/entry\.notionError/);
+  assert.match(js,/SYNC_REQUEST_TIMEOUT_MS=25000/); assert.match(js,/SYNC_HEARTBEAT_MS=60000/); assert.match(js,/Notion confirmation timed out/);
+  assert.match(js,/addEventListener\("pageshow",resumeSync\)/); assert.match(js,/addEventListener\("focus",resumeSync\)/); assert.match(js,/setInterval\(resumeSync,SYNC_HEARTBEAT_MS\)/);
 });
 
 test("browser pairing keeps only a non-secret marker and synchronizes tabs",async()=>{

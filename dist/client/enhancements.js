@@ -2,6 +2,7 @@
    Kept separate from the recovered v55 client so upgrades remain reviewable. */
 (function(){
   const APP_SCHEMA=10,features=window.REP_FEATURES,health=window.REP_HEALTH_ENGINE;
+  const SYNC_REQUEST_TIMEOUT_MS=25000,SYNC_HEARTBEAT_MS=60000;
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DEFAULT_SCHEDULE={
     Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"cardio"},Tuesday:{morning:true,focus:"gym"},
@@ -78,7 +79,7 @@
     const pending=state.syncQueue.some(item=>item.id===`food-${entry.id}`);
     if(entry.notionSync==="synced"&&entry.notionUrl)return `<a class="food-sync-state is-synced" href="${esc(entry.notionUrl)}" target="_blank" rel="noopener">${ar?"✓ مؤكد في Notion":"✓ Confirmed in Notion"}</a>`;
     if(entry.notionSync==="failed"){const detail=safeText(entry.notionError,120);return `<span class="food-sync-state is-failed">${ar?`تعذرت المزامنة${detail?` · ${esc(detail)}`:""} · اضغط مزامنة الآن`:`Notion failed${detail?` · ${esc(detail)}`:""} · tap Sync now`}</span>`;}
-    if(pending)return `<span class="food-sync-state is-pending">${ar?"بانتظار تأكيد Notion":"Waiting for Notion confirmation"}</span>`;
+    if(pending)return `<span class="food-sync-state is-pending">${state.syncState==="syncing"?(ar?"جارٍ التأكيد في Notion…":"Confirming in Notion…"):(ar?"في قائمة المزامنة التلقائية":"Queued for automatic sync")}</span>`;
     return `<span class="food-sync-state">${ar?"محفوظ على هذا الجهاز فقط":"Saved on this device only"}</span>`;
   }
   foodEntryCard=function(entry){const ar=state.lang==="ar",time=new Date(entry.date).toLocaleTimeString(ar?"ar-EG":"en-US",{hour:"numeric",minute:"2-digit"});return `<article class="food-entry"><div><small>${esc(entry.mealType||"Meal")} · ${time} · ${esc(entry.logMethod||"Note")}</small><strong>${esc(entry.food_name||entry.rawNote||"Meal note")}</strong><span>${esc(entry.rawNote||entry.portion_size||"")}</span>${foodNotionStatus(entry,ar)}</div><div class="food-entry-macros"><b>${Math.round(Number(entry.calories)||0)} kcal</b><em>P ${Math.round(Number(entry.protein_g)||0)} · C ${Math.round(Number(entry.carbs_g)||0)} · F ${Math.round(Number(entry.fat_g)||0)}</em></div><div class="food-entry-actions"><button data-save-template="${esc(entry.id)}">${ar?"☆ احفظ كقالب":"☆ Save as template"}</button><button class="danger" data-delete-food="${esc(entry.id)}">${ar?"حذف":"Delete"}</button></div></article>`;};
@@ -140,7 +141,12 @@
       if(!manual&&item.nextAttemptAt&&Date.now()<item.nextAttemptAt)continue;
       try{
         const legacy=item.workout&&!item.kind,body=(legacy||item.kind==="workout")?{workout:item.workout}:{kind:item.kind,payload:item.payload},id=item.id||`workout-${item.workout?.id}`;
-        const response=await repAuth.fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-idempotency-key":id},body:JSON.stringify(body)}),data=await response.json().catch(()=>({}));
+        const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),SYNC_REQUEST_TIMEOUT_MS);
+        let response;
+        try{response=await repAuth.fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-idempotency-key":id},body:JSON.stringify(body),signal:controller.signal});}
+        catch(error){if(controller.signal.aborted)throw Error("Notion confirmation timed out; automatic retry is scheduled.");throw error;}
+        finally{clearTimeout(timeout);}
+        const data=await response.json().catch(()=>({}));
         const receiptMatches=data.verified===true&&(item.kind==="workout"||Boolean(data.notionPageId))&&(!item.kind||item.kind==="workout"||data.kind===item.kind)&&(item.kind!=="food"||data.entryId===item.payload?.id);
         if(!response.ok||!data.ok||!receiptMatches){const error=Error(data.error||"Notion did not return a verified save receipt.");error.auth=response.status===401;throw error;}
         if(item.kind==="food"){
@@ -203,4 +209,9 @@
   updatePrimaryTabs();claimPairFromUrl();refreshCapabilities();
   if(state.view==="home-overview")renderOverview();
   if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(()=>syncPending(),1200);
+  const resumeSync=()=>{if(document.visibilityState==="visible"&&navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))syncPending();};
+  document.addEventListener("visibilitychange",resumeSync);
+  addEventListener("pageshow",resumeSync);
+  addEventListener("focus",resumeSync);
+  setInterval(resumeSync,SYNC_HEARTBEAT_MS);
 })();
