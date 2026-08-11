@@ -12,8 +12,8 @@ const FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion
 
 const VITALS_SCHEMA = `Return only a JSON object with: sleep_hours (number or null), bedtime (string "HH:MM" 24-hour or null), wake_time (string "HH:MM" 24-hour or null), hrv_ms (number or null), resting_hr_bpm (number or null), respiratory_rate_bpm (number or null), active_energy_kcal (number or null), confidence (High, Medium, or Low), notes (string), recognizable (boolean). active_energy_kcal is the total active/move calories for the day, e.g. from Activity rings or the Health app's Active Energy stat - not a single workout's calories. Extract only values that are clearly visible in the screenshot; use null for anything not shown or ambiguous. Never guess or estimate a value that isn't legible.`;
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+function json(body, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...extraHeaders } });
 }
 
 function safeText(value, max = 1800) {
@@ -39,8 +39,7 @@ async function timingSafeEqual(a, b) {
 }
 
 async function paired(request, env) {
-  if (!env.REP_SYNC_KEY) return false;
-  return timingSafeEqual(request.headers.get("x-rep-sync-key") || "", env.REP_SYNC_KEY);
+  return Boolean(await authInfo(request, env));
 }
 
 const SECURITY_HEADERS = {
@@ -48,7 +47,8 @@ const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
   "referrer-policy": "strict-origin-when-cross-origin",
-  "permissions-policy": "camera=(self), microphone=(self), geolocation=()"
+  "permissions-policy": "camera=(self), microphone=(self), geolocation=()",
+  "strict-transport-security": "max-age=31536000; includeSubDomains"
 };
 
 function withSecurityHeaders(response) {
@@ -61,7 +61,14 @@ function withSecurityHeaders(response) {
 // perfectly consistent across Cloudflare's network, but it materially raises the
 // cost of brute-forcing REP_SYNC_KEY or hammering the paid Gemini endpoint. For a
 // guaranteed limit, also enable a Cloudflare Rate Limiting Rule on /api/* in the dashboard.
-async function rateLimited(request, bucket, limit, windowSeconds) {
+async function rateLimited(request, bucket, limit, windowSeconds, env) {
+  const binding = bucket.includes("analyze") ? env?.AI_RATE_LIMITER : ["pair-check", "pair-claim", "push-subscribe"].includes(bucket) ? env?.PAIR_RATE_LIMITER : null;
+  if (binding?.limit) {
+    const identity = request.headers.get("x-rep-sync-key") || request.headers.get("cf-connecting-ip") || "anonymous";
+    const digest = b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity))));
+    try { return !(await binding.limit({ key: `${bucket}:${digest.slice(0, 24)}` })).success; } catch { /* fall through to the edge-cache limiter */ }
+  }
+  if (typeof caches === "undefined" || !caches.default) return false;
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
   const cacheKey = new Request(`https://rate-limit.internal/${bucket}/${encodeURIComponent(ip)}`);
   const cache = caches.default;
@@ -80,8 +87,10 @@ async function rateLimited(request, bucket, limit, windowSeconds) {
 }
 
 function rateLimitResponse() {
-  return json({ ok: false, error: "Too many requests. Try again shortly." }, 429);
+  return json({ ok: false, error: "Too many requests. Try again shortly." }, 429, { "retry-after": "60" });
 }
+
+function requestTooLarge(request, maxBytes) { const length = Number(request.headers.get("content-length")); return Number.isFinite(length) && length > maxBytes; }
 
 function numberInRange(value, maximum) {
   const number = Number(value);
@@ -118,19 +127,19 @@ function normalizeNutrition(value = {}) {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function normalizeVitals(value = {}) {
-  const clampOrNull = (raw, max) => {
+  const clampOrNull = (raw, min, max) => {
     const number = Number(raw);
-    return Number.isFinite(number) && number > 0 ? Math.min(number, max) : null;
+    return Number.isFinite(number) && number >= min && number <= max ? Math.round(number * 10) / 10 : null;
   };
   const time = raw => TIME_PATTERN.test(String(raw || "")) ? raw : null;
   return {
-    sleep_hours: clampOrNull(value.sleep_hours, 16),
+    sleep_hours: clampOrNull(value.sleep_hours, 0, 16),
     bedtime: time(value.bedtime),
     wake_time: time(value.wake_time),
-    hrv_ms: clampOrNull(value.hrv_ms, 300),
-    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
-    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 60),
-    active_energy_kcal: clampOrNull(value.active_energy_kcal, 10000),
+    hrv_ms: clampOrNull(value.hrv_ms, 5, 300),
+    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 30, 120),
+    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 5, 40),
+    active_energy_kcal: clampOrNull(value.active_energy_kcal, 0, 10000),
     confidence: ["High", "Medium", "Low"].includes(value.confidence) ? value.confidence : "Low",
     notes: safeText(value.notes, 400),
     recognizable: value.recognizable !== false
@@ -146,7 +155,7 @@ function parseModelJson(text) {
 
 async function geminiGenerate(env, parts, jsonMode = true) {
   const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
-  if (!apiKey) throw new Error("Food analysis is not configured in the Worker. In Cloudflare, open Settings → Variables and secrets and add a secret named GEMINI_API_KEY.");
+  if (!apiKey) throw new Error("AI analysis is not configured in the Worker. In Cloudflare, open Settings → Variables and secrets and add a secret named GEMINI_API_KEY.");
   const model = safeText(env.GEMINI_MODEL || "gemini-2.5-flash", 100);
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
@@ -171,8 +180,9 @@ async function lookupBarcode(barcode) {
 }
 
 async function analyzeFood(request, env) {
-  if (await rateLimited(request, "food-analyze", 30, 60)) return rateLimitResponse();
+  if (await rateLimited(request, "food-analyze", 30, 60, env)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (requestTooLarge(request, 13_500_000)) return json({ ok: false, error: "The image is too large. Choose a smaller photo." }, 413);
   const body = await request.json().catch(() => null), mode = safeText(body?.mode, 30), description = safeText(body?.description, 1200);
   if (!body || !["text", "restaurant", "photo", "barcode-image", "barcode"].includes(mode)) return json({ ok: false, error: "Unsupported food input." }, 400);
   try {
@@ -194,8 +204,9 @@ async function analyzeFood(request, env) {
 }
 
 async function analyzeVitalsScreenshot(request, env) {
-  if (await rateLimited(request, "vitals-analyze", 20, 60)) return rateLimitResponse();
+  if (await rateLimited(request, "vitals-analyze", 20, 60, env)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (requestTooLarge(request, 13_500_000)) return json({ ok: false, error: "The screenshot is too large." }, 413);
   const body = await request.json().catch(() => null);
   const image = safeText(body?.image, 12_000_000), mimeType = /^image\/(jpeg|png|webp|heic|heif)$/i.test(body?.mimeType || "") ? body.mimeType : "image/jpeg";
   if (!image) return json({ ok: false, error: "Image data is missing." }, 400);
@@ -244,19 +255,19 @@ function parseFlexibleTime(raw) {
 }
 
 function normalizeVitalsImport(value = {}) {
-  const clampOrNull = (raw, max) => {
+  const clampOrNull = (raw, min, max) => {
     const number = Number(raw);
-    return Number.isFinite(number) && number > 0 ? Math.min(number, max) : null;
+    return Number.isFinite(number) && number >= min && number <= max ? Math.round(number * 10) / 10 : null;
   };
   return {
     date: parseFlexibleDate(value.date),
-    sleep_hours: clampOrNull(value.sleep_hours, 16),
+    sleep_hours: clampOrNull(value.sleep_hours, 0, 16),
     bedtime: parseFlexibleTime(value.bedtime),
     wake_time: parseFlexibleTime(value.wake_time),
-    hrv_ms: clampOrNull(value.hrv_ms, 300),
-    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 200),
-    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 60),
-    active_energy_kcal: clampOrNull(value.active_energy_kcal, 10000)
+    hrv_ms: clampOrNull(value.hrv_ms, 5, 300),
+    resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 30, 120),
+    respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 5, 40),
+    active_energy_kcal: clampOrNull(value.active_energy_kcal, 0, 10000)
   };
 }
 
@@ -266,13 +277,13 @@ function normalizeVitalsImport(value = {}) {
 // anything new the next time it opens - reuses the same optional PUSH_KV
 // binding the push-reminder feature already uses, under a distinct prefix.
 async function importVitals(request, env) {
-  if (await rateLimited(request, "vitals-import", 30, 3600)) return rateLimitResponse();
+  if (await rateLimited(request, "vitals-import", 30, 3600, env)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
   const body = await request.json().catch(() => null);
   const vitals = normalizeVitalsImport(body || {});
   if (!vitals.date) return json({ ok: false, error: "A valid date (YYYY-MM-DD) is required." }, 400);
-  await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${vitals.date}`, JSON.stringify(vitals), { expirationTtl: 60 * 60 * 24 * 30 });
+  await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${vitals.date}`, JSON.stringify(vitals), { expirationTtl: 60 * 60 * 24 * 180 });
   return json({ ok: true });
 }
 
@@ -330,7 +341,7 @@ function parseHaeExport(body) {
 }
 
 async function importVitalsHae(request, env) {
-  if (await rateLimited(request, "vitals-import-hae", 30, 3600)) return rateLimitResponse();
+  if (await rateLimited(request, "vitals-import-hae", 30, 3600, env)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
   const body = await request.json().catch(() => null);
@@ -342,14 +353,14 @@ async function importVitalsHae(request, env) {
   for (const entry of entries) {
     const normalized = normalizeVitalsImport(entry);
     if (!normalized.date) continue;
-    await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${normalized.date}`, JSON.stringify(normalized), { expirationTtl: 60 * 60 * 24 * 30 });
+    await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${normalized.date}`, JSON.stringify(normalized), { expirationTtl: 60 * 60 * 24 * 180 });
     imported++;
   }
   return json({ ok: true, imported });
 }
 
 async function pendingVitals(request, env) {
-  if (await rateLimited(request, "vitals-pending", 60, 60)) return rateLimitResponse();
+  if (await rateLimited(request, "vitals-pending", 60, 60, env)) return rateLimitResponse();
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: true, entries: [] });
   const url = new URL(request.url), sinceParam = url.searchParams.get("since");
@@ -443,8 +454,7 @@ async function syncWorkout(request, env) {
   if (!env.NOTION_TOKEN || !env.NOTION_DATA_SOURCE_ID || !env.REP_SYNC_KEY) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
-  const suppliedKey = request.headers.get("x-rep-sync-key") || "";
-  if (!(await timingSafeEqual(suppliedKey, env.REP_SYNC_KEY))) return json({ ok: false, error: "Pairing key is incorrect." }, 401);
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
   const body = await request.json().catch(() => null), workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
@@ -535,7 +545,7 @@ async function syncFood(env,payload,source) {
 
 async function syncHealth(request, env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) return json({ok:false,error:"Sync is not configured on the server."},503);
-  if (!(await timingSafeEqual(request.headers.get("x-rep-sync-key")||"", env.REP_SYNC_KEY))) return json({ok:false,error:"Pairing key is incorrect."},401);
+  if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
   if(kind==="food")return syncFood(env,payload,source);
@@ -574,6 +584,63 @@ const concatBytes = (...arrays) => {
 async function hmacSha256(keyBytes, dataBytes) {
   const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, dataBytes));
+}
+
+// The master pairing secret is accepted only for initial setup and external
+// automations. Browser clients exchange it for a signed, expiring credential.
+const credentialEncoder = new TextEncoder(), credentialDecoder = new TextDecoder();
+async function signCredential(env, payload) {
+  const encoded = b64urlEncode(credentialEncoder.encode(JSON.stringify(payload)));
+  const signature = await hmacSha256(credentialEncoder.encode(env.REP_SYNC_KEY || ""), credentialEncoder.encode(encoded));
+  return `rep1.${encoded}.${b64urlEncode(signature)}`;
+}
+async function verifyCredential(env, token, expectedType = "device") {
+  try {
+    if (!env.REP_SYNC_KEY || String(token || "").length > 1400) return null;
+    const [version, encoded, signature, ...extra] = String(token || "").split(".");
+    if (version !== "rep1" || !encoded || !signature || extra.length) return null;
+    const expected = b64urlEncode(await hmacSha256(credentialEncoder.encode(env.REP_SYNC_KEY), credentialEncoder.encode(encoded)));
+    if (!(await timingSafeEqual(signature, expected))) return null;
+    const payload = JSON.parse(credentialDecoder.decode(b64urlDecode(encoded))), now = Math.floor(Date.now() / 1000);
+    if (payload.typ !== expectedType || !Number.isFinite(payload.exp) || payload.exp <= now || Number(payload.iat) > now + 60) return null;
+    return payload;
+  } catch { return null; }
+}
+async function authInfo(request, env) {
+  const supplied = request.headers.get("x-rep-sync-key") || "";
+  if (!env.REP_SYNC_KEY || !supplied) return null;
+  if (await timingSafeEqual(supplied, env.REP_SYNC_KEY)) return { type: "master" };
+  const payload = await verifyCredential(env, supplied, "device");
+  return payload ? { type: "device", payload } : null;
+}
+function capabilities(env) {
+  return {
+    foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), notion: Boolean(env.NOTION_TOKEN),
+    vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsImport: Boolean(env.PUSH_KV),
+    push: Boolean(env.PUSH_KV && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY_JWK)
+  };
+}
+async function issueDeviceCredential(env) {
+  const now = Math.floor(Date.now() / 1000), exp = now + 90 * 86400;
+  return { credential: await signCredential(env, { typ: "device", iat: now, exp, jti: crypto.randomUUID() }), expiresAt: new Date(exp * 1000).toISOString() };
+}
+async function createPairHandoff(request, env) {
+  if (!(await paired(request, env))) return json({ ok: false, error: "This device is not paired." }, 401);
+  const now = Math.floor(Date.now() / 1000), exp = now + 300, jti = crypto.randomUUID(), token = await signCredential(env, { typ: "handoff", iat: now, exp, jti });
+  if (env.PUSH_KV) await env.PUSH_KV.put(`handoff:${jti}`, "ready", { expirationTtl: 360 });
+  const url = new URL(request.url); url.pathname = "/"; url.search = `?pair=${encodeURIComponent(token)}`;
+  return json({ ok: true, url: url.toString(), expiresAt: new Date(exp * 1000).toISOString() });
+}
+async function claimPairHandoff(request, env) {
+  if (!env.REP_SYNC_KEY) return json({ ok: false, error: "Pairing is not configured." }, 503);
+  const body = await request.json().catch(() => null), handoff = await verifyCredential(env, body?.token, "handoff");
+  if (!handoff) return json({ ok: false, error: "This pairing link is invalid or expired." }, 401);
+  if (env.PUSH_KV) {
+    const key = `handoff:${handoff.jti}`;
+    if (await env.PUSH_KV.get(key) !== "ready") return json({ ok: false, error: "This pairing link was already used or expired." }, 401);
+    await env.PUSH_KV.delete(key);
+  }
+  return json({ ok: true, ...await issueDeviceCredential(env), ...capabilities(env) });
 }
 
 let vapidJwtCache = null;
@@ -631,17 +698,19 @@ const pushKvKey = endpoint => `sub:${endpoint}`;
 
 async function subscribePush(request, env) {
   if (!env.PUSH_KV) return json({ ok: false, error: "Push notifications are not set up on the server yet." }, 503);
-  if (await rateLimited(request, "push-subscribe", 20, 60)) return rateLimitResponse();
+  if (await rateLimited(request, "push-subscribe", 20, 60, env)) return rateLimitResponse();
+  const origin = request.headers.get("origin");
+  if (origin && new URL(origin).origin !== new URL(request.url).origin) return json({ ok: false, error: "Origin is not allowed." }, 403);
   const body = await request.json().catch(() => null);
-  const subscription = body?.subscription, time = safeText(body?.time, 5);
-  if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth || !/^\d{2}:\d{2}$/.test(time)) {
+  const rawSubscription = body?.subscription, time = safeText(body?.time, 5), endpoint = safeText(rawSubscription?.endpoint, 1800), p256dh = safeText(rawSubscription?.keys?.p256dh, 300), auth = safeText(rawSubscription?.keys?.auth, 200);
+  let keyShapeValid = false, endpointValid = false;
+  try { const publicBytes = b64urlDecode(p256dh), authBytes = b64urlDecode(auth); keyShapeValid = publicBytes.length === 65 && publicBytes[0] === 4 && authBytes.length >= 16; endpointValid = new URL(endpoint).protocol === "https:"; } catch { /* invalid subscription fields */ }
+  if (!endpointValid || !keyShapeValid || !TIME_PATTERN.test(time)) {
     return json({ ok: false, error: "Invalid subscription payload." }, 400);
   }
-  const [hh, mm] = time.split(":").map(Number);
-  const offset = Number(body.timezoneOffsetMinutes) || 0;
-  const utcHour = Math.floor((((hh * 60 + mm + offset) % 1440) + 1440) % 1440 / 60);
-  const record = { subscription, time, utcHour, lang: safeText(body?.lang, 5) || "en", updatedAt: new Date().toISOString() };
-  await env.PUSH_KV.put(pushKvKey(subscription.endpoint), JSON.stringify(record));
+  const timezoneOffsetMinutes = Math.max(-840, Math.min(840, Number(body.timezoneOffsetMinutes) || 0)), subscription = { endpoint, expirationTime: rawSubscription.expirationTime || null, keys: { p256dh, auth } };
+  const record = { subscription, time, timezoneOffsetMinutes, lang: body.lang === "ar" ? "ar" : "en", updatedAt: new Date().toISOString(), lastSentDate: null };
+  await env.PUSH_KV.put(pushKvKey(endpoint), JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 400 });
   return json({ ok: true });
 }
 
@@ -655,7 +724,7 @@ async function unsubscribePush(request, env) {
 
 async function sendScheduledReminders(env) {
   if (!env.PUSH_KV || !env.VAPID_PRIVATE_KEY_JWK || !env.VAPID_PUBLIC_KEY) return;
-  const nowHour = new Date().getUTCHours();
+  const now = new Date();
   let cursor;
   while (true) {
     const list = await env.PUSH_KV.list({ cursor, prefix: "sub:" });
@@ -663,14 +732,17 @@ async function sendScheduledReminders(env) {
       const raw = await env.PUSH_KV.get(key.name);
       if (!raw) continue;
       const record = JSON.parse(raw);
-      if (record.utcHour !== nowHour) continue;
+      const local = new Date(now.getTime() - (Number(record.timezoneOffsetMinutes) || 0) * 60000), localDate = local.toISOString().slice(0, 10), localTime = local.toISOString().slice(11, 16);
+      const legacyDue = record.timezoneOffsetMinutes === undefined && record.utcHour === now.getUTCHours() && now.getUTCMinutes() === 0;
+      if ((!legacyDue && localTime !== record.time) || record.lastSentDate === localDate) continue;
       const message = record.lang === "ar"
         ? { title: "Health OS", body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم." }
         : { title: "Health OS", body: "Time to log your day — a workout, a meal, or your sleep." };
       try {
         const response = await sendWebPush(env, record.subscription, message);
         if (response.status === 404 || response.status === 410) await env.PUSH_KV.delete(key.name);
-      } catch { /* transient failure; retried automatically next hour */ }
+        else if (response.ok) { record.lastSentDate = localDate; await env.PUSH_KV.put(key.name, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 400 }); }
+      } catch { /* transient failure; retried automatically on the next cron tick */ }
     }
     if (list.list_complete) break;
     cursor = list.cursor;
@@ -681,10 +753,25 @@ async function route(request, env) {
   const url = new URL(request.url);
   if (url.pathname === "/api/pair-check") {
     if (request.method === "POST") {
-      if (await rateLimited(request, "pair-check", 20, 60)) return rateLimitResponse();
-      return (await paired(request, env))
-        ? json({ ok: true, foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), notion: Boolean(env.NOTION_TOKEN) })
-        : json({ ok: false, error: "Pairing key is incorrect." }, 401);
+      if (await rateLimited(request, "pair-check", 20, 60, env)) return rateLimitResponse();
+      const auth = await authInfo(request, env);
+      if (!auth) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
+      const renewSoon = auth.type === "device" && Number(auth.payload?.exp) - Math.floor(Date.now() / 1000) < 14 * 86400;
+      const device = auth.type === "master" || renewSoon ? await issueDeviceCredential(env) : {};
+      return json({ ok: true, ...capabilities(env), ...device, deviceCredential: auth.type === "device" });
+    }
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/pair/handoff") {
+    if (request.method === "POST") return createPairHandoff(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/pair/claim") {
+    if (request.method === "POST") {
+      if (await rateLimited(request, "pair-claim", 20, 60, env)) return rateLimitResponse();
+      return claimPairHandoff(request, env);
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
@@ -716,8 +803,16 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
-      if (await rateLimited(request, "notion-sync", 60, 60)) return rateLimitResponse();
-      try { const body=await request.clone().json().catch(()=>null);return body?.workout?await syncWorkout(request, env):await syncHealth(request,env,body); }
+      if (await rateLimited(request, "notion-sync", 60, 60, env)) return rateLimitResponse();
+      if (requestTooLarge(request, 2_000_000)) return json({ ok: false, error: "Sync payload is too large." }, 413);
+      if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
+      try {
+        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), digest = idempotency ? b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(idempotency)))) : "", marker = digest ? `sync:${digest}` : "";
+        if (marker && env.PUSH_KV && await env.PUSH_KV.get(marker)) return json({ ok: true, created: 0, skipped: 1, duplicate: true });
+        const body = await request.clone().json().catch(() => null), response = body?.workout ? await syncWorkout(request, env) : await syncHealth(request, env, body);
+        if (marker && env.PUSH_KV && response.ok) await env.PUSH_KV.put(marker, "done", { expirationTtl: 60 * 60 * 24 * 30 });
+        return response;
+      }
       catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });

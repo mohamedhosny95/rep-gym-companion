@@ -13,9 +13,21 @@
     "enabled": true
   },
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["* * * * *"]
   },
   "kv_namespaces": [
     { "binding": "PUSH_KV", "id": "3bea037a1d7b43de9b9994f43a48d843" }
+  ],
+  "ratelimits": [
+    {
+      "name": "AI_RATE_LIMITER",
+      "namespace_id": "41001",
+      "simple": { "limit": 12, "period": 60 }
+    },
+    {
+      "name": "PAIR_RATE_LIMITER",
+      "namespace_id": "41002",
+      "simple": { "limit": 20, "period": 60 }
+    }
   ]
 }

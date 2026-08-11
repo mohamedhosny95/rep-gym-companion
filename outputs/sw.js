@@ -1,5 +1,5 @@
-const CACHE = "rep-companion-v55";
-const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=55", "./health-data.js?v=55", "./i18n.js", "./app.js?v=55", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CACHE = "rep-companion-v56";
+const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=56", "./health-data.js?v=56", "./i18n.js", "./features.js?v=56", "./qrcode.js?v=56", "./app.js?v=56", "./enhancements.js?v=56", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const ATLAS_ASSETS = ["./assets/gym-anatomy-atlas.webp", "./assets/mobility-anatomy-atlas.webp", "./assets/core-anatomy-atlas.webp", "./assets/cardio-anatomy-atlas.webp", "./assets/gym-anatomy-front-atlas.webp", "./assets/mobility-anatomy-front-atlas.webp", "./assets/core-anatomy-front-atlas.webp", "./assets/cardio-anatomy-front-atlas.webp", "./assets/priority-motion-atlas.webp"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => {

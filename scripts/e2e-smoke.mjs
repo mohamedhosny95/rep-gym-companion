@@ -102,8 +102,10 @@ try {
   assertTrue(await page.locator(".activity-panel").count() === 0, "Activity panel closes after save");
 
   // recovery + sleep (sleep tracker lives on the Vitals tab)
-  await page.click('[data-app-tab="vitals"]');
+  await page.click('[data-app-tab="health"]');
   await page.waitForTimeout(300);
+  await page.click('[data-health-view="vitals"]');
+  await page.waitForTimeout(200);
   await page.fill("[data-sleep-bedtime]", "23:00");
   await page.fill("[data-sleep-wake]", "06:00");
   await page.click(".sleep-form button[type=submit]");
@@ -126,7 +128,9 @@ try {
   assertTrue(await page.locator(".food-log article, .food-entry").count() > 0, "Manual food entry is saved and listed");
 
   // insights
-  await page.click('[data-app-tab="insights"]');
+  await page.click('[data-app-tab="health"]');
+  await page.waitForTimeout(200);
+  await page.click('[data-health-view="insights"]');
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
 

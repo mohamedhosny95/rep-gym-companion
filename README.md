@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. It includes guided exercise movement animations, workout logging, recovery and progression gates, Bad Day fallbacks, nutrition/supplement/weight tracking, hygiene checklists, cross-module reminders and insights, bilingual English/Arabic navigation, and secure Notion synchronization.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 56 organizes guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care behind four primary tabs. It adds customizable schedules and targets, kg/lb and ml/fl oz display, favourite meals with portion scaling, secure device pairing, encrypted backups, and reliable offline Notion queues while preserving the complete v55 Health and Apple import system.
 
 ## Open locally
 
@@ -43,6 +43,13 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+Fast syntax, Worker-contract, state-migration, and source-sync checks are also
+available without launching a browser:
+
+```sh
+npm run verify
+```
+
 It runs automatically in CI (the `e2e` job in `verify.yml`) on every push.
 
 If you change any file referenced by the service worker's asset list
@@ -56,7 +63,7 @@ The deployed server expects these environment variables (see `.env.example`):
 
 - `NOTION_TOKEN` — secret Notion integration token
 - `NOTION_DATA_SOURCE_ID` — workout database data-source ID
-- `REP_SYNC_KEY` — private pairing key entered in the app
+- `REP_SYNC_KEY` — private master pairing key entered once on the first device
 - `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
 Recovery, nutrition, hygiene, and food databases use their checked-in public
@@ -68,6 +75,25 @@ Set these as secrets/variables in the Cloudflare dashboard (Settings →
 Variables and secrets) or via `wrangler secret put <NAME>` — never in a
 committed file. `.env.example` documents the names only, for reference.
 
+The app exchanges the master key for a signed 90-day device credential and
+does not retain the master secret. Credentials renew automatically near expiry.
+Settings → Security can create a single-use QR pairing link for another phone;
+the link expires after five minutes. Food AI, Notion, Vitals AI, automated
+imports, and push availability are reported separately so one missing service
+does not make the whole connection look broken.
+
+## Flexible tracking and private backups
+
+- Settings → Units switches kilograms/pounds and millilitres/fluid ounces
+  without changing the canonical values stored in history.
+- Settings → Schedule and Targets customizes each day's focus, activation, and
+  nutrition/hydration goals.
+- Nutrition supports custom water add/set/reset, weekly weight, favourite and
+  recent meals, portion scaling, and undo for destructive daily actions.
+- Automatic restore points are encrypted with a device-only key. Downloadable
+  backups use AES-256-GCM with a passphrase-derived key. Local deletion requires
+  two confirmations and never removes Notion pages.
+
 ## Push notifications (daily reminder)
 
 The "Daily reminder" card on the History screen sends one push notification a
@@ -76,20 +102,15 @@ other feature in this app, this **requires infrastructure that can't be set
 up from this repo alone** — a few one-time manual steps in the Cloudflare
 dashboard:
 
-1. **Create a KV namespace** for subscription storage:
-   ```sh
-   npx wrangler kv namespace create PUSH_KV
-   ```
-   This prints an `id`. Add it to `wrangler.jsonc`:
-   ```json
-   "kv_namespaces": [{ "binding": "PUSH_KV", "id": "<the id from the command above>" }]
-   ```
-   (Deliberately not committed with a placeholder id — a fake id here would
-   break every future deploy, not just push notifications.)
+1. **Confirm the KV binding.** `PUSH_KV` is already bound in `wrangler.jsonc`
+   and is shared by reminders, Apple imports, idempotency markers, and
+   single-use pairing handoffs.
 
 2. **Generate a VAPID keypair** (proves this server's identity to push
    services like Chrome's/Firefox's; not sensitive to anyone but you, but
    still a secret — never commit it):
+   The simplest path is `npm run generate:vapid`; the equivalent low-level
+   Node example is kept below for reference.
    ```js
    // node -e "..." or save as a script and run once
    const crypto = require("crypto");
@@ -109,16 +130,15 @@ dashboard:
    - `VAPID_SUBJECT` — `mailto:you@example.com` (a contact address push
      services may use if something's wrong with your server)
 
-4. **Redeploy.** The hourly cron trigger in `wrangler.jsonc` is already
+4. **Redeploy.** The once-per-minute cron trigger in `wrangler.jsonc` is already
    committed and safe to deploy before this setup is done — the send
    function no-ops until `PUSH_KV` and both VAPID secrets exist.
 
 Once set up, tapping "Enable" in the app requests notification permission,
 subscribes via the browser's Push API, and sends the subscription + your
-chosen time to `/api/push/subscribe`. The reminder time is converted to UTC
-at subscribe time using your browser's timezone offset, so it can drift by an
-hour across a DST transition until you re-save it — a known, accepted
-simplification for now.
+chosen time to `/api/push/subscribe`. The server checks the saved local time on
+each cron tick and records the last local day sent, so it honors the selected
+minute and cannot send the same daily reminder twice.
 
 **This is the one feature in this app whose crypto (RFC 8291 payload
 encryption + RFC 8292 VAPID signing, hand-rolled against the Workers
@@ -158,21 +178,9 @@ either way.
 
 ### 1. Server setup (reuses the push-notification KV, if you already have it)
 
-If you already completed the **Push notifications** setup above, you already
-have a `PUSH_KV` namespace bound in `wrangler.jsonc` — nothing more to do
-here, skip to step 2.
-
-Otherwise:
-```sh
-npx wrangler kv namespace create PUSH_KV
-```
-and add the printed id to `wrangler.jsonc`:
-```json
-"kv_namespaces": [{ "binding": "PUSH_KV", "id": "<the id from the command above>" }]
-```
-Then redeploy. `/api/vitals/import`, `/api/vitals/import-hae`, and
-`/api/vitals/pending` return a clear "not configured" error until this
-binding exists — safe to have shipped before you set this up.
+`PUSH_KV` is already bound in `wrangler.jsonc`; no additional storage setup is
+required. Imported readings are retained for 180 days and validated against
+plausible ranges before the client uses them.
 
 ### 2. Option A — Health Auto Export (recommended)
 
@@ -273,24 +281,16 @@ point.
 
 `dist/server/index.js` applies a few defenses beyond basic pairing-key auth:
 
-- **Rate limiting** — a best-effort, per-colo limiter (Cloudflare's edge
-  Cache API) throttles `/api/pair-check`, `/api/food/analyze`, and
-  `/api/notion-sync` per client IP. This raises the cost of brute-forcing
-  `REP_SYNC_KEY` or running up your Gemini bill, but it is not a hard
-  guarantee across Cloudflare's network — a distributed attacker can land
-  requests on different colos that don't share the same edge cache yet.
-  **For a guaranteed limit, add a Cloudflare Rate Limiting Rule** (this
-  requires dashboard access, so it isn't something that can be set from the
-  code in this repo):
-  1. Cloudflare dashboard → your zone → **Security → WAF → Rate limiting rules**
-  2. Create rule → match path `/api/*`
-  3. Set a threshold, e.g. 60 requests / 60 seconds per IP
-  4. Action: **Block** (or **Managed Challenge** if you'd rather challenge
-     than hard-block)
-  This is free on all plans for a small number of rules and closes the gap
-  the in-code limiter can't guarantee on its own.
+- **Rate limiting** — Cloudflare Rate Limit bindings protect AI analysis and
+  pairing at the edge. The existing per-colo Cache API limiter remains as a
+  fallback and covers lower-risk sync/import routes.
 - **Timing-safe key comparison** — `REP_SYNC_KEY` is compared via a hashed,
   constant-time check rather than `===`.
+- **Expiring client credentials** — phones receive signed device credentials;
+  the master key remains available only for first setup and external Health
+  automations.
+- **Idempotent offline sync** — repeated queued writes carry stable keys, and
+  the Worker stores completion markers so retries cannot create duplicates.
 - **Security headers** — every response (API and static assets) gets a
   restrictive `Content-Security-Policy`, `X-Content-Type-Options`,
   `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy`. The same
