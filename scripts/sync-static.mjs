@@ -1,19 +1,17 @@
 #!/usr/bin/env node
-// Keeps outputs/ (the offline, downloadable copy of the app) in sync with
-// dist/client/ (the copy Cloudflare deploys), so the two never drift apart
-// through hand-edits. Run this after any change under dist/client/, before
-// committing.
+// Builds both deployable copies from src/client/, the only editable client
+// source tree. Cloudflare serves dist/client/ and outputs/ is the offline ZIP.
 //
 // Usage: node scripts/sync-static.mjs
 
-import { readdirSync, statSync, mkdirSync, copyFileSync, rmSync, existsSync } from "node:fs";
+import { readdirSync, mkdirSync, copyFileSync, rmSync, existsSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const source = join(root, "dist", "client");
-const target = join(root, "outputs");
+const source = join(root, "src", "client");
+const targets = [join(root, "dist", "client"), join(root, "outputs")];
 const zipName = "rep-gym-companion.zip";
 
 function walk(dir) {
@@ -26,7 +24,7 @@ function walk(dir) {
   return files;
 }
 
-function syncFiles() {
+function syncTarget(target) {
   const sourceFiles = walk(source).filter(f => relative(source, f) !== zipName);
   const sourceRelPaths = new Set(sourceFiles.map(f => relative(source, f)));
 
@@ -43,16 +41,16 @@ function syncFiles() {
       if (rel === zipName) continue;
       if (!sourceRelPaths.has(rel)) {
         rmSync(file);
-        console.log(`removed stale outputs/${rel}`);
+        console.log(`removed stale ${relative(root,target)}/${rel}`);
       }
     }
   }
 
-  console.log(`synced ${sourceFiles.length} files from dist/client/ to outputs/`);
+  console.log(`synced ${sourceFiles.length} files from src/client/ to ${relative(root,target)}/`);
 }
 
 function rebuildZip() {
-  const zipPath = join(target, zipName);
+  const target=join(root,"outputs"),zipPath = join(target, zipName);
   rmSync(zipPath, { force: true });
   try {
     execFileSync("zip", ["-rq", zipName, ".", "-x", zipName], { cwd: target, stdio: "inherit" });
@@ -62,5 +60,5 @@ function rebuildZip() {
   }
 }
 
-syncFiles();
+for(const target of targets)syncTarget(target);
 rebuildZip();

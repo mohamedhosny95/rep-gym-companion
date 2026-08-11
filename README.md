@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 63 adds a durable Notion outbox, IndexedDB-backed history, focused Today/Training/Nutrition/Health navigation, connection diagnostics, and lazy-loaded optional assets to the revocable whole-app device pairing introduced in version 60.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 64 adds a guarded Notion destination, scheduled health monitoring, a unified Sync Center, live-integration CI, runnable infrastructure diagnostics, and a proper client source/build boundary on top of the durable version 63 sync architecture.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -10,7 +10,28 @@ selector in normal document flow so it cannot cover Health content while
 scrolling. Raw imported details remain on the device while an idempotent daily
 summary can update the existing Notion Recovery record.
 
-## Version 63 architecture
+## Version 64 reliability architecture
+
+- The visible Notion destination is permanently named **View of Food Entries**
+  and links to database `6433f54c…` / view `bde632d4…`. The Worker validates
+  the original `Food Entries` data source, Trash state, integration access, and
+  every required property type before a food write can enter the normal flow.
+- The once-per-minute Worker schedule now records Notion and outbox health.
+  Two consecutive destination failures, failed jobs, or a queue older than 15
+  minutes become an actionable incident and can trigger one deduplicated push
+  alert every six hours.
+- Settings → Sync is the unified activity center for Training, Nutrition, and
+  Health writes. It shows the device queue, server outbox, errors, retries,
+  confirmed Notion links, the exact destination, infrastructure readiness, and
+  the last successful sync.
+- `scripts/live-notion-check.mjs` can validate a private test data source with a
+  real create/read/archive receipt. GitHub Actions runs it weekly or manually
+  when `NOTION_TEST_TOKEN` and `NOTION_TEST_DATA_SOURCE_ID` secrets exist.
+- Push configuration, local encrypted-backup round trips, and the HealthKit
+  import endpoint now have runnable checks. The iPhone bridge also provides a
+  **Test connection** button before HealthKit authorization.
+
+The durable version 63 foundations remain:
 
 - Every Notion write enters a Cloudflare KV outbox before the UI considers it
   in progress. The Worker retries transient failures with bounded exponential
@@ -55,13 +76,13 @@ Open `outputs/index.html` in a browser. For reliable service-worker and offline 
 ## Project folders
 
 - `outputs/` — ready-to-open static app and downloadable ZIP
+- `src/client/` — editable browser application source
 - `dist/client/` — deployment-ready client files (this is what Cloudflare deploys)
 - `dist/server/` — server-side Notion/Gemini sync endpoint
 
-There is no separate source tree: `dist/client/` is edited directly and is
-the source of truth. `outputs/` is a convenience copy for opening the app
-without deploying it, and must stay byte-identical to `dist/client/` (minus
-the bundled zip). **After editing anything under `dist/client/`, run:**
+`src/client/` is the only browser source of truth. `dist/client/` and `outputs/`
+are generated copies and must not be hand-edited. **After editing anything under
+`src/client/`, run:**
 
 ```sh
 node scripts/sync-static.mjs
@@ -98,6 +119,17 @@ npm run verify
 
 It runs automatically in CI (the `e2e` job in `verify.yml`) on every push.
 
+To run the optional real Notion contract check against a dedicated test copy of
+the Food Entries schema:
+
+```sh
+NOTION_TEST_TOKEN=... NOTION_TEST_DATA_SOURCE_ID=... npm run test:notion-live
+```
+
+The script creates one clearly labelled test row, verifies its receipt and
+parent data source, then archives it in `finally`, including when validation
+fails after creation. Never point this test at a production log database.
+
 If you change any file referenced by the service worker's asset list
 (`dist/client/sw.js`), bump the `CACHE` name and the `?v=` query strings in
 that file and in `dist/client/index.html` together, so installed clients
@@ -118,6 +150,8 @@ Recovery, nutrition, hygiene, and food databases use their checked-in public
 data-source IDs by default. They can be overridden with
 `NOTION_RECOVERY_DATA_SOURCE_ID`, `NOTION_NUTRITION_DATA_SOURCE_ID`,
 `NOTION_HYGIENE_DATA_SOURCE_ID`, and `NOTION_FOOD_DATA_SOURCE_ID`.
+`NOTION_FOOD_VIEW_URL` optionally overrides the visible link only; its default
+is the canonical `View of Food Entries` URL supplied by the owner.
 
 Set these as secrets/variables in the Cloudflare dashboard (Settings →
 Variables and secrets) or via `wrangler secret put <NAME>` — never in a

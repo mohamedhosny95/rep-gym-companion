@@ -10,6 +10,7 @@ final class HealthKitBridge: ObservableObject {
 
     private let store = HKHealthStore()
     private let endpoint = URL(string: "https://rep-gym-companion.mohamedahmedhosny95.workers.dev/api/vitals/import")!
+    private let healthEndpoint = URL(string: "https://rep-gym-companion.mohamedahmedhosny95.workers.dev/api/automation-health")!
     private var observers: [HKObserverQuery] = []
 
     init() {
@@ -28,6 +29,21 @@ final class HealthKitBridge: ObservableObject {
             startObservers(types, pairingKey: pairingKey)
             status = "Connected. Today’s summary is synced."
             lastSyncText = Date.now.formatted(date: .abbreviated, time: .shortened)
+        } catch { fail(error.localizedDescription) }
+        isSyncing = false
+    }
+
+    func testConnection(pairingKey: String) async {
+        isSyncing = true; hasError = false
+        do {
+            var request = URLRequest(url: healthEndpoint)
+            request.setValue(pairingKey, forHTTPHeaderField: "x-rep-sync-key")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else { throw BridgeError.connectionFailed }
+            let result = try JSONDecoder().decode(AutomationHealth.self, from: data)
+            guard result.ok, result.healthkit.configured else { throw BridgeError.connectionFailed }
+            KeychainStore.save(pairingKey)
+            status = "Connection passed. HealthKit import is ready."
         } catch { fail(error.localizedDescription) }
         isSyncing = false
     }
@@ -119,5 +135,16 @@ private struct DailyHealthPayload: Encodable {
     enum CodingKeys: String, CodingKey { case date, bedtime, steps, source; case sleepHours="sleep_hours", wakeTime="wake_time", hrvMs="hrv_ms", restingHrBpm="resting_hr_bpm", respiratoryRateBpm="respiratory_rate_bpm", activeEnergyKcal="active_energy_kcal", exerciseMinutes="exercise_minutes", standMinutes="stand_minutes", vo2Max="vo2_max", oxygenSaturationPct="oxygen_saturation_pct", wristTemperatureC="wrist_temperature_c", sleepDeepHours="sleep_deep_hours", sleepRemHours="sleep_rem_hours" }
 }
 
-private enum BridgeError: LocalizedError { case uploadFailed; var errorDescription: String? { "Health OS rejected the upload. Check the pairing key and Worker configuration." } }
+private struct AutomationHealth: Decodable { let ok: Bool, healthkit: HealthKitReadiness }
+private struct HealthKitReadiness: Decodable { let configured: Bool }
+
+private enum BridgeError: LocalizedError {
+    case uploadFailed, connectionFailed
+    var errorDescription: String? {
+        switch self {
+        case .uploadFailed: return "Health OS rejected the upload. Check the pairing key and Worker configuration."
+        case .connectionFailed: return "Health OS could not verify the automation connection."
+        }
+    }
+}
 private extension ISO8601DateFormatter { static let day: DateFormatter = { let value=DateFormatter(); value.calendar=.current; value.locale=Locale(identifier:"en_US_POSIX"); value.dateFormat="yyyy-MM-dd"; return value }() }

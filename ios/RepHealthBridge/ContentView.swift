@@ -14,7 +14,11 @@ struct ContentView: View {
                     Button(bridge.isSyncing ? "Syncing…" : "Authorize & sync") {
                         Task { await bridge.authorizeAndSync(pairingKey: pairingKey) }
                     }
-                    .disabled(bridge.isSyncing || pairingKey.count < 12)
+                    .disabled(bridge.isSyncing || pairingKey.count < 32)
+                    Button("Test connection") {
+                        Task { await bridge.testConnection(pairingKey: pairingKey) }
+                    }
+                    .disabled(bridge.isSyncing || pairingKey.count < 32)
                 }
                 Section("Status") {
                     LabeledContent("Last sync", value: bridge.lastSyncText)
@@ -31,4 +35,3 @@ struct ContentView: View {
         }
     }
 }
-

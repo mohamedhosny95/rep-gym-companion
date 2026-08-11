@@ -148,7 +148,12 @@ try {
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
   assertTrue(await page.locator(".weekly-health-review").count() === 1, "Weekly Health Review renders");
 
-  await page.click("#settingsButton");
+  await page.click("#syncButton");
+  await page.waitForTimeout(200);
+  assertTrue(await page.locator(".sync-center").count() === 1, "Unified Sync Center opens from the global shortcut");
+  assertTrue((await page.locator(".destination-link").getAttribute("href")).includes("6433f54c687e4813869aaadeaf3acaab"), "Sync Center keeps the canonical View of Food Entries link");
+  assertTrue(await page.locator(".sync-activity-row").count() > 0, "Sync Center shows the pending nutrition record");
+
   await page.waitForTimeout(200);
   await page.click('[data-settings-tab="coach"]');
   assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");

@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-static.mjs",
-    "check": "node --check dist/client/auth.js && node --check dist/client/storage.js && node --check dist/client/bootstrap.js && node --check dist/client/app.js && node --check dist/client/sync.js && node --check dist/client/health-engine.js && node --check dist/client/enhancements.js && node --check dist/client/features.js && node --check dist/client/qrcode.js && node --check dist/client/sw.js && node --check dist/server/sync-outbox.js && node --check dist/server/index.js",
+    "check": "node --check dist/client/auth.js && node --check dist/client/storage.js && node --check dist/client/bootstrap.js && node --check dist/client/app.js && node --check dist/client/sync.js && node --check dist/client/sync-center.js && node --check dist/client/health-engine.js && node --check dist/client/enhancements.js && node --check dist/client/features.js && node --check dist/client/qrcode.js && node --check dist/client/sw.js && node --check dist/server/sync-outbox.js && node --check dist/server/index.js && node --check scripts/live-notion-check.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "node scripts/e2e-smoke.mjs",
+    "test:notion-live": "node scripts/live-notion-check.mjs",
     "verify": "npm run check && npm test",
     "generate:vapid": "node scripts/generate-vapid.mjs"
   },
