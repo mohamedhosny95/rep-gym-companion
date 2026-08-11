@@ -18,12 +18,18 @@ test("every local script in the document exists",async()=>{
   assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js"));
 });
 
-test("the v56 service worker precaches the upgrade and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v56/); assert.match(sw,/enhancements\.js\?v=56/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v57 service worker precaches the upgrade and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v57/); assert.match(sw,/enhancements\.js\?v=57/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
 });
 
 test("the state migration preserves recovered v55 health fields",async()=>{
-  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=8/);
+  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=9/);
+});
+
+test("health navigation stays in document flow and food sync requires a verified receipt",async()=>{
+  const css=await read("outputs/styles.css"),js=await read("outputs/enhancements.js");
+  assert.match(css,/\.health-subnav\{[^}]*position:relative/); assert.doesNotMatch(css,/\.health-subnav\{[^}]*position:sticky/);
+  assert.match(js,/Notion did not return a verified save receipt/); assert.match(js,/Confirmed in Notion/);
 });
 
 test("client and deployment copies are byte-identical for source assets",async()=>{

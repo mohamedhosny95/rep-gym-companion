@@ -1,7 +1,7 @@
-/* Health OS v56 safety and flexibility layer.
+/* Health OS v57 safety and flexibility layer.
    Kept separate from the recovered v55 client so upgrades remain reviewable. */
 (function(){
-  const APP_SCHEMA=8,features=window.REP_FEATURES;
+  const APP_SCHEMA=9,features=window.REP_FEATURES;
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DEFAULT_SCHEDULE={
     Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"cardio"},Tuesday:{morning:true,focus:"gym"},
@@ -33,6 +33,17 @@
     return {version:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,activeTab:state.activeTab,healthView:state.healthView,session:state.session,index:state.index,completed:state.completed,muted:state.muted,checkin:saved.checkin||{},lang:state.lang,speed:state.speed,paused:state.paused,muscles:state.muscles,viewMode:state.viewMode,logs:state.logs,swaps:state.swaps,history:state.history,sessionStartedAt:state.sessionStartedAt,reviews:state.reviews,fieldTest:state.fieldTest,voice:state.voice,syncQueue:state.syncQueue,recoveryCheckins:state.recoveryCheckins,daily:state.daily,cardioDraft:state.cardioDraft,programStart:state.programStart,foodEntries:state.foodEntries,savedMeals:state.savedMeals,water:state.water,foodNote:state.foodNote,foodMealType:state.foodMealType,foodLogMethod:state.foodLogMethod,preferences:state.preferences,mealQuantities:state.mealQuantities,lastBackupAt:state.lastBackupAt,backupSnoozedUntil:state.backupSnoozedUntil,bodyWeights:state.bodyWeights,mealTemplates:state.mealTemplates,sleepLogs:state.sleepLogs,pushTime:state.pushTime,pushEndpoint:state.pushEndpoint,activeEnergy:state.activeEnergy,lastVitalsImportDate:state.lastVitalsImportDate,connectionCapabilities:state.connectionCapabilities,lastSyncedAt:state.lastSyncedAt};
   }
   persist=function(){const payload=statePayload();localStorage.setItem(storageKey,JSON.stringify(payload));features?.scheduleSnapshot(payload);};
+  function repairUnconfirmedFoodEntries(){
+    const today=isoDay();let changed=false;
+    for(const entry of state.foodEntries){
+      if(String(entry.date||"").slice(0,10)!==today||entry.notionSync==="synced")continue;
+      const id=`food-${entry.id}`;
+      if(!state.syncQueue.some(item=>item.id===id))state.syncQueue.push({id,kind:"food",payload:{...entry},attempts:0,error:""});
+      entry.notionSync="pending";changed=true;
+    }
+    if(changed)persist();
+  }
+  repairUnconfirmedFoodEntries();
   if((Number(rawSaved.version)||0)<APP_SCHEMA){features?.createDeviceSnapshot(rawSaved).catch(()=>{});persist();}
 
   function showUndo(message,undo){clearTimeout(state.undoTimer);document.querySelector(".undo-bar")?.remove();const bar=document.createElement("div");bar.className="undo-bar";bar.innerHTML=`<span>${esc(message)}</span><button>${state.lang==="ar"?"تراجع":"Undo"}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>{clearTimeout(state.undoTimer);bar.remove();undo();};state.undoTimer=setTimeout(()=>bar.remove(),6500);}
@@ -60,6 +71,16 @@
   waterTrackerCard=function(water,goal,ar){const remaining=Math.max(goal-water,0),progress=goal?Math.min(Math.round(water/goal*100),100):0,oz=state.preferences.waterUnit==="oz",actions=oz?[[-8,-236.588],[8,236.588],[16,473.176],[32,946.352]]:[[-250,-250],[250,250],[500,500],[1000,1000]];return `<section class="water-card"><div class="water-summary"><div><small>${ar?"الترطيب":"HYDRATION"}</small><strong>${waterDisplay(water)} / ${waterDisplay(goal)}</strong><span>${waterDisplay(remaining)} ${ar?"متبقي اليوم":"remaining today"}</span></div><div aria-label="${ar?"تقدم شرب المياه":"Water goal progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" role="progressbar">${miniRing(progress,"var(--blue)")}</div></div><div class="water-actions">${actions.map(([label,delta])=>`<button data-water-delta="${delta}">${label>0?"+":""}${label}${oz?" oz":label===1000?" ml":""}</button>`).join("")}</div><form class="water-custom" data-water-form><label><span>${ar?"كمية مخصصة":"Custom amount"} (${oz?"fl oz":"ml"})</span><input data-water-custom type="number" min="1" max="${oz?676:20000}" step="${oz?0.5:1}" inputmode="decimal" placeholder="${oz?12:330}"></label><button type="submit" data-water-custom-action="add">${ar?"أضف":"Add"}</button><button type="button" data-water-custom-action="set">${ar?"حدد الإجمالي":"Set total"}</button></form><button class="water-reset" data-water-reset>${ar?"إعادة ضبط مياه اليوم":"Reset today's water"}</button></section>`;};
   applyCustomWater=function(mode){const input=document.querySelector("[data-water-custom]"),amount=waterToMl(input?.value);if(!input||!Number.isFinite(amount)||amount<=0||amount>20000){input?.setCustomValidity(state.lang==="ar"?"أدخل كمية صالحة.":"Enter a valid amount.");input?.reportValidity();return;}input.setCustomValidity("");setFoodWater(mode==="set"?amount:(Number(state.water[isoDay()])||0)+amount);};
 
+  function foodNotionStatus(entry,ar){
+    const pending=state.syncQueue.some(item=>item.id===`food-${entry.id}`);
+    if(entry.notionSync==="synced"&&entry.notionUrl)return `<a class="food-sync-state is-synced" href="${esc(entry.notionUrl)}" target="_blank" rel="noopener">${ar?"✓ مؤكد في Notion":"✓ Confirmed in Notion"}</a>`;
+    if(entry.notionSync==="failed")return `<span class="food-sync-state is-failed">${ar?"تعذرت المزامنة · اضغط مزامنة الآن":"Notion failed · tap Sync now"}</span>`;
+    if(pending)return `<span class="food-sync-state is-pending">${ar?"بانتظار تأكيد Notion":"Waiting for Notion confirmation"}</span>`;
+    return `<span class="food-sync-state">${ar?"محفوظ على هذا الجهاز فقط":"Saved on this device only"}</span>`;
+  }
+  foodEntryCard=function(entry){const ar=state.lang==="ar",time=new Date(entry.date).toLocaleTimeString(ar?"ar-EG":"en-US",{hour:"numeric",minute:"2-digit"});return `<article class="food-entry"><div><small>${esc(entry.mealType||"Meal")} · ${time} · ${esc(entry.logMethod||"Note")}</small><strong>${esc(entry.food_name||entry.rawNote||"Meal note")}</strong><span>${esc(entry.rawNote||entry.portion_size||"")}</span>${foodNotionStatus(entry,ar)}</div><div class="food-entry-macros"><b>${Math.round(Number(entry.calories)||0)} kcal</b><em>P ${Math.round(Number(entry.protein_g)||0)} · C ${Math.round(Number(entry.carbs_g)||0)} · F ${Math.round(Number(entry.fat_g)||0)}</em></div><div class="food-entry-actions"><button data-save-template="${esc(entry.id)}">${ar?"☆ احفظ كقالب":"☆ Save as template"}</button><button class="danger" data-delete-food="${esc(entry.id)}">${ar?"حذف":"Delete"}</button></div></article>`;};
+  saveFoodDraft=function(){const d=state.foodDraft;if(!d)return;document.querySelectorAll("[data-food-text]").forEach(input=>d[input.dataset.foodText]=String(input.value||"").trim());document.querySelectorAll("[data-food-macro]").forEach(input=>d[input.dataset.foodMacro]=Math.max(0,Number(input.value)||0));const entry={...d,id:`food-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date:new Date().toISOString(),mealType:d.mealType||state.foodMealType,logMethod:d.logMethod||state.foodLogMethod,rawNote:d.rawNote||state.foodNote||d.food_name,notionSync:"pending",notionUrl:"",notionSyncedAt:null};state.foodEntries.unshift(entry);state.foodEntries=state.foodEntries.slice(0,400);state.foodDraft=null;state.foodPendingPayload=null;state.foodNote="";state.foodError=false;state.foodStatus=state.lang==="ar"?"تم الحفظ على هذا الجهاز. ننتظر الآن تأكيد Notion.":"Saved on this device. Waiting for Notion confirmation.";queueHealth("food",entry);queueNutritionSummary();persist();renderNutrition();};
+
   function portion(id){return Math.max(.25,Math.min(10,Number(state.mealQuantities[id])||1));}
   function mealKey(item){return `${String(item.food_name||item.rawNote||"").toLowerCase()}|${Math.round(Number(item.calories)||0)}`;}
   function recentMeals(){const seen=new Set(),result=[];for(const entry of state.foodEntries){const key=mealKey(entry);if(!seen.has(key)){seen.add(key);result.push(entry);}if(result.length===8)break;}return result;}
@@ -84,7 +105,35 @@
   connectPairingKey=async function(input,requireFoodAi=false){const key=input?.value.trim();if(!key||key.length<12){state.pairMessage=state.lang==="ar"?"أدخل مفتاح اقتران صالحاً.":"Enter a valid pairing key.";refreshConnectionUI();return false;}state.pairBusy=true;state.pairMessage="";refreshConnectionUI();try{const caps=await validatePairingCredential(key);if(requireFoodAi&&!caps.foodAi)throw Error(state.lang==="ar"?"تحليل الطعام غير مفعّل.":"Food AI is not enabled.");state.connectionCapabilities={foodAi:Boolean(caps.foodAi),notion:Boolean(caps.notion),vitalsAi:Boolean(caps.vitalsAi),push:Boolean(caps.push)};localStorage.setItem(syncKeyStorage,caps.credential||key);state.syncState="idle";input.value="";persist();return true;}catch(error){state.syncState="auth";state.pairMessage=String(error.message||error);return false;}finally{state.pairBusy=false;refreshConnectionUI();}};
   syncStatusText=function(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),pending=state.syncQueue.length,caps=state.connectionCapabilities;if(state.pairBusy)return ar?"جارٍ فحص الاتصال…":"Checking connection…";if(!key)return state.syncState==="auth"?(ar?"يلزم إعادة الاتصال":"Reconnect required"):(ar?"يلزم الاتصال مرة واحدة":"One-time connection needed");if(state.syncState==="syncing")return ar?"جارٍ الإرسال إلى Notion…":"Syncing to Notion…";if(caps&&caps.notion===false)return caps.foodAi?(ar?"الذكاء الاصطناعي جاهز · Notion غير مُعد":"AI ready · Notion not configured"):(ar?"الخدمات غير مُعدة":"Services not configured");if(state.syncState==="failed")return ar?`${pending} بانتظار إعادة المحاولة`:`${pending} waiting to retry`;if(pending)return ar?`${pending} سجل بانتظار المزامنة`:`${pending} log${pending===1?"":"s"} pending`;if(state.lastSyncedAt)return ar?`تمت المزامنة ${new Date(state.lastSyncedAt).toLocaleTimeString("ar-EG",{hour:"numeric",minute:"2-digit"})}`:`Synced ${new Date(state.lastSyncedAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`;return caps?.foodAi?(ar?"الذكاء الاصطناعي جاهز · Notion متصل":"AI ready · Notion connected"):(ar?"الجهاز متصل":"Device connected");};
   foodConnectionCard=function(ar){const connected=Boolean(localStorage.getItem(syncKeyStorage)),caps=state.connectionCapabilities||{};return `<section class="food-connect ${connected?"is-connected":"is-needed"}" aria-live="polite"><div class="food-connect-head"><span class="food-connect-icon">${connected?"✓":"N"}</span><div><small>${connected?(ar?"الجهاز متصل":"DEVICE CONNECTED"):(ar?"اتصال لمرة واحدة":"ONE-TIME SETUP")}</small><strong>${connected?(ar?"خدماتك":"Your services"):(ar?"اتصل من هنا":"Connect here")}</strong><span data-sync-status>${esc(state.pairMessage||syncStatusText())}</span></div></div>${connected?`<div class="capability-row"><span class="${caps.foodAi?"ready":"off"}">${ar?"تحليل الطعام":"Food AI"} ${caps.foodAi?"✓":"—"}</span><span class="${caps.notion?"ready":"off"}">Notion ${caps.notion?"✓":"—"}</span><span class="${caps.vitalsAi?"ready":"off"}">${ar?"استيراد الحيوية":"Vitals AI"} ${caps.vitalsAi?"✓":"—"}</span></div><div class="food-connect-actions"><button data-food-sync-now>${ar?"مزامنة الآن":"Sync now"}</button><button class="quiet" data-food-disconnect>${ar?"قطع الاتصال":"Disconnect"}</button></div>`:`<p>${ar?"أدخل REP_SYNC_KEY مرة واحدة. سيستبدله التطبيق برمز جهاز محدود الصلاحية ولن يحتفظ بالمفتاح الأصلي.":"Enter REP_SYNC_KEY once. Rep exchanges it for an expiring device credential and does not keep the master key."}</p><form class="food-pair-form" data-food-pair-form autocomplete="off"><input data-food-pair-key type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="${ar?"ألصق مفتاح الاقتران":"Paste pairing key"}" aria-label="${ar?"مفتاح اقتران التطبيق":"App pairing key"}"><button data-food-pair-submit ${state.pairBusy?"disabled":""}>${state.pairBusy?(ar?"جارٍ الفحص…":"Checking…"):(ar?"اتصل واستمر":"Connect & continue")}</button></form>`}</section>`;};
-  syncPending=async function(){const key=localStorage.getItem(syncKeyStorage);if(!key||state.syncState==="syncing"||!navigator.onLine||state.connectionCapabilities?.notion===false)return;state.syncState="syncing";updateSyncPanel();for(const item of [...state.syncQueue]){if(item.nextAttemptAt&&Date.now()<item.nextAttemptAt)continue;try{const legacy=item.workout&&!item.kind,body=(legacy||item.kind==="workout")?{workout:item.workout}:{kind:item.kind,payload:item.payload},id=item.id||`workout-${item.workout?.id}`;const response=await fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key,"x-rep-idempotency-key":id},body:JSON.stringify(body)}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok){const error=Error(data.error||`Sync failed (${response.status})`);error.auth=response.status===401;throw error;}state.syncQueue=state.syncQueue.filter(q=>(q.id||`workout-${q.workout?.id}`)!==id);state.lastSyncedAt=new Date().toISOString();persist();}catch(error){item.attempts=(item.attempts||0)+1;item.error=String(error.message||error).slice(0,180);if(error.auth){localStorage.removeItem(syncKeyStorage);state.connectionCapabilities=null;state.syncState="auth";state.pairMessage=state.lang==="ar"?"انتهى اقتران الجهاز. أعد الاتصال.":"Device pairing expired. Reconnect.";}else{state.syncState="failed";const delay=Math.min(900000,30000*2**Math.min(item.attempts-1,5));item.nextAttemptAt=Date.now()+delay;setTimeout(()=>syncPending(),delay);}persist();if(state.view==="nutrition")renderNutrition();else updateSyncPanel();return;}}state.syncState=state.syncQueue.length?"failed":"synced";persist();updateSyncPanel();};
+  syncPending=async function(){
+    const key=localStorage.getItem(syncKeyStorage);
+    if(!key||state.syncState==="syncing"||!navigator.onLine||state.connectionCapabilities?.notion===false)return;
+    state.syncState="syncing";updateSyncPanel();
+    for(const item of [...state.syncQueue]){
+      if(item.nextAttemptAt&&Date.now()<item.nextAttemptAt)continue;
+      try{
+        const legacy=item.workout&&!item.kind,body=(legacy||item.kind==="workout")?{workout:item.workout}:{kind:item.kind,payload:item.payload},id=item.id||`workout-${item.workout?.id}`;
+        const response=await fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":key,"x-rep-idempotency-key":id},body:JSON.stringify(body)}),data=await response.json().catch(()=>({}));
+        const receiptMatches=data.verified===true&&(item.kind==="workout"||Boolean(data.notionPageId))&&(!item.kind||item.kind==="workout"||data.kind===item.kind)&&(item.kind!=="food"||data.entryId===item.payload?.id);
+        if(!response.ok||!data.ok||!receiptMatches){const error=Error(data.error||"Notion did not return a verified save receipt.");error.auth=response.status===401;throw error;}
+        if(item.kind==="food"){
+          const entry=state.foodEntries.find(food=>food.id===item.payload.id);
+          if(entry){entry.notionSync="synced";entry.notionUrl=data.notionUrl||"";entry.notionPageId=data.notionPageId;entry.notionSyncedAt=new Date().toISOString();delete entry.notionError;}
+        }
+        state.syncQueue=state.syncQueue.filter(q=>(q.id||`workout-${q.workout?.id}`)!==id);state.lastSyncedAt=new Date().toISOString();persist();
+      }catch(error){
+        item.attempts=(item.attempts||0)+1;item.error=String(error.message||error).slice(0,180);
+        if(item.kind==="food"){
+          const entry=state.foodEntries.find(food=>food.id===item.payload?.id);
+          if(entry){entry.notionSync="failed";entry.notionError=item.error;}
+        }
+        if(error.auth){localStorage.removeItem(syncKeyStorage);state.connectionCapabilities=null;state.syncState="auth";state.pairMessage=state.lang==="ar"?"انتهى اقتران الجهاز. أعد الاتصال.":"Device pairing expired. Reconnect.";}
+        else{state.syncState="failed";const delay=Math.min(900000,30000*2**Math.min(item.attempts-1,5));item.nextAttemptAt=Date.now()+delay;setTimeout(()=>syncPending(),delay);}
+        persist();if(state.view==="nutrition")renderNutrition();else updateSyncPanel();return;
+      }
+    }
+    state.syncState=state.syncQueue.length?"failed":"synced";persist();if(state.view==="nutrition")renderNutrition();else updateSyncPanel();
+  };
   const baseForget=forgetPairingKey;forgetPairingKey=function(){state.connectionCapabilities=null;state.lastSyncedAt=null;baseForget();};
 
   function settingsNav(active,ar){return `<nav class="settings-nav" aria-label="${ar?"أقسام الإعدادات":"Settings sections"}">${[["general",ar?"الوحدات":"Units"],["schedule",ar?"الجدول":"Schedule"],["targets",ar?"الأهداف":"Targets"],["security",ar?"الأمان":"Security"]].map(([id,label])=>`<button data-settings-tab="${id}" class="${active===id?"is-active":""}">${label}</button>`).join("")}</nav>`;}
@@ -112,4 +161,5 @@
   document.querySelector("#settingsButton")?.addEventListener("click",()=>renderSettings());
   document.querySelector("#settingsButton")?.setAttribute("title",state.lang==="ar"?"الإعدادات":"Settings");
   updatePrimaryTabs();claimPairFromUrl();refreshCapabilities();
+  if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(()=>syncPending(),1200);
 })();

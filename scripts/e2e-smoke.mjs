@@ -106,6 +106,8 @@ try {
   await page.waitForTimeout(300);
   await page.click('[data-health-view="vitals"]');
   await page.waitForTimeout(200);
+  const healthNavPosition = await page.locator(".health-subnav").evaluate(el => getComputedStyle(el).position);
+  assertTrue(healthNavPosition === "relative", "Health section selector stays in the page flow instead of floating over content");
   await page.fill("[data-sleep-bedtime]", "23:00");
   await page.fill("[data-sleep-wake]", "06:00");
   await page.click(".sleep-form button[type=submit]");
@@ -126,6 +128,7 @@ try {
     await page.waitForTimeout(300);
   }
   assertTrue(await page.locator(".food-log article, .food-entry").count() > 0, "Manual food entry is saved and listed");
+  assertTrue((await page.locator(".food-sync-state.is-pending").count()) > 0, "Food entry clearly stays pending until Notion returns a verified receipt");
 
   // insights
   await page.click('[data-app-tab="health"]');

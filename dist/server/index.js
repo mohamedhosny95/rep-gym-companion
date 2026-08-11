@@ -404,6 +404,25 @@ async function notionRequest(env, path, init = {}) {
   }
 }
 
+function notionPageReceipt(page, expectedSource) {
+  const pageId = safeText(page?.id, 100);
+  const sourceId = safeText(page?.parent?.data_source_id || page?.parent?.database_id, 100);
+  const sameSource = !expectedSource || Boolean(sourceId && sourceId.replace(/-/g, "") === expectedSource.replace(/-/g, ""));
+  if (!pageId || page?.archived || page?.in_trash || !sameSource) {
+    throw new Error("Notion did not confirm the saved page in the expected database.");
+  }
+  return {
+    verified: true,
+    notionPageId: pageId,
+    notionUrl: safeText(page?.url || `https://www.notion.so/${pageId.replace(/-/g, "")}`, 600)
+  };
+}
+
+async function verifyNotionPage(env, pageId, expectedSource) {
+  const page = await notionRequest(env, `/pages/${safeText(pageId, 100)}`);
+  return notionPageReceipt(page, expectedSource);
+}
+
 async function existingEntries(env, workoutId) {
   const titles = new Set();
   let cursor;
@@ -473,7 +492,7 @@ async function syncWorkout(request, env) {
     });
     created++;
   }
-  return json({ ok: true, created, skipped });
+  return json({ ok: true, verified: true, kind: "workout", created, skipped });
 }
 
 function healthSource(env, kind) {
@@ -538,9 +557,13 @@ function foodProperties(payload) {
 async function syncFood(env,payload,source) {
   if(!payload?.id||!payload?.date)return json({ok:false,error:"Invalid food entry."},400);
   const marker=`[REP:${safeText(payload.id,100)}]`,result=await notionRequest(env,`/data_sources/${source}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Notes",rich_text:{contains:marker}}})});
-  if(result.results?.length)return json({ok:true,created:0,skipped:1});
-  await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties:foodProperties(payload)})});
-  return json({ok:true,created:1,skipped:0});
+  if(result.results?.length){
+    const receipt=await verifyNotionPage(env,result.results[0].id,source);
+    return json({ok:true,...receipt,kind:"food",entryId:safeText(payload.id,100),created:0,skipped:1});
+  }
+  const createdPage=await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties:foodProperties(payload)})});
+  const receipt=await verifyNotionPage(env,createdPage.id,source);
+  return json({ok:true,...receipt,kind:"food",entryId:safeText(payload.id,100),created:1,skipped:0});
 }
 
 async function syncHealth(request, env, body) {
@@ -552,9 +575,11 @@ async function syncHealth(request, env, body) {
   const builders={recovery:recoveryProperties,sleep:sleepProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
   if(!properties)return json({ok:false,error:"Unsupported health log type."},400);
   const pageId=await existingHealthPage(env,source,payload.date);
-  if(pageId)await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties})});
-  else await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties})});
-  return json({ok:true,created:pageId?0:1,updated:pageId?1:0});
+  const savedPage=pageId
+    ? await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties})})
+    : await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties})});
+  const receipt=await verifyNotionPage(env,savedPage.id||pageId,source);
+  return json({ok:true,...receipt,kind,date:safeText(payload.date,10),created:pageId?0:1,updated:pageId?1:0});
 }
 
 // --- Web Push (RFC 8291 aes128gcm content encoding + RFC 8292 VAPID) ---
@@ -808,9 +833,18 @@ async function route(request, env) {
       if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
       try {
         const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), digest = idempotency ? b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(idempotency)))) : "", marker = digest ? `sync:${digest}` : "";
-        if (marker && env.PUSH_KV && await env.PUSH_KV.get(marker)) return json({ ok: true, created: 0, skipped: 1, duplicate: true });
+        if (marker && env.PUSH_KV) {
+          const stored = await env.PUSH_KV.get(marker);
+          if (stored && stored !== "done") {
+            const receipt = JSON.parse(stored);
+            if (receipt?.ok && receipt?.verified) return json({ ...receipt, duplicate: true });
+          }
+        }
         const body = await request.clone().json().catch(() => null), response = body?.workout ? await syncWorkout(request, env) : await syncHealth(request, env, body);
-        if (marker && env.PUSH_KV && response.ok) await env.PUSH_KV.put(marker, "done", { expirationTtl: 60 * 60 * 24 * 30 });
+        if (marker && env.PUSH_KV && response.ok) {
+          const receipt = await response.clone().json().catch(() => null);
+          if (receipt?.ok && receipt?.verified) await env.PUSH_KV.put(marker, JSON.stringify(receipt), { expirationTtl: 60 * 60 * 24 * 30 });
+        }
         return response;
       }
       catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }

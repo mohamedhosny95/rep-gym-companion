@@ -1,6 +1,13 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 56 organizes guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care behind four primary tabs. It adds customizable schedules and targets, kg/lb and ml/fl oz display, favourite meals with portion scaling, secure device pairing, encrypted backups, and reliable offline Notion queues while preserving the complete v55 Health and Apple import system.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 57 organizes guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care behind four primary tabs. It adds customizable schedules and targets, kg/lb and ml/fl oz display, favourite meals with portion scaling, secure device pairing, encrypted backups, and verified offline Notion queues while preserving the complete v55 Health and Apple import system.
+
+Food entries are never labelled as synced from a generic network success. The
+Worker returns a receipt only after re-reading the saved Notion page, and each
+meal displays its own pending, failed, or confirmed status plus a direct link to
+the confirmed page. Version 57 also keeps the Vitals / Wellness / Insights
+selector in normal document flow so it cannot cover Health content while
+scrolling.
 
 ## Open locally
 
