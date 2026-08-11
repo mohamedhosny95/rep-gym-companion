@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 58 adds a confidence-aware personal health engine on top of guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care. It now explains Readiness signal by signal, adapts the recommended training dose, calculates a personal Sleep Need and bedtime, evaluates habits against next-day Readiness, and creates a seven-day Health Review without presenting wellness estimates as diagnoses.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 59 adds a confidence-aware personal health engine on top of guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care. It now explains Readiness signal by signal, adapts the recommended training dose, calculates a personal Sleep Need and bedtime, evaluates habits against next-day Readiness, and creates a seven-day Health Review without presenting wellness estimates as diagnoses.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each

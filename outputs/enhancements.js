@@ -188,5 +188,6 @@
   document.querySelector("#settingsButton")?.addEventListener("click",()=>renderSettings());
   document.querySelector("#settingsButton")?.setAttribute("title",state.lang==="ar"?"الإعدادات":"Settings");
   updatePrimaryTabs();claimPairFromUrl();refreshCapabilities();
+  if(state.view==="home-overview")renderOverview();
   if(navigator.onLine&&state.syncQueue.length&&localStorage.getItem(syncKeyStorage))setTimeout(()=>syncPending(),1200);
 })();

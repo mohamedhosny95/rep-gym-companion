@@ -44,6 +44,7 @@ try {
   await page.waitForSelector("text=HOME", { timeout: 10000 });
   assertTrue(true, "Home tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Home tab is marked active on cold start");
+  assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);

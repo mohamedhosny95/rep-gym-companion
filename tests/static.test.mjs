@@ -18,8 +18,8 @@ test("every local script in the document exists",async()=>{
   assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
 });
 
-test("the v58 service worker precaches the health engine and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v58/); assert.match(sw,/health-engine\.js\?v=58/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v59 service worker precaches the health engine and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v59/); assert.match(sw,/health-engine\.js\?v=59/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
