@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Health OS">
-  <link rel="stylesheet" href="styles.css?v=63">
+  <link rel="stylesheet" href="styles.css?v=64">
 </head>
 <body>
   <div class="app-shell">
@@ -30,6 +30,7 @@
       <div class="top-actions">
         <span class="offline-pill" id="networkStatus"><i></i> Offline ready</span>
       <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
+        <button class="icon-button sync-shortcut" id="syncButton" aria-label="Open Sync Center">↻<span data-sync-badge hidden></span></button>
         <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
         <button class="icon-button" id="wakeButton" aria-label="Keep screen awake" aria-pressed="false">☼</button>
         <button class="icon-button" id="soundButton" aria-label="Mute timer sounds" aria-pressed="false">◖</button>
@@ -56,12 +57,12 @@
     <button id="timerSkip" class="timer-skip">Skip</button>
   </div>
 
-  <script src="auth.js?v=63" defer></script>
-  <script src="storage.js?v=63" defer></script>
-  <script src="health-data.js?v=63" defer></script>
+  <script src="auth.js?v=64" defer></script>
+  <script src="storage.js?v=64" defer></script>
+  <script src="health-data.js?v=64" defer></script>
   <script src="i18n.js" defer></script>
-  <script src="features.js?v=63" defer></script>
-  <script src="health-engine.js?v=63" defer></script>
-  <script src="bootstrap.js?v=63" defer></script>
+  <script src="features.js?v=64" defer></script>
+  <script src="health-engine.js?v=64" defer></script>
+  <script src="bootstrap.js?v=64" defer></script>
 </body>
 </html>

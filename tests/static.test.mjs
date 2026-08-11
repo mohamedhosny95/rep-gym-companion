@@ -20,13 +20,13 @@ test("every local script in the document exists",async()=>{
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
-test("the v63 service worker uses network-first navigation and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v63/); assert.match(sw,/auth\.js\?v=63/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v64 service worker uses network-first navigation and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v64/); assert.match(sw,/auth\.js\?v=64/); assert.match(sw,/sync-center\.js\?v=64/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw,/request\.mode === "navigate"/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","nutritionView","trainingView","systemHealth"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=11/);
+  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=12/);
 });
 
 test("health navigation stays in document flow and food sync requires a verified receipt",async()=>{
@@ -41,7 +41,7 @@ test("health navigation stays in document flow and food sync requires a verified
 test("durable state is split into IndexedDB and optional assets load on demand",async()=>{
   const storage=await read("outputs/storage.js"),enhancements=await read("outputs/enhancements.js");
   assert.match(storage,/indexedDB\.open/);assert.match(storage,/syncQueue/);assert.match(storage,/foodEntries/);assert.match(storage,/pagehide/);
-  assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/script\.src=`\$\{src\}\?v=63`/);
+  assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/script\.src=`\$\{src\}\?v=64`/);
 });
 
 test("startup and social assets stay within their performance budgets",async()=>{
@@ -56,9 +56,9 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
   assert.doesNotMatch(enhancements,/localStorage\.setItem\(syncKeyStorage,caps\.credential/);
 });
 
-test("client and deployment copies are byte-identical for source assets",async()=>{
-  for(const file of ["index.html","auth.js","storage.js","bootstrap.js","app.js","sync.js","styles.css","sw.js","health-data.js","health-engine.js","features.js","qrcode.js","enhancements.js"]){
-    const output=await readFile(join(root,"outputs",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
-    assert.ok(output,`outputs/${file} exists`); assert.ok(deployed,`dist/client/${file} exists`); assert.deepEqual(deployed,output,`${file} is synchronized`);
+test("source and generated client copies are byte-identical",async()=>{
+  for(const file of ["index.html","auth.js","storage.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","features.js","qrcode.js","enhancements.js"]){
+    const source=await readFile(join(root,"src/client",file)).catch(()=>null),output=await readFile(join(root,"outputs",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
+    assert.ok(source,`src/client/${file} exists`);assert.ok(output,`outputs/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);assert.deepEqual(source,deployed,`${file} is built from src/client`);assert.deepEqual(deployed,output,`${file} is synchronized`);
   }
 });

@@ -9,6 +9,19 @@ const HEALTH_DATA_SOURCES = {
   hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2",
   food: "97671c61-586a-4443-aea6-00b1d9f835a7"
 };
+const FOOD_DESTINATION = {
+  name: "View of Food Entries",
+  databaseId: "6433f54c-687e-4813-869a-aadeaf3acaab",
+  viewId: "bde632d4-554c-4344-a3a6-a9e1eb15fd50",
+  url: "https://app.notion.com/p/mohamedhosny95/6433f54c687e4813869aaadeaf3acaab?v=bde632d4554c4344a3a6a9e1eb15fd50&source=copy_link"
+};
+const FOOD_REQUIRED_PROPERTIES = {
+  Name: "title", Date: "date", "Meal Type": "select", "Log Method": "select",
+  Calories: "number", Protein: "number", Carbs: "number", Fat: "number", Fiber: "number",
+  Sugar: "number", Sodium: "number", "Portion Size": "rich_text", Confidence: "select", Notes: "rich_text"
+};
+const SYSTEM_HEALTH_KEY = "system:health:latest";
+const SYSTEM_ALERT_KEY = "system:health:alert";
 
 const FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion_size (string), estimated_weight_g (number), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), sugar_g (number), sodium_mg (number), confidence (High, Medium, or Low), confidence_pct (0-100 integer), notes (string), recognizable (boolean). All nutrition values are estimates. Use 0 instead of null. Sum multiple foods. If the input is Arabic, understand it natively and include the Arabic name after the English name.`;
 
@@ -425,8 +438,36 @@ async function notionRequest(env, path, init = {}) {
       await new Promise(resolve => setTimeout(resolve, wait * 1000));
       continue;
     }
-    throw new Error(data.message || `Notion request failed (${response.status})`);
+    const error = new Error(data.message || `Notion request failed (${response.status})`);
+    error.status = response.status;
+    error.code = safeText(data.code, 80);
+    throw error;
   }
+}
+
+function foodDestination(env) {
+  return { ...FOOD_DESTINATION, url: safeText(env.NOTION_FOOD_VIEW_URL || FOOD_DESTINATION.url, 700), sourceId: healthSource(env, "food") };
+}
+
+function validateFoodSchema(data) {
+  const properties = data?.properties || {}, missing = [], incompatible = [];
+  for (const [name, expected] of Object.entries(FOOD_REQUIRED_PROPERTIES)) {
+    const actual = properties[name]?.type;
+    if (!actual) missing.push(name);
+    else if (actual !== expected) incompatible.push({ name, expected, actual });
+  }
+  return { valid: missing.length === 0 && incompatible.length === 0, missing, incompatible };
+}
+
+function actionableNotionError(error, destination) {
+  const detail = safeText(error?.message || error, 180);
+  if (error?.status === 404 || /could not find|not found/i.test(detail)) {
+    return `Food Entries is unavailable to Rep Gym Sync. Restore the source if it is in Trash, then connect the integration to Food Entries. Your app destination remains ${destination.name}.`;
+  }
+  if (error?.status === 401 || error?.status === 403 || /unauthorized|restricted|permission/i.test(detail)) {
+    return `Rep Gym Sync cannot access Food Entries. Reconnect the integration to the original Food Entries database; the visible destination remains ${destination.name}.`;
+  }
+  return detail || "Notion destination validation failed.";
 }
 
 function notionPageReceipt(page, expectedSource) {
@@ -582,6 +623,8 @@ function foodProperties(payload) {
 
 async function syncFood(env,payload,source) {
   if(!payload?.id||!payload?.date)return json({ok:false,error:"Invalid food entry."},400);
+  const guard=await ensureFoodDestination(env);
+  if(!guard.healthy)throw Error(guard.error||"The Notion food destination is not ready.");
   const marker=`[REP:${safeText(payload.id,100)}]`,result=await notionRequest(env,`/data_sources/${source}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Notes",rich_text:{contains:marker}}})});
   if(result.results?.length){
     const receipt=await verifyNotionPage(env,result.results[0].id,source);
@@ -610,13 +653,21 @@ async function syncHealthBody(env, body) {
 async function executeSyncBody(env,body){return body?.workout?syncWorkoutBody(env,body):syncHealthBody(env,body);}
 
 async function notionHealth(env){
-  const configured=Boolean(env.NOTION_TOKEN),source=healthSource(env,"food");
-  if(!configured)return {configured:false,healthy:false,error:"NOTION_TOKEN is not configured."};
+  const configured=Boolean(env.NOTION_TOKEN),destination=foodDestination(env),source=destination.sourceId;
+  if(!configured)return {configured:false,healthy:false,destination,error:"NOTION_TOKEN is not configured."};
   const started=Date.now();
   try{
     const data=await notionRequest(env,`/data_sources/${source}`);
-    return {configured:true,healthy:Boolean(data?.id),sourceId:source,latencyMs:Date.now()-started,error:null};
-  }catch(error){return {configured:true,healthy:false,sourceId:source,latencyMs:Date.now()-started,error:safeText(error?.message||error,240)};}
+    const schema=validateFoodSchema(data),trashed=Boolean(data?.in_trash||data?.archived);
+    const schemaError=!schema.valid?`Food Entries schema needs attention. Missing: ${schema.missing.join(", ")||"none"}; incompatible: ${schema.incompatible.map(item=>`${item.name} (${item.actual} → ${item.expected})`).join(", ")||"none"}.`:null;
+    return {configured:true,healthy:Boolean(data?.id)&&!trashed&&schema.valid,sourceId:source,destination,schema,trashed,latencyMs:Date.now()-started,error:trashed?"The Food Entries source is in Notion Trash. Restore it; your View of Food Entries link will continue to work.":schemaError};
+  }catch(error){return {configured:true,healthy:false,sourceId:source,destination,schema:{valid:false,missing:[],incompatible:[]},latencyMs:Date.now()-started,error:actionableNotionError(error,destination)};}
+}
+
+async function ensureFoodDestination(env){
+  const cached=env.PUSH_KV?await env.PUSH_KV.get(SYSTEM_HEALTH_KEY,"json").catch(()=>null):null,age=cached?.checkedAt?Date.now()-Date.parse(cached.checkedAt):Infinity;
+  if(age<120000&&cached?.notion?.sourceId===healthSource(env,"food"))return cached.notion;
+  return notionHealth(env);
 }
 
 // --- Web Push (RFC 8291 aes128gcm content encoding + RFC 8292 VAPID) ---
@@ -869,6 +920,54 @@ async function sendScheduledReminders(env) {
   }
 }
 
+function infrastructureHealth(env){
+  let publicKeyValid=false,privateKeyValid=false;
+  try{const bytes=b64urlDecode(env.VAPID_PUBLIC_KEY||"");publicKeyValid=bytes.length===65&&bytes[0]===4;}catch{}
+  try{const key=JSON.parse(env.VAPID_PRIVATE_KEY_JWK||"{}");privateKeyValid=key.kty==="EC"&&key.crv==="P-256"&&Boolean(key.d);}catch{}
+  return {
+    push:{configured:Boolean(env.PUSH_KV&&publicKeyValid&&privateKeyValid),publicKeyValid,privateKeyValid,subjectConfigured:/^mailto:|^https:\/\//.test(env.VAPID_SUBJECT||"")},
+    backups:{configured:true,mode:"client-aes-256-gcm"},
+    healthkit:{configured:Boolean(env.PUSH_KV&&(env.VITALS_IMPORT_KEY||env.REP_SYNC_KEY)),endpoint:"/api/vitals/import"}
+  };
+}
+
+async function sendSystemHealthAlert(env,record){
+  if(!env.PUSH_KV||!env.VAPID_PRIVATE_KEY_JWK||!env.VAPID_PUBLIC_KEY)return {sent:0};
+  const list=await env.PUSH_KV.list({prefix:"sub:",limit:1000});let sent=0;
+  const message={title:"Health OS sync needs attention",body:record.notion?.error||`${record.outbox?.failed||record.outbox?.pending||0} sync jobs need attention.`};
+  for(const key of list.keys){
+    const subscription=await env.PUSH_KV.get(key.name,"json");if(!subscription?.subscription)continue;
+    try{const response=await sendWebPush(env,subscription.subscription,message);if(response.status===404||response.status===410)await env.PUSH_KV.delete(key.name);else if(response.ok)sent++;}catch{}
+  }
+  return {sent};
+}
+
+async function monitorSystemHealth(env){
+  const previous=await env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json");
+  if(previous?.checkedAt&&Date.now()-Date.parse(previous.checkedAt)<4*60*1000)return previous;
+  const [notion,outbox]=await Promise.all([notionHealth(env),syncOutboxHealth(env)]);
+  const oldestAgeMs=outbox.oldest?Math.max(0,Date.now()-Date.parse(outbox.oldest)):0,consecutiveFailures=notion.healthy?0:(Number(previous?.consecutiveFailures)||0)+1;
+  const issue=consecutiveFailures>=2||outbox.failed>0||(outbox.pending>0&&oldestAgeMs>15*60*1000);
+  const record={checkedAt:new Date().toISOString(),notion,outbox:{...outbox,oldestAgeMs},consecutiveFailures,issue};
+  if(env.PUSH_KV)await env.PUSH_KV.put(SYSTEM_HEALTH_KEY,JSON.stringify(record),{expirationTtl:60*60*24*30});
+  if(issue&&env.PUSH_KV){
+    const signature=JSON.stringify([notion.healthy,notion.error,outbox.pending,outbox.failed,oldestAgeMs>15*60*1000]),priorAlert=await env.PUSH_KV.get(SYSTEM_ALERT_KEY,"json"),due=!priorAlert||priorAlert.signature!==signature||Date.now()-Date.parse(priorAlert.sentAt)>6*60*60*1000;
+    if(due){const result=await sendSystemHealthAlert(env,record);await env.PUSH_KV.put(SYSTEM_ALERT_KEY,JSON.stringify({signature,sentAt:new Date().toISOString(),sent:result.sent}),{expirationTtl:60*60*24*30});}
+  }
+  return record;
+}
+
+async function testPush(request,env){
+  if(!(await paired(request,env)))return json({ok:false,error:"Pairing is required."},401);
+  if(!infrastructureHealth(env).push.configured)return json({ok:false,error:"Push is not fully configured."},503);
+  const body=await request.json().catch(()=>null),endpoint=safeText(body?.endpoint,1800);
+  if(!endpoint)return json({ok:false,error:"A subscribed device endpoint is required."},400);
+  const record=await env.PUSH_KV.get(pushKvKey(endpoint),"json");if(!record?.subscription)return json({ok:false,error:"This device does not have an active push subscription."},404);
+  const response=await sendWebPush(env,record.subscription,{title:"Health OS test","body":"Push notifications are working on this device."});
+  if(response.status===404||response.status===410){await env.PUSH_KV.delete(pushKvKey(endpoint));return json({ok:false,error:"The push subscription expired. Enable reminders again."},410);}
+  return response.ok?json({ok:true,status:response.status}):json({ok:false,error:`Push service rejected the test (${response.status}).`},502);
+}
+
 async function route(request, env, ctx) {
   const url = new URL(request.url);
   const canonical = safeText(env.CANONICAL_ORIGIN, 400);
@@ -972,11 +1071,17 @@ async function route(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
+  if (url.pathname === "/api/automation-health") {
+    if (request.method !== "GET") return json({ok:false,error:"Method not allowed."},405);
+    if (!(await automationPaired(request,env))) return json({ok:false,error:"Automation key is incorrect or missing."},401);
+    return json({ok:true,checkedAt:new Date().toISOString(),healthkit:infrastructureHealth(env).healthkit,notionDestination:foodDestination(env)});
+  }
   if (url.pathname === "/api/system-health") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null,{status:204}) : json({ok:false,error:"Method not allowed."},405);
     if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
-    const [notion,outbox]=await Promise.all([notionHealth(env),syncOutboxHealth(env)]);
-    return json({ok:true,version:"63",checkedAt:new Date().toISOString(),notion,outbox,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:Boolean(env.PUSH_KV&&env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY_JWK)}});
+    const [notion,outbox,monitor]=await Promise.all([notionHealth(env),syncOutboxHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
+    const infrastructure=infrastructureHealth(env);
+    return json({ok:true,version:"64",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
@@ -1024,6 +1129,10 @@ async function route(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
+  if (url.pathname === "/api/push/test") {
+    if (request.method === "POST") return testPush(request,env);
+    return json({ok:false,error:"Method not allowed."},405);
+  }
   if (url.pathname === "/api/push/unsubscribe") {
     if (request.method === "POST") return unsubscribePush(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
@@ -1043,6 +1152,6 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([sendScheduledReminders(env),drainSyncOutbox(env,body=>executeSyncBody(env,body))]));
+    ctx.waitUntil(Promise.all([sendScheduledReminders(env),drainSyncOutbox(env,body=>executeSyncBody(env,body)),monitorSystemHealth(env)]));
   }
 };

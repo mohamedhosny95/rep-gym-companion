@@ -13,6 +13,8 @@ class MemoryKV {
 
 const allowLimiter={limit:async()=>({success:true})};
 const env=()=>({REP_SYNC_KEY:"correct-horse-battery-staple-and-more-entropy",PUSH_KV:new MemoryKV(),AI_RATE_LIMITER:allowLimiter,PAIR_RATE_LIMITER:allowLimiter});
+const foodProperties=Object.fromEntries(Object.entries({Name:"title",Date:"date","Meal Type":"select","Log Method":"select",Calories:"number",Protein:"number",Carbs:"number",Fat:"number",Fiber:"number",Sugar:"number",Sodium:"number","Portion Size":"rich_text",Confidence:"select",Notes:"rich_text"}).map(([name,type])=>[name,{id:name,type}]));
+const foodSource=()=>({id:"97671c61-586a-4443-aea6-00b1d9f835a7",object:"data_source",name:[{plain_text:"Food Entries"}],properties:foodProperties,in_trash:false,archived:false});
 const call=(environment,path,init={},ctx)=>worker.fetch(new Request(`https://rep.example${path}`,init),environment,ctx);
 const read=async response=>({status:response.status,cookie:response.headers.get("set-cookie"),body:await response.json()});
 
@@ -46,6 +48,7 @@ test("Apple Shortcuts vitals import is validated and returned",async()=>{
   assert.deepEqual(pending.body.entries.map(entry=>entry.date),["2026-08-10"]);
   assert.equal(pending.body.entries[0].sleep_hours,7.5); assert.equal(pending.body.entries[0].hrv_ms,58);
   assert.equal(pending.body.entries[0].steps,10400); assert.equal(pending.body.entries[0].vo2_max,42.1); assert.equal(pending.body.entries[0].source,"HealthKit");
+  const health=await read(await call(environment,"/api/automation-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));assert.equal(health.status,200);assert.equal(health.body.healthkit.configured,true);
 });
 
 test("vitals routes require pairing and push stays disabled without VAPID keys",async()=>{
@@ -95,6 +98,7 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
   globalThis.fetch=async(input,init={})=>{
     const url=String(input);calls.push({url,method:init.method||"GET",body:init.body});
     if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/data_sources/97671c61-586a-4443-aea6-00b1d9f835a7"))return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
     if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:"11111111-2222-4333-8444-555555555555",url:"https://www.notion.so/11111111222243338444555555555555",parent:{type:"data_source_id",data_source_id:"97671c61-586a-4443-aea6-00b1d9f835a7"},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
     if(url.includes("/pages/11111111-2222-4333-8444-555555555555"))return new Response(JSON.stringify({id:"11111111-2222-4333-8444-555555555555",url:"https://www.notion.so/11111111222243338444555555555555",parent:{type:"data_source_id",data_source_id:"97671c61-586a-4443-aea6-00b1d9f835a7"},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
     throw new Error(`Unexpected fetch ${url}`);
@@ -112,6 +116,7 @@ test("sync jobs are accepted durably and become verified receipts",async()=>{
   globalThis.fetch=async(input,init={})=>{
     const url=String(input);
     if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/data_sources/97671c61-586a-4443-aea6-00b1d9f835a7"))return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
     if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",url:"https://www.notion.so/aaaaaaaabbbb4ccc8dddeeeeeeeeeeee",parent:{type:"data_source_id",data_source_id:"97671c61-586a-4443-aea6-00b1d9f835a7"},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
     if(url.includes("/pages/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"))return new Response(JSON.stringify({id:"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",url:"https://www.notion.so/aaaaaaaabbbb4ccc8dddeeeeeeeeeeee",parent:{type:"data_source_id",data_source_id:"97671c61-586a-4443-aea6-00b1d9f835a7"},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
     throw new Error(`Unexpected fetch ${url}`);
@@ -127,9 +132,21 @@ test("sync jobs are accepted durably and become verified receipts",async()=>{
 
 test("authenticated system health is read-only and reports the outbox",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret",GEMINI_API_KEY:"ai"},originalFetch=globalThis.fetch;
-  globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify({id:"97671c61-586a-4443-aea6-00b1d9f835a7"}),{status:200,headers:{"content-type":"application/json"}});};
+  globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"63");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"64");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
+});
+
+test("Notion destination guard reports schema drift with the correct visible view",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},originalFetch=globalThis.fetch;
+  globalThis.fetch=async()=>new Response(JSON.stringify({...foodSource(),properties:{...foodProperties,Notes:undefined}}),{status:200,headers:{"content-type":"application/json"}});
+  try{const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));assert.equal(result.body.notion.healthy,false);assert.deepEqual(result.body.notion.schema.missing,["Notes"]);assert.equal(result.body.notion.destination.name,"View of Food Entries");}finally{globalThis.fetch=originalFetch;}
+});
+
+test("scheduled monitoring stores current Notion and outbox health",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},context={promises:[],waitUntil(promise){this.promises.push(promise);}},originalFetch=globalThis.fetch;
+  globalThis.fetch=async()=>new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
+  try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
 });

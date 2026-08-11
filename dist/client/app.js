@@ -632,10 +632,10 @@ function recordSession(){
 
 function queueWorkout(record){
   if(!record?.entries?.length)return;const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
-  const id=`workout-${record.id}`;if(!state.syncQueue.some(item=>String(item.id||`workout-${item.workout?.id}`)===id))state.syncQueue.push({id,kind:"workout",workout:{id:String(record.id),date:record.date,type:typeMap[record.session]||record.activityLabel||"Recovery",duration:record.duration,entries:record.entries},attempts:0,error:""});
+  const id=`workout-${record.id}`,createdAt=new Date().toISOString();if(!state.syncQueue.some(item=>String(item.id||`workout-${item.workout?.id}`)===id))state.syncQueue.push({id,kind:"workout",workout:{id:String(record.id),date:record.date,type:typeMap[record.session]||record.activityLabel||"Recovery",duration:record.duration,entries:record.entries},attempts:0,error:"",createdAt,updatedAt:createdAt});
   persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);
 }
-function queueHealth(kind,payload){const id=`${kind}-${kind==="food"?(payload.id||Date.now()):payload.date}`;state.syncQueue=state.syncQueue.filter(item=>String(item.id)!==id);state.syncQueue.push({id,kind,payload,attempts:0,error:""});persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);}
+function queueHealth(kind,payload){const id=`${kind}-${kind==="food"?(payload.id||Date.now()):payload.date}`,createdAt=new Date().toISOString();state.syncQueue=state.syncQueue.filter(item=>String(item.id)!==id);state.syncQueue.push({id,kind,payload,attempts:0,error:"",createdAt,updatedAt:createdAt});persist();if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(syncPending,100);}
 
 async function syncPending(){
   const key=localStorage.getItem(syncKeyStorage);if(!key||state.syncState==="syncing"||!navigator.onLine)return;
