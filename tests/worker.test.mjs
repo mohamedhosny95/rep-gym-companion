@@ -48,6 +48,10 @@ test("Apple Shortcuts vitals import is validated and returned",async()=>{
   assert.deepEqual(pending.body.entries.map(entry=>entry.date),["2026-08-10"]);
   assert.equal(pending.body.entries[0].sleep_hours,7.5); assert.equal(pending.body.entries[0].hrv_ms,58);
   assert.equal(pending.body.entries[0].steps,10400); assert.equal(pending.body.entries[0].vo2_max,42.1); assert.equal(pending.body.entries[0].source,"HealthKit");
+  assert.equal(typeof pending.body.entries[0].imported_at,"string"); assert.equal(pending.body.entries[0].import_runs.length,1);
+  await read(await call(environment,"/api/vitals/import",{method:"POST",headers,body:JSON.stringify({date:"2026-08-10",active_energy_kcal:760,source:"HealthKit"})}));
+  const refreshed=await read(await call(environment,"/api/vitals/pending?since=2026-08-10",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  assert.equal(refreshed.body.entries.length,1); assert.equal(refreshed.body.entries[0].active_energy_kcal,760); assert.equal(refreshed.body.entries[0].sleep_hours,7.5); assert.equal(refreshed.body.entries[0].import_runs.length,2);
   const health=await read(await call(environment,"/api/automation-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));assert.equal(health.status,200);assert.equal(health.body.healthkit.configured,true);
 });
 
