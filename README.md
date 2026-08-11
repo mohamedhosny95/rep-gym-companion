@@ -263,7 +263,8 @@ Two ways to do the export side — pick one:
 
 Both write to the same server-side queue, so the rest of the app (the
 Vitals tab, "Check now", the background pull on open) works identically
-either way.
+either way. Repeated imports retain arrival timestamps for schedule health
+while keeping one authoritative value per metric and calendar day.
 
 ### 1. Server setup (reuses the push-notification KV, if you already have it)
 
@@ -335,11 +336,11 @@ bolded name if it's not an exact match.
 ### 4. Automate it
 
 Shortcuts app → **Automation** tab → **+** → **Create Personal Automation**
-→ **Time of Day** → pick a morning time after you're normally awake → next →
-**Add Action** → choose the Shortcut you just built → **turn off "Ask Before
-Running"**. That last toggle is the one that actually makes it silent — with
-it on, iOS prompts you to confirm every single morning, which defeats the
-point.
+→ **Time of Day** → create four daily automations at **06:00, 12:00, 18:00,
+and 23:45** → next → **Add Action** → choose the same Shortcut for every
+automation → **turn off "Ask Before Running"**. The morning run captures
+recovery data, while later runs refresh cumulative Active Energy. Every run
+updates the same calendar-day record, so the schedule does not create duplicates.
 
 ### Notes
 
