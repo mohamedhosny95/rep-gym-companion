@@ -42,6 +42,11 @@ async function paired(request, env) {
   return Boolean(await authInfo(request, env));
 }
 
+async function automationPaired(request, env) {
+  const supplied = request.headers.get("x-rep-sync-key") || "", expected = env.VITALS_IMPORT_KEY || env.REP_SYNC_KEY || "";
+  return Boolean(supplied && expected.length >= 32 && await timingSafeEqual(supplied, expected));
+}
+
 const SECURITY_HEADERS = {
   "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   "x-content-type-options": "nosniff",
@@ -51,9 +56,10 @@ const SECURITY_HEADERS = {
   "strict-transport-security": "max-age=31536000; includeSubDomains"
 };
 
-function withSecurityHeaders(response) {
+function withSecurityHeaders(response, requestId = "") {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
+  if (requestId) headers.set("x-request-id", requestId);
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -64,7 +70,9 @@ function withSecurityHeaders(response) {
 async function rateLimited(request, bucket, limit, windowSeconds, env) {
   const binding = bucket.includes("analyze") ? env?.AI_RATE_LIMITER : ["pair-check", "pair-claim", "push-subscribe"].includes(bucket) ? env?.PAIR_RATE_LIMITER : null;
   if (binding?.limit) {
-    const identity = request.headers.get("x-rep-sync-key") || request.headers.get("cf-connecting-ip") || "anonymous";
+    // Never key an authentication limiter by the credential being guessed: an
+    // attacker could rotate guesses to receive a fresh bucket every request.
+    const identity = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
     const digest = b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity))));
     try { return !(await binding.limit({ key: `${bucket}:${digest.slice(0, 24)}` })).success; } catch { /* fall through to the edge-cache limiter */ }
   }
@@ -287,7 +295,7 @@ function normalizeVitalsImport(value = {}) {
 // binding the push-reminder feature already uses, under a distinct prefix.
 async function importVitals(request, env) {
   if (await rateLimited(request, "vitals-import", 30, 3600, env)) return rateLimitResponse();
-  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (!(await automationPaired(request, env))) return json({ ok: false, error: "Automation key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
   const body = await request.json().catch(() => null);
   const vitals = normalizeVitalsImport(body || {});
@@ -357,7 +365,7 @@ function parseHaeExport(body) {
 
 async function importVitalsHae(request, env) {
   if (await rateLimited(request, "vitals-import-hae", 30, 3600, env)) return rateLimitResponse();
-  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
+  if (!(await automationPaired(request, env))) return json({ ok: false, error: "Automation key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") return json({ ok: false, error: "Invalid JSON body." }, 400);
@@ -631,6 +639,19 @@ async function hmacSha256(keyBytes, dataBytes) {
 // The master pairing secret is accepted only for initial setup and external
 // automations. Browser clients exchange it for a signed, expiring credential.
 const credentialEncoder = new TextEncoder(), credentialDecoder = new TextDecoder();
+const SESSION_COOKIE = "__Host-rep_session", SESSION_MAX_AGE = 400 * 86400;
+const deviceKey = id => `device:${id}`;
+function cookieValue(request, name) {
+  const prefix = `${name}=`;
+  for (const part of String(request.headers.get("cookie") || "").split(";")) {
+    const value = part.trim();
+    if (value.startsWith(prefix)) return decodeURIComponent(value.slice(prefix.length));
+  }
+  return "";
+}
+function sessionCookie(token, maxAge = SESSION_MAX_AGE) {
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+}
 async function signCredential(env, payload) {
   const encoded = b64urlEncode(credentialEncoder.encode(JSON.stringify(payload)));
   const signature = await hmacSha256(credentialEncoder.encode(env.REP_SYNC_KEY || ""), credentialEncoder.encode(encoded));
@@ -648,12 +669,22 @@ async function verifyCredential(env, token, expectedType = "device") {
     return payload;
   } catch { return null; }
 }
+async function registeredDevice(env, payload) {
+  if (!payload?.reg) return true; // one-time migration path for legacy rep1 credentials
+  if (!env.PUSH_KV) return false;
+  const record = await env.PUSH_KV.get(deviceKey(payload.jti), "json");
+  return Boolean(record && !record.revokedAt && Number(record.expiresAt) > Date.now());
+}
 async function authInfo(request, env) {
+  if (!env.REP_SYNC_KEY || String(env.REP_SYNC_KEY).length < 32) return null;
   const supplied = request.headers.get("x-rep-sync-key") || "";
-  if (!env.REP_SYNC_KEY || !supplied) return null;
-  if (await timingSafeEqual(supplied, env.REP_SYNC_KEY)) return { type: "master" };
-  const payload = await verifyCredential(env, supplied, "device");
-  return payload ? { type: "device", payload } : null;
+  if (supplied && await timingSafeEqual(supplied, env.REP_SYNC_KEY)) return { type: "master", token: supplied };
+  const candidates = [supplied, cookieValue(request, SESSION_COOKIE)].filter(Boolean);
+  for (const token of candidates) {
+    const payload = await verifyCredential(env, token, "device");
+    if (payload && await registeredDevice(env, payload)) return { type: payload.reg ? "device" : "legacy-device", payload, token };
+  }
+  return null;
 }
 function capabilities(env) {
   return {
@@ -662,14 +693,33 @@ function capabilities(env) {
     push: Boolean(env.PUSH_KV && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY_JWK)
   };
 }
-async function issueDeviceCredential(env) {
-  const now = Math.floor(Date.now() / 1000), exp = now + 90 * 86400;
-  return { credential: await signCredential(env, { typ: "device", iat: now, exp, jti: crypto.randomUUID() }), expiresAt: new Date(exp * 1000).toISOString() };
+async function issueDeviceCredential(env, request) {
+  if (!env.PUSH_KV) throw Error("Device pairing requires PUSH_KV.");
+  const now = Math.floor(Date.now() / 1000), exp = now + SESSION_MAX_AGE, jti = crypto.randomUUID();
+  const credential = await signCredential(env, { typ: "device", iat: now, exp, jti, reg: 1 });
+  await env.PUSH_KV.put(deviceKey(jti), JSON.stringify({ id: jti, createdAt: new Date(now * 1000).toISOString(), expiresAt: exp * 1000, lastSeenAt: new Date().toISOString(), label: safeText(request?.headers.get("user-agent") || "Browser", 160) }), { expirationTtl: SESSION_MAX_AGE + 86400 });
+  return { credential, deviceId: jti, expiresAt: new Date(exp * 1000).toISOString() };
+}
+function pairedSessionResponse(body, device, status = 200) {
+  return json({ ...body, credential: "cookie", deviceId: device.deviceId, expiresAt: device.expiresAt }, status, { "set-cookie": sessionCookie(device.credential) });
+}
+async function handoffState(env, jti, action) {
+  if (env.PAIRING_COORDINATOR) {
+    const id = env.PAIRING_COORDINATOR.idFromName(`handoff:${jti}`), stub = env.PAIRING_COORDINATOR.get(id);
+    const response = await stub.fetch(`https://pairing.internal/${action}`, { method: "POST" });
+    return response.ok;
+  }
+  if (!env.PUSH_KV) return false;
+  const key = `handoff:${jti}`;
+  if (action === "create") { await env.PUSH_KV.put(key, "ready", { expirationTtl: 360 }); return true; }
+  if (await env.PUSH_KV.get(key) !== "ready") return false;
+  await env.PUSH_KV.delete(key);
+  return true;
 }
 async function createPairHandoff(request, env) {
   if (!(await paired(request, env))) return json({ ok: false, error: "This device is not paired." }, 401);
   const now = Math.floor(Date.now() / 1000), exp = now + 300, jti = crypto.randomUUID(), token = await signCredential(env, { typ: "handoff", iat: now, exp, jti });
-  if (env.PUSH_KV) await env.PUSH_KV.put(`handoff:${jti}`, "ready", { expirationTtl: 360 });
+  if (!(await handoffState(env, jti, "create"))) return json({ ok: false, error: "Secure pairing handoff storage is unavailable." }, 503);
   const url = new URL(request.url); url.pathname = "/"; url.search = `?pair=${encodeURIComponent(token)}`;
   return json({ ok: true, url: url.toString(), expiresAt: new Date(exp * 1000).toISOString() });
 }
@@ -677,12 +727,26 @@ async function claimPairHandoff(request, env) {
   if (!env.REP_SYNC_KEY) return json({ ok: false, error: "Pairing is not configured." }, 503);
   const body = await request.json().catch(() => null), handoff = await verifyCredential(env, body?.token, "handoff");
   if (!handoff) return json({ ok: false, error: "This pairing link is invalid or expired." }, 401);
-  if (env.PUSH_KV) {
-    const key = `handoff:${handoff.jti}`;
-    if (await env.PUSH_KV.get(key) !== "ready") return json({ ok: false, error: "This pairing link was already used or expired." }, 401);
-    await env.PUSH_KV.delete(key);
+  if (!(await handoffState(env, handoff.jti, "claim"))) return json({ ok: false, error: "This pairing link was already used or expired." }, 401);
+  const device = await issueDeviceCredential(env, request);
+  return pairedSessionResponse({ ok: true, ...capabilities(env) }, device);
+}
+
+export class PairingCoordinator {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    const action = new URL(request.url).pathname.slice(1);
+    if (action === "create") { await this.state.storage.put("ready", true, { expiration: Math.floor(Date.now() / 1000) + 360 }); return new Response(null, { status: 204 }); }
+    if (action === "claim") {
+      const claimed = await this.state.storage.transaction(async tx => {
+        if (!(await tx.get("ready"))) return false;
+        await tx.delete("ready");
+        return true;
+      });
+      return new Response(null, { status: claimed ? 204 : 409 });
+    }
+    return new Response(null, { status: 404 });
   }
-  return json({ ok: true, ...await issueDeviceCredential(env), ...capabilities(env) });
 }
 
 let vapidJwtCache = null;
@@ -740,6 +804,7 @@ const pushKvKey = endpoint => `sub:${endpoint}`;
 
 async function subscribePush(request, env) {
   if (!env.PUSH_KV) return json({ ok: false, error: "Push notifications are not set up on the server yet." }, 503);
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing is required." }, 401);
   if (await rateLimited(request, "push-subscribe", 20, 60, env)) return rateLimitResponse();
   const origin = request.headers.get("origin");
   if (origin && new URL(origin).origin !== new URL(request.url).origin) return json({ ok: false, error: "Origin is not allowed." }, 403);
@@ -758,6 +823,7 @@ async function subscribePush(request, env) {
 
 async function unsubscribePush(request, env) {
   if (!env.PUSH_KV) return json({ ok: true });
+  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing is required." }, 401);
   const body = await request.json().catch(() => null);
   const endpoint = safeText(body?.endpoint, 500);
   if (endpoint) await env.PUSH_KV.delete(pushKvKey(endpoint));
@@ -793,14 +859,36 @@ async function sendScheduledReminders(env) {
 
 async function route(request, env) {
   const url = new URL(request.url);
+  const canonical = safeText(env.CANONICAL_ORIGIN, 400);
+  if (canonical) {
+    let expected;
+    try { expected = new URL(canonical).origin; } catch { return json({ ok: false, error: "CANONICAL_ORIGIN is invalid." }, 500); }
+    if (url.origin !== expected) {
+      if (url.pathname.startsWith("/api/") || !["GET", "HEAD"].includes(request.method)) return json({ ok: false, error: "Use the canonical application origin." }, 421);
+      const target = new URL(`${url.pathname}${url.search}${url.hash}`, expected);
+      return Response.redirect(target, 308);
+    }
+  }
   if (url.pathname === "/api/pair-check") {
     if (request.method === "POST") {
       if (await rateLimited(request, "pair-check", 20, 60, env)) return rateLimitResponse();
       const auth = await authInfo(request, env);
       if (!auth) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
-      const renewSoon = auth.type === "device" && Number(auth.payload?.exp) - Math.floor(Date.now() / 1000) < 14 * 86400;
-      const device = auth.type === "master" || renewSoon ? await issueDeviceCredential(env) : {};
-      return json({ ok: true, ...capabilities(env), ...device, deviceCredential: auth.type === "device" });
+      if (auth.type === "master" || auth.type === "legacy-device") {
+        const device = await issueDeviceCredential(env, request);
+        return pairedSessionResponse({ ok: true, ...capabilities(env), deviceCredential: true, migrated: auth.type === "legacy-device" }, device);
+      }
+      const record = await env.PUSH_KV?.get(deviceKey(auth.payload.jti), "json");
+      if (record) { record.lastSeenAt = new Date().toISOString(); await env.PUSH_KV.put(deviceKey(auth.payload.jti), JSON.stringify(record), { expirationTtl: Math.max(86400, Math.ceil((record.expiresAt - Date.now()) / 1000) + 86400) }); }
+      if (Number(auth.payload.exp) - Math.floor(Date.now() / 1000) < 30 * 86400) {
+        // Rotate before expiry so an actively used installation never asks for
+        // the master key again. Keep a short grace window for another tab that
+        // may have started a request with the previous cookie concurrently.
+        if (record) { record.expiresAt = Date.now() + 3600000; record.replacedAt = new Date().toISOString(); await env.PUSH_KV.put(deviceKey(auth.payload.jti), JSON.stringify(record), { expirationTtl: 7200 }); }
+        const device = await issueDeviceCredential(env, request);
+        return pairedSessionResponse({ ok: true, ...capabilities(env), deviceCredential: true, rotated: true }, device);
+      }
+      return json({ ok: true, ...capabilities(env), credential: "cookie", deviceId: auth.payload.jti, expiresAt: new Date(auth.payload.exp * 1000).toISOString(), deviceCredential: true }, 200, { "set-cookie": sessionCookie(auth.token) });
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
@@ -816,6 +904,35 @@ async function route(request, env) {
       return claimPairHandoff(request, env);
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/pair/disconnect") {
+    if (request.method === "POST") {
+      const auth = await authInfo(request, env);
+      if (auth?.payload?.jti && auth.payload.reg && env.PUSH_KV) await env.PUSH_KV.delete(deviceKey(auth.payload.jti));
+      return json({ ok: true }, 200, { "set-cookie": sessionCookie("", 0) });
+    }
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/pair/devices") {
+    const auth = await authInfo(request, env);
+    if (!auth) return json({ ok: false, error: "Pairing is required." }, 401);
+    if (request.method === "GET") {
+      if (!env.PUSH_KV) return json({ ok: true, devices: [] });
+      const list = await env.PUSH_KV.list({ prefix: "device:" }), devices = [];
+      for (const key of list.keys.slice(0, 100)) {
+        const record = await env.PUSH_KV.get(key.name, "json");
+        if (record && !record.revokedAt) devices.push({ id: record.id, label: record.label, createdAt: record.createdAt, lastSeenAt: record.lastSeenAt, current: record.id === auth.payload?.jti });
+      }
+      return json({ ok: true, devices });
+    }
+    if (request.method === "DELETE") {
+      const body = await request.json().catch(() => null), id = safeText(body?.deviceId, 80);
+      if (!id) return json({ ok: false, error: "deviceId is required." }, 400);
+      await env.PUSH_KV?.delete(deviceKey(id));
+      const clearingCurrent = id === auth.payload?.jti;
+      return json({ ok: true }, 200, clearingCurrent ? { "set-cookie": sessionCookie("", 0) } : {});
+    }
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
   if (url.pathname === "/api/food/analyze") {
@@ -890,7 +1007,12 @@ async function route(request, env) {
 
 export default {
   async fetch(request, env) {
-    return withSecurityHeaders(await route(request, env));
+    const requestId = crypto.randomUUID();
+    try { return withSecurityHeaders(await route(request, env), requestId); }
+    catch (error) {
+      console.error(JSON.stringify({ event: "request_failed", requestId, method: request.method, path: new URL(request.url).pathname, error: safeText(error?.message || "Unknown error", 240) }));
+      return withSecurityHeaders(json({ ok: false, error: "Request failed.", requestId }, 500), requestId);
+    }
   },
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sendScheduledReminders(env));

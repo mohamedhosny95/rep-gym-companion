@@ -15,11 +15,11 @@ test("the mobile shell exposes four primary tabs",async()=>{
 test("every local script in the document exists",async()=>{
   const html=await read("outputs/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"outputs",source))));
-  assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
+  assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
 });
 
-test("the v59 service worker precaches the health engine and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v59/); assert.match(sw,/health-engine\.js\?v=59/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v60 service worker precaches authentication and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v60/); assert.match(sw,/auth\.js\?v=60/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
@@ -32,8 +32,14 @@ test("health navigation stays in document flow and food sync requires a verified
   assert.match(js,/Notion did not return a verified save receipt/); assert.match(js,/Confirmed in Notion/);
 });
 
+test("browser pairing keeps only a non-secret marker and synchronizes tabs",async()=>{
+  const auth=await read("outputs/auth.js"),enhancements=await read("outputs/enhancements.js");
+  assert.match(auth,/cookieMarker="cookie"/);assert.match(auth,/BroadcastChannel/);assert.match(auth,/addEventListener\("storage"/);
+  assert.doesNotMatch(enhancements,/localStorage\.setItem\(syncKeyStorage,caps\.credential/);
+});
+
 test("client and deployment copies are byte-identical for source assets",async()=>{
-  for(const file of ["index.html","app.js","styles.css","sw.js","health-data.js","health-engine.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["index.html","auth.js","app.js","styles.css","sw.js","health-data.js","health-engine.js","features.js","qrcode.js","enhancements.js"]){
     const output=await readFile(join(root,"outputs",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(output,`outputs/${file} exists`); assert.ok(deployed,`dist/client/${file} exists`); assert.deepEqual(deployed,output,`${file} is synchronized`);
   }

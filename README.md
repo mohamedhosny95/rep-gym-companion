@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 59 adds a confidence-aware personal health engine on top of guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care. It now explains Readiness signal by signal, adapts the recommended training dose, calculates a personal Sleep Need and bedtime, evaluates habits against next-day Readiness, and creates a seven-day Health Review without presenting wellness estimates as diagnoses.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 60 adds durable, revocable whole-app device pairing to the confidence-aware personal health engine, guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -87,7 +87,9 @@ The deployed server expects these environment variables (see `.env.example`):
 
 - `NOTION_TOKEN` — secret Notion integration token
 - `NOTION_DATA_SOURCE_ID` — workout database data-source ID
-- `REP_SYNC_KEY` — private master pairing key entered once on the first device
+- `REP_SYNC_KEY` — random 32-byte-or-longer master pairing key entered once
+- `VITALS_IMPORT_KEY` — separate random key for Health Auto Export/Shortcuts
+- `CANONICAL_ORIGIN` — the one production origin all browser tabs must use
 - `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
 Recovery, nutrition, hygiene, and food databases use their checked-in public
@@ -99,10 +101,16 @@ Set these as secrets/variables in the Cloudflare dashboard (Settings →
 Variables and secrets) or via `wrangler secret put <NAME>` — never in a
 committed file. `.env.example` documents the names only, for reference.
 
-The app exchanges the master key for a signed 90-day device credential and
-does not retain the master secret. Credentials renew automatically near expiry.
+The app exchanges the master key for a signed, server-registered device session,
+stores it only in a Secure/HttpOnly/SameSite cookie, and keeps only a non-secret
+"paired" marker in browser storage. The cookie is shared by every normal tab on
+the canonical origin and renews whenever the application reconnects. Devices
+remain paired while active until the user disconnects, clears site data, or
+revokes them from Settings → Security. Legacy 90-day credentials migrate on the
+next successful connection without requiring the master key again.
 Settings → Security can create a single-use QR pairing link for another phone;
-the link expires after five minutes. Food AI, Notion, Vitals AI, automated
+the link expires after five minutes and is consumed atomically by a Durable
+Object. Food AI, Notion, Vitals AI, automated
 imports, and push availability are reported separately so one missing service
 does not make the whole connection look broken.
 
@@ -219,8 +227,7 @@ plausible ranges before the client uses them.
 4. Set the destination:
    - URL: `https://<your-worker-domain>/api/vitals/import-hae`
    - Method: `POST`
-   - Header: `x-rep-sync-key` → your `REP_SYNC_KEY` value (the same one
-     you paired the app with)
+   - Header: `x-rep-sync-key` → your `VITALS_IMPORT_KEY` value
 5. Set it to run automatically (the app has its own daily/periodic
    scheduling — no separate Shortcuts automation needed for this path).
 
@@ -265,8 +272,8 @@ bolded name if it's not an exact match.
 11. **Get Contents of URL**:
     - URL: `https://<your-worker-domain>/api/vitals/import`
     - Method: `POST`
-    - Headers: `x-rep-sync-key` → your `REP_SYNC_KEY` value (the same one
-      you paired the app with), `Content-Type` → `application/json`
+    - Headers: `x-rep-sync-key` → your `VITALS_IMPORT_KEY` value,
+      `Content-Type` → `application/json`
     - Request Body: `JSON`, set to the Dictionary from step 10
 
 ### 4. Automate it
@@ -307,13 +314,18 @@ point.
 `dist/server/index.js` applies a few defenses beyond basic pairing-key auth:
 
 - **Rate limiting** — Cloudflare Rate Limit bindings protect AI analysis and
-  pairing at the edge. The existing per-colo Cache API limiter remains as a
-  fallback and covers lower-risk sync/import routes.
+  pairing at the edge using network identity, so rotating guessed secrets does
+  not bypass a limit. The per-colo Cache API limiter remains a fallback.
 - **Timing-safe key comparison** — `REP_SYNC_KEY` is compared via a hashed,
   constant-time check rather than `===`.
-- **Expiring client credentials** — phones receive signed device credentials;
-  the master key remains available only for first setup and external Health
-  automations.
+- **Revocable client sessions** — phones receive signed, HttpOnly device
+  sessions backed by a KV device registry. A lost device can be revoked without
+  disconnecting every other device. External Health automations use a separate,
+  restricted secret.
+- **Atomic QR claims** — five-minute pairing handoffs are consumed by a Durable
+  Object transaction so simultaneous claims cannot both succeed.
+- **Authenticated push management** — subscriptions cannot be added or removed
+  without a valid device session.
 - **Idempotent offline sync** — repeated queued writes carry stable keys, and
   the Worker stores completion markers so retries cannot create duplicates.
 - **Security headers** — every response (API and static assets) gets a
@@ -327,6 +339,10 @@ point.
 Production is deployed by Cloudflare's direct GitHub integration, which
 should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
 is used only for the non-deploying verification workflow described above.
+
+Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
+`VITALS_IMPORT_KEY`, and deploy once with the Durable Object migration in
+`wrangler.jsonc`. In GitHub, protect `main` and require both `verify` and `e2e`.
 
 **Verify this is actually scoped to `main`.** On PR #7, Cloudflare posted a
 "Deployment successful" comment for the *feature branch's* commit, and the

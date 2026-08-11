@@ -11,15 +11,15 @@ class MemoryKV {
 }
 
 const allowLimiter={limit:async()=>({success:true})};
-const env=()=>({REP_SYNC_KEY:"correct-horse-battery-staple",PUSH_KV:new MemoryKV(),AI_RATE_LIMITER:allowLimiter,PAIR_RATE_LIMITER:allowLimiter});
+const env=()=>({REP_SYNC_KEY:"correct-horse-battery-staple-and-more-entropy",PUSH_KV:new MemoryKV(),AI_RATE_LIMITER:allowLimiter,PAIR_RATE_LIMITER:allowLimiter});
 const call=(environment,path,init={})=>worker.fetch(new Request(`https://rep.example${path}`,init),environment);
-const read=async response=>({status:response.status,body:await response.json()});
+const read=async response=>({status:response.status,cookie:response.headers.get("set-cookie"),body:await response.json()});
 
-test("master key is exchanged for a signed, expiring device credential",async()=>{
+test("master key is exchanged for a revocable HttpOnly cookie shared by tabs",async()=>{
   const environment=env(),result=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-  assert.equal(result.status,200); assert.equal(result.body.ok,true); assert.match(result.body.credential,/^rep1\./); assert.ok(Date.parse(result.body.expiresAt)>Date.now());
-  const device=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":result.body.credential}}));
-  assert.equal(device.status,200); assert.equal(device.body.deviceCredential,true); assert.equal(device.body.credential,undefined);
+  assert.equal(result.status,200); assert.equal(result.body.ok,true); assert.equal(result.body.credential,"cookie"); assert.match(result.cookie,/^__Host-rep_session=rep1\./); assert.match(result.cookie,/HttpOnly/); assert.match(result.cookie,/SameSite=Strict/); assert.ok(Date.parse(result.body.expiresAt)>Date.now());
+  const cookie=result.cookie.split(";",1)[0],device=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{cookie}}));
+  assert.equal(device.status,200); assert.equal(device.body.deviceCredential,true); assert.equal(device.body.credential,"cookie");
 });
 
 test("bad pairing credentials are rejected",async()=>{
@@ -31,7 +31,7 @@ test("QR handoff can be claimed once",async()=>{
   const environment=env(),handoff=await read(await call(environment,"/api/pair/handoff",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
   assert.equal(handoff.status,200); const token=new URL(handoff.body.url).searchParams.get("pair"); assert.ok(token);
   const claim=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})});
-  const first=await read(await claim()); assert.equal(first.status,200); assert.match(first.body.credential,/^rep1\./);
+  const first=await read(await claim()); assert.equal(first.status,200); assert.equal(first.body.credential,"cookie"); assert.match(first.cookie,/^__Host-rep_session=rep1\./);
   const second=await read(await claim()); assert.equal(second.status,401);
 });
 
@@ -56,9 +56,29 @@ test("vitals routes require pairing and push stays disabled without VAPID keys",
 test("push subscription payloads are validated and stored",async()=>{
   const publicKey=Buffer.concat([Buffer.from([4]),Buffer.alloc(64,7)]).toString("base64url"),auth=Buffer.alloc(16,9).toString("base64url");
   const environment=env(),body={subscription:{endpoint:"https://push.example/subscription/1",keys:{p256dh:publicKey,auth}},time:"20:15",timezoneOffsetMinutes:-120,lang:"en"};
-  const response=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example"},body:JSON.stringify(body)}));
+  const response=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify(body)}));
   assert.equal(response.status,200); assert.equal([...environment.PUSH_KV.values.keys()].filter(key=>key.startsWith("sub:")).length,1);
-  const invalid=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:"{}"})); assert.equal(invalid.status,400);
+  const unauthenticated=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:"{}"})); assert.equal(unauthenticated.status,401);
+});
+
+test("a registered device can be listed and individually revoked",async()=>{
+  const environment=env(),pairedResult=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY,"user-agent":"Test Browser"}})),cookie=pairedResult.cookie.split(";",1)[0];
+  const listed=await read(await call(environment,"/api/pair/devices",{headers:{cookie}}));assert.equal(listed.status,200);assert.equal(listed.body.devices.length,1);assert.equal(listed.body.devices[0].current,true);
+  const revoked=await read(await call(environment,"/api/pair/devices",{method:"DELETE",headers:{cookie,"content-type":"application/json"},body:JSON.stringify({deviceId:listed.body.devices[0].id})}));assert.equal(revoked.status,200);assert.match(revoked.cookie,/Max-Age=0/);
+  const denied=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{cookie}}));assert.equal(denied.status,401);
+});
+
+test("pairing rate limits are keyed by network identity, not guessed credentials",async()=>{
+  const keys=[],environment={...env(),PAIR_RATE_LIMITER:{limit:async({key})=>{keys.push(key);return {success:true};}}};
+  await call(environment,"/api/pair-check",{method:"POST",headers:{"cf-connecting-ip":"203.0.113.8","x-rep-sync-key":"guess-one"}});
+  await call(environment,"/api/pair-check",{method:"POST",headers:{"cf-connecting-ip":"203.0.113.8","x-rep-sync-key":"guess-two"}});
+  assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);
+});
+
+test("canonical origin redirects pages and rejects API calls on preview origins",async()=>{
+  const environment={...env(),CANONICAL_ORIGIN:"https://health.example"};
+  const page=await worker.fetch(new Request("https://preview.example/settings"),environment);assert.equal(page.status,308);assert.equal(page.headers.get("location"),"https://health.example/settings");
+  const api=await read(await worker.fetch(new Request("https://preview.example/api/pair-check",{method:"POST"}),environment));assert.equal(api.status,421);
 });
 
 test("food sync ignores legacy optimistic markers and returns a verified Notion receipt",async()=>{
