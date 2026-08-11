@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import worker from "../dist/server/index.js";
 
 class MemoryKV {
@@ -79,6 +80,11 @@ test("canonical origin redirects pages and rejects API calls on preview origins"
   const environment={...env(),CANONICAL_ORIGIN:"https://health.example"};
   const page=await worker.fetch(new Request("https://preview.example/settings"),environment);assert.equal(page.status,308);assert.equal(page.headers.get("location"),"https://health.example/settings");
   const api=await read(await worker.fetch(new Request("https://preview.example/api/pair-check",{method:"POST"}),environment));assert.equal(api.status,421);
+});
+
+test("all asset requests run through canonical-origin enforcement",()=>{
+  const config=JSON.parse(readFileSync(new URL("../wrangler.jsonc",import.meta.url),"utf8"));
+  assert.equal(config.assets.run_worker_first,true);
 });
 
 test("food sync ignores legacy optimistic markers and returns a verified Notion receipt",async()=>{
