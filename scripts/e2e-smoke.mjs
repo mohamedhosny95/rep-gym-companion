@@ -41,15 +41,19 @@ try {
   page.on("console", msg => { if (msg.type() === "error") consoleErrors.push(`console.error: ${msg.text()}`); });
 
   await page.goto(baseUrl, { waitUntil: "load" });
-  await page.waitForSelector("text=HOME", { timeout: 10000 });
-  assertTrue(true, "Home tab loads on cold start");
-  assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Home tab is marked active on cold start");
+  await page.waitForSelector('html[data-app-ready="true"]', { timeout: 10000 });
+  await page.waitForSelector("text=TODAY", { timeout: 10000 });
+  assertTrue(true, "Today tab loads on cold start");
+  assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);
   await page.waitForSelector("text=Move well.", { timeout: 10000 });
   assertTrue(true, "Training tab loads");
+  assertTrue(await page.locator('.today-training-action').count() === 1, "Training opens on the focused Today view");
+  await page.click('[data-training-view="program"]');
+  await page.waitForTimeout(200);
 
   // Regression guard: tapping a session must show a preview, not jump straight in.
   await page.click('[data-session="gym"]');
@@ -86,7 +90,7 @@ try {
   await page.click("[data-home]").catch(() => {});
   await page.waitForTimeout(300);
 
-  await page.click("[data-history]");
+  await page.click('[data-training-view="history"]');
   await page.waitForTimeout(300);
   const historyText = await page.locator(".history-list").evaluate(el => el.textContent).catch(() => "");
   assertTrue(historyText.includes("Gym"), "Completed session appears in History");
@@ -94,6 +98,9 @@ try {
   await page.waitForTimeout(200);
 
   // activity logging
+  await page.click('[data-app-tab="train"]');
+  await page.click('[data-training-view="program"]');
+  await page.locator(".training-advanced").evaluate(element=>element.open=true);
   await page.click("[data-log-activity]");
   await page.waitForTimeout(300);
   await page.fill("[data-activity-minutes]", "40");
@@ -146,11 +153,12 @@ try {
   await page.click('[data-settings-tab="coach"]');
   assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");
 
-  // language toggle
-  await page.click("#langButton");
+  // language toggle lives in General settings instead of the crowded top bar
+  await page.click('[data-settings-tab="general"]');
+  await page.click('[data-language="ar"]');
   await page.waitForTimeout(300);
   assertTrue((await page.evaluate(() => document.documentElement.dir)) === "rtl", "Language toggle flips to RTL");
-  await page.click("#langButton");
+  await page.click('[data-language="en"]');
   await page.waitForTimeout(200);
 
   assertTrue(consoleErrors.length === 0, `No console/page errors during the run (found ${consoleErrors.length})`);

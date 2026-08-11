@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 60 adds durable, revocable whole-app device pairing to the confidence-aware personal health engine, guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 63 adds a durable Notion outbox, IndexedDB-backed history, focused Today/Training/Nutrition/Health navigation, connection diagnostics, and lazy-loaded optional assets to the revocable whole-app device pairing introduced in version 60.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -9,6 +9,28 @@ the confirmed page. Version 57 also keeps the Vitals / Wellness / Insights
 selector in normal document flow so it cannot cover Health content while
 scrolling. Raw imported details remain on the device while an idempotent daily
 summary can update the existing Notion Recovery record.
+
+## Version 63 architecture
+
+- Every Notion write enters a Cloudflare KV outbox before the UI considers it
+  in progress. The Worker retries transient failures with bounded exponential
+  backoff, the once-per-minute cron drains work left by a closed tab, and the
+  client removes an item only after a verified Notion page receipt.
+- The client retries when it regains focus or connectivity and checks pending
+  work every minute while open. An hourly timer is unnecessary: entries normally
+  sync immediately, while the outbox covers closed tabs and temporary outages.
+- Large histories and pending queues live in IndexedDB. Small preferences remain
+  in localStorage, preserving fast startup and existing installations.
+- Today contains the next actions; Training separates Today, Program, and
+  History; Nutrition separates Log, Today, and Plan; Health keeps Vitals,
+  Wellness, and Insights. Settings owns language, units, schedule, targets,
+  coaching, connections, devices, and backups.
+- Settings → Connections & security includes a read-only Notion health check and
+  outbox counts. Worker logs record accepted, retried, failed, and completed job
+  events without logging health payloads.
+- QR support loads only when creating a pairing handoff, navigation uses a
+  network-first service-worker strategy, and the social preview is about 216 KB
+  instead of roughly 2 MB.
 
 ## Health intelligence and Apple Health
 

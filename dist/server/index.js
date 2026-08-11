@@ -1,3 +1,5 @@
+import {acceptedSyncReceipt,drainSyncOutbox,enqueueSyncJob,findSyncJob,findSyncReceipt,processSyncJob,syncOutboxHealth} from "./sync-outbox.js";
+
 const NOTION_VERSION = "2026-03-11";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const HEALTH_DATA_SOURCES = {
@@ -492,12 +494,11 @@ function notionProperties(workout, row) {
   return properties;
 }
 
-async function syncWorkout(request, env) {
+async function syncWorkoutBody(env, body) {
   if (!env.NOTION_TOKEN || !env.NOTION_DATA_SOURCE_ID || !env.REP_SYNC_KEY) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
-  if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
-  const body = await request.json().catch(() => null), workout = body?.workout;
+  const workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
   }
@@ -591,9 +592,8 @@ async function syncFood(env,payload,source) {
   return json({ok:true,...receipt,kind:"food",entryId:safeText(payload.id,100),created:1,skipped:0});
 }
 
-async function syncHealth(request, env, body) {
+async function syncHealthBody(env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) return json({ok:false,error:"Sync is not configured on the server."},503);
-  if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
   if(kind==="food")return syncFood(env,payload,source);
@@ -605,6 +605,18 @@ async function syncHealth(request, env, body) {
     : await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties})});
   const receipt=await verifyNotionPage(env,savedPage.id||pageId,source);
   return json({ok:true,...receipt,kind,date:safeText(payload.date,10),created:pageId?0:1,updated:pageId?1:0});
+}
+
+async function executeSyncBody(env,body){return body?.workout?syncWorkoutBody(env,body):syncHealthBody(env,body);}
+
+async function notionHealth(env){
+  const configured=Boolean(env.NOTION_TOKEN),source=healthSource(env,"food");
+  if(!configured)return {configured:false,healthy:false,error:"NOTION_TOKEN is not configured."};
+  const started=Date.now();
+  try{
+    const data=await notionRequest(env,`/data_sources/${source}`);
+    return {configured:true,healthy:Boolean(data?.id),sourceId:source,latencyMs:Date.now()-started,error:null};
+  }catch(error){return {configured:true,healthy:false,sourceId:source,latencyMs:Date.now()-started,error:safeText(error?.message||error,240)};}
 }
 
 // --- Web Push (RFC 8291 aes128gcm content encoding + RFC 8292 VAPID) ---
@@ -857,7 +869,7 @@ async function sendScheduledReminders(env) {
   }
 }
 
-async function route(request, env) {
+async function route(request, env, ctx) {
   const url = new URL(request.url);
   const canonical = safeText(env.CANONICAL_ORIGIN, 400);
   if (canonical) {
@@ -960,6 +972,12 @@ async function route(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
+  if (url.pathname === "/api/system-health") {
+    if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null,{status:204}) : json({ok:false,error:"Method not allowed."},405);
+    if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
+    const [notion,outbox]=await Promise.all([notionHealth(env),syncOutboxHealth(env)]);
+    return json({ok:true,version:"63",checkedAt:new Date().toISOString(),notion,outbox,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:Boolean(env.PUSH_KV&&env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY_JWK)}});
+  }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
       if (await rateLimited(request, "notion-sync", 60, 60, env)) return rateLimitResponse();
@@ -967,24 +985,34 @@ async function route(request, env) {
       if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
       try {
         const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), digest = idempotency ? b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(idempotency)))) : "", marker = digest ? `sync:${digest}` : "";
-        if (marker && env.PUSH_KV) {
-          const stored = await env.PUSH_KV.get(marker);
-          if (stored && stored !== "done") {
-            const receipt = JSON.parse(stored);
-            if (receipt?.ok && receipt?.verified) return json({ ...receipt, duplicate: true });
-          }
+        const body = await request.clone().json().catch(() => null);
+        if(!body||(!body.workout&&!body.kind))return json({ok:false,error:"Invalid sync payload."},400);
+        if(!digest||!env.PUSH_KV)return executeSyncBody(env,body);
+        if(!ctx){
+          const existing=await findSyncReceipt(env,digest);if(existing?.ok&&existing?.verified)return json({...existing,duplicate:true});
+          const response=await executeSyncBody(env,body),receipt=await response.clone().json().catch(()=>null);
+          if(response.ok&&receipt?.ok&&receipt?.verified)await env.PUSH_KV.put(`syncreceipt:${digest}`,JSON.stringify(receipt),{expirationTtl:60*60*24*30});
+          return response;
         }
-        const body = await request.clone().json().catch(() => null), response = body?.workout ? await syncWorkout(request, env) : await syncHealth(request, env, body);
-        if (marker && env.PUSH_KV && response.ok) {
-          const receipt = await response.clone().json().catch(() => null);
-          if (receipt?.ok && receipt?.verified) await env.PUSH_KV.put(marker, JSON.stringify(receipt), { expirationTtl: 60 * 60 * 24 * 30 });
-        }
-        return response;
+        const queued=await enqueueSyncJob(env,digest,body,{force:request.headers.get("x-rep-sync-force")==="true"});
+        if(queued?.receipt)return json({...queued.receipt,duplicate:true});
+        if(queued?.job?.status==="failed")return json({ok:false,error:queued.job.lastError||"Notion sync failed after automatic retries.",jobId:digest},502);
+        ctx?.waitUntil(processSyncJob(env,digest,jobBody=>executeSyncBody(env,jobBody)));
+        return json(acceptedSyncReceipt(queued.job),202,{"location":`/api/sync-status?id=${encodeURIComponent(digest)}`});
       }
       catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
+  }
+  if (url.pathname === "/api/sync-status") {
+    if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null,{status:204}) : json({ok:false,error:"Method not allowed."},405);
+    if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
+    const id=safeText(url.searchParams.get("id"),180);if(!id)return json({ok:false,error:"Job id is required."},400);
+    const receipt=await findSyncReceipt(env,id);if(receipt?.ok&&receipt?.verified)return json({...receipt,duplicate:true});
+    const job=await findSyncJob(env,id);if(!job)return json({ok:false,error:"Sync job was not found."},404);
+    if(job.status==="failed")return json({ok:false,error:job.lastError||"Notion sync failed after automatic retries.",jobId:id},502);
+    return json(acceptedSyncReceipt(job),202);
   }
   if (url.pathname === "/api/push/public-key") {
     if (request.method === "GET") return json({ ok: true, key: env.VAPID_PUBLIC_KEY || null });
@@ -1006,15 +1034,15 @@ async function route(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const requestId = crypto.randomUUID();
-    try { return withSecurityHeaders(await route(request, env), requestId); }
+    try { return withSecurityHeaders(await route(request, env, ctx), requestId); }
     catch (error) {
       console.error(JSON.stringify({ event: "request_failed", requestId, method: request.method, path: new URL(request.url).pathname, error: safeText(error?.message || "Unknown error", 240) }));
       return withSecurityHeaders(json({ ok: false, error: "Request failed.", requestId }, 500), requestId);
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(sendScheduledReminders(env));
+    ctx.waitUntil(Promise.all([sendScheduledReminders(env),drainSyncOutbox(env,body=>executeSyncBody(env,body))]));
   }
 };

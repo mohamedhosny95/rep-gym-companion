@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Health OS">
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="stylesheet" href="styles.css?v=63">
 </head>
 <body>
   <div class="app-shell">
@@ -29,7 +29,7 @@
       </button>
       <div class="top-actions">
         <span class="offline-pill" id="networkStatus"><i></i> Offline ready</span>
-        <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
+      <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
         <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
         <button class="icon-button" id="wakeButton" aria-label="Keep screen awake" aria-pressed="false">☼</button>
         <button class="icon-button" id="soundButton" aria-label="Mute timer sounds" aria-pressed="false">◖</button>
@@ -38,7 +38,7 @@
 
     <main id="app" aria-live="polite"></main>
     <nav class="app-tabs" id="appTabs" aria-label="Main app sections">
-      <button data-app-tab="home" aria-current="page"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg></i><span>Home</span></button>
+      <button data-app-tab="home" aria-current="page"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg></i><span>Today</span></button>
       <button data-app-tab="train"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="9" width="3" height="6" rx="1"/><rect x="4.5" y="7" width="3" height="10" rx="1"/><line x1="7.5" y1="12" x2="16.5" y2="12"/><rect x="16.5" y="7" width="3" height="10" rx="1"/><rect x="20" y="9" width="3" height="6" rx="1"/></svg></i><span>Training</span></button>
       <button data-app-tab="food"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></i><span>Nutrition</span></button>
       <button data-app-tab="health"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-10-9.5C.5 7.5 3 4 6.5 4c2 0 3.5 1.2 4.5 2.8C12 5.2 13.5 4 15.5 4 19 4 21.5 7.5 20 11.5 17.5 16.4 12 21 12 21z"/><polyline points="6,13 9,13 10.5,10 12.5,16 14,13 18,13"/></svg></i><span>Health</span></button>
@@ -56,13 +56,12 @@
     <button id="timerSkip" class="timer-skip">Skip</button>
   </div>
 
-  <script src="auth.js?v=62" defer></script>
-  <script src="health-data.js?v=62" defer></script>
+  <script src="auth.js?v=63" defer></script>
+  <script src="storage.js?v=63" defer></script>
+  <script src="health-data.js?v=63" defer></script>
   <script src="i18n.js" defer></script>
-  <script src="features.js?v=62" defer></script>
-  <script src="qrcode.js?v=62" defer></script>
-  <script src="health-engine.js?v=62" defer></script>
-  <script src="app.js?v=62" defer></script>
-  <script src="enhancements.js?v=62" defer></script>
+  <script src="features.js?v=63" defer></script>
+  <script src="health-engine.js?v=63" defer></script>
+  <script src="bootstrap.js?v=63" defer></script>
 </body>
 </html>
