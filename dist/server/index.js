@@ -267,7 +267,16 @@ function normalizeVitalsImport(value = {}) {
     hrv_ms: clampOrNull(value.hrv_ms, 5, 300),
     resting_hr_bpm: clampOrNull(value.resting_hr_bpm, 30, 120),
     respiratory_rate_bpm: clampOrNull(value.respiratory_rate_bpm, 5, 40),
-    active_energy_kcal: clampOrNull(value.active_energy_kcal, 0, 10000)
+    active_energy_kcal: clampOrNull(value.active_energy_kcal, 0, 10000),
+    steps: clampOrNull(value.steps, 0, 200000),
+    exercise_minutes: clampOrNull(value.exercise_minutes, 0, 1440),
+    stand_minutes: clampOrNull(value.stand_minutes, 0, 1440),
+    vo2_max: clampOrNull(value.vo2_max, 5, 100),
+    oxygen_saturation_pct: clampOrNull(value.oxygen_saturation_pct, 50, 100),
+    wrist_temperature_c: clampOrNull(value.wrist_temperature_c, 20, 45),
+    sleep_deep_hours: clampOrNull(value.sleep_deep_hours, 0, 10),
+    sleep_rem_hours: clampOrNull(value.sleep_rem_hours, 0, 10),
+    source: safeText(value.source || "health-import", 60)
   };
 }
 
@@ -298,7 +307,13 @@ const HAE_METRIC_FIELDS = [
   { test: name => /heartratevariab|hrv/.test(name), field: "hrv_ms", agg: "avg" },
   { test: name => /restingheartrate/.test(name), field: "resting_hr_bpm", agg: "avg" },
   { test: name => /respiratoryrate|breathingrate|breathrate/.test(name), field: "respiratory_rate_bpm", agg: "avg" },
-  { test: name => /activeenergy/.test(name), field: "active_energy_kcal", agg: "sum" }
+  { test: name => /activeenergy/.test(name), field: "active_energy_kcal", agg: "sum" },
+  { test: name => /stepcount|steps/.test(name), field: "steps", agg: "sum" },
+  { test: name => /appleexercisetime|exercisetime/.test(name), field: "exercise_minutes", agg: "sum" },
+  { test: name => /applestandtime|standtime/.test(name), field: "stand_minutes", agg: "sum" },
+  { test: name => /vo2max/.test(name), field: "vo2_max", agg: "avg" },
+  { test: name => /oxygensaturation|spo2/.test(name), field: "oxygen_saturation_pct", agg: "avg" },
+  { test: name => /wristtemperature/.test(name), field: "wrist_temperature_c", agg: "avg" }
 ];
 
 function haeDateParts(raw) {
@@ -309,7 +324,7 @@ function haeDateParts(raw) {
 function parseHaeExport(body) {
   const byDate = new Map();
   const entryFor = date => {
-    if (!byDate.has(date)) byDate.set(date, { date, sleep_hours: null, bedtime: null, wake_time: null, hrv_ms: null, resting_hr_bpm: null, respiratory_rate_bpm: null, active_energy_kcal: null });
+    if (!byDate.has(date)) byDate.set(date, { date, sleep_hours: null, bedtime: null, wake_time: null, hrv_ms: null, resting_hr_bpm: null, respiratory_rate_bpm: null, active_energy_kcal: null, steps: null, exercise_minutes: null, stand_minutes: null, vo2_max: null, oxygen_saturation_pct: null, wrist_temperature_c: null, source: "Health Auto Export" });
     return byDate.get(date);
   };
   for (const metric of Array.isArray(body?.data?.metrics) ? body.data.metrics : []) {
@@ -337,7 +352,7 @@ function parseHaeExport(body) {
     const hours = Number(record?.totalSleep) || Number(record?.asleep) || null;
     if (Number.isFinite(hours) && hours > 0) entry.sleep_hours = Math.round(hours * 10) / 10;
   }
-  return [...byDate.values()].filter(e => e.sleep_hours || e.bedtime || e.hrv_ms || e.resting_hr_bpm || e.respiratory_rate_bpm || e.active_energy_kcal);
+  return [...byDate.values()].filter(e => e.sleep_hours || e.bedtime || e.hrv_ms || e.resting_hr_bpm || e.respiratory_rate_bpm || e.active_energy_kcal || e.steps || e.exercise_minutes || e.stand_minutes || e.vo2_max || e.oxygen_saturation_pct || e.wrist_temperature_c);
 }
 
 async function importVitalsHae(request, env) {
@@ -348,7 +363,7 @@ async function importVitalsHae(request, env) {
   if (!body || typeof body !== "object") return json({ ok: false, error: "Invalid JSON body." }, 400);
   let entries;
   try { entries = parseHaeExport(body); } catch { return json({ ok: false, error: "Could not parse the Health Auto Export payload." }, 400); }
-  if (!entries.length) return json({ ok: false, error: "No recognizable Sleep, HRV, Resting Heart Rate, Respiratory Rate, or Active Energy data found in this export." }, 400);
+  if (!entries.length) return json({ ok: false, error: "No recognizable sleep, recovery, activity, or fitness data found in this export." }, 400);
   let imported = 0;
   for (const entry of entries) {
     const normalized = normalizeVitalsImport(entry);
@@ -529,10 +544,12 @@ function nutritionProperties(payload) {
 }
 
 function sleepProperties(payload) {
-  return {
+  const properties={
     "Check-in":{title:richText(`Recovery · ${payload.date}`)},"Date":{date:{start:safeText(payload.date,10)}},
     "Sleep Hours":{number:Number(payload.sleep)||0}
   };
+  if(payload.notes)properties["Notes"]={rich_text:richText(payload.notes)};
+  return properties;
 }
 function hygieneProperties(payload) {
   return {

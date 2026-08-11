@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-static.mjs",
-    "check": "node --check dist/client/app.js && node --check dist/client/enhancements.js && node --check dist/client/features.js && node --check dist/client/qrcode.js && node --check dist/client/sw.js && node --check dist/server/index.js",
+    "check": "node --check dist/client/app.js && node --check dist/client/health-engine.js && node --check dist/client/enhancements.js && node --check dist/client/features.js && node --check dist/client/qrcode.js && node --check dist/client/sw.js && node --check dist/server/index.js",
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "verify": "npm run check && npm test",

@@ -108,6 +108,8 @@ try {
   await page.waitForTimeout(200);
   const healthNavPosition = await page.locator(".health-subnav").evaluate(el => getComputedStyle(el).position);
   assertTrue(healthNavPosition === "relative", "Health section selector stays in the page flow instead of floating over content");
+  assertTrue(await page.locator(".health-coach-card").count() === 1, "Explainable Today Coach appears in Vitals");
+  assertTrue(await page.locator(".health-quality-card").count() === 1, "Health import quality card appears in Vitals");
   await page.fill("[data-sleep-bedtime]", "23:00");
   await page.fill("[data-sleep-wake]", "06:00");
   await page.click(".sleep-form button[type=submit]");
@@ -136,6 +138,12 @@ try {
   await page.click('[data-health-view="insights"]');
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
+  assertTrue(await page.locator(".weekly-health-review").count() === 1, "Weekly Health Review renders");
+
+  await page.click("#settingsButton");
+  await page.waitForTimeout(200);
+  await page.click('[data-settings-tab="coach"]');
+  assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");
 
   // language toggle
   await page.click("#langButton");

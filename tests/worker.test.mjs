@@ -38,12 +38,13 @@ test("QR handoff can be claimed once",async()=>{
 test("Apple Shortcuts vitals import is validated and returned",async()=>{
   const environment=env(),headers={"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY};
   const imported=await read(await call(environment,"/api/vitals/import",{method:"POST",headers,body:JSON.stringify(
-    {date:"2026-08-10",sleep_hours:7.5,hrv_ms:58,resting_hr_bpm:54,respiratory_rate_bpm:14.2,active_energy_kcal:710}
+    {date:"2026-08-10",sleep_hours:7.5,hrv_ms:58,resting_hr_bpm:54,respiratory_rate_bpm:14.2,active_energy_kcal:710,steps:10400,vo2_max:42.1,oxygen_saturation_pct:97,wrist_temperature_c:36.4,source:"HealthKit"}
   )}));
   assert.equal(imported.status,200); assert.equal(imported.body.ok,true);
   const pending=await read(await call(environment,"/api/vitals/pending?since=2026-08-09",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
   assert.deepEqual(pending.body.entries.map(entry=>entry.date),["2026-08-10"]);
   assert.equal(pending.body.entries[0].sleep_hours,7.5); assert.equal(pending.body.entries[0].hrv_ms,58);
+  assert.equal(pending.body.entries[0].steps,10400); assert.equal(pending.body.entries[0].vo2_max,42.1); assert.equal(pending.body.entries[0].source,"HealthKit");
 });
 
 test("vitals routes require pairing and push stays disabled without VAPID keys",async()=>{

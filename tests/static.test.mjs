@@ -15,15 +15,15 @@ test("the mobile shell exposes four primary tabs",async()=>{
 test("every local script in the document exists",async()=>{
   const html=await read("outputs/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"outputs",source))));
-  assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js"));
+  assert.ok(sources.includes("enhancements.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
 });
 
-test("the v57 service worker precaches the upgrade and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v57/); assert.match(sw,/enhancements\.js\?v=57/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v58 service worker precaches the health engine and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v58/); assert.match(sw,/health-engine\.js\?v=58/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
 });
 
-test("the state migration preserves recovered v55 health fields",async()=>{
-  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=9/);
+test("the state migration preserves health data and adds coaching preferences",async()=>{
+  const js=await read("outputs/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=10/);
 });
 
 test("health navigation stays in document flow and food sync requires a verified receipt",async()=>{
@@ -33,7 +33,7 @@ test("health navigation stays in document flow and food sync requires a verified
 });
 
 test("client and deployment copies are byte-identical for source assets",async()=>{
-  for(const file of ["index.html","app.js","styles.css","sw.js","health-data.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["index.html","app.js","styles.css","sw.js","health-data.js","health-engine.js","features.js","qrcode.js","enhancements.js"]){
     const output=await readFile(join(root,"outputs",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(output,`outputs/${file} exists`); assert.ok(deployed,`dist/client/${file} exists`); assert.deepEqual(deployed,output,`${file} is synchronized`);
   }

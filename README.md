@@ -1,13 +1,30 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 57 organizes guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care behind four primary tabs. It adds customizable schedules and targets, kg/lb and ml/fl oz display, favourite meals with portion scaling, secure device pairing, encrypted backups, and verified offline Notion queues while preserving the complete v55 Health and Apple import system.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 58 adds a confidence-aware personal health engine on top of guided training, flexible nutrition, recovery, sleep/vitals, insights, and daily care. It now explains Readiness signal by signal, adapts the recommended training dose, calculates a personal Sleep Need and bedtime, evaluates habits against next-day Readiness, and creates a seven-day Health Review without presenting wellness estimates as diagnoses.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
 meal displays its own pending, failed, or confirmed status plus a direct link to
 the confirmed page. Version 57 also keeps the Vitals / Wellness / Insights
 selector in normal document flow so it cannot cover Health content while
-scrolling.
+scrolling. Raw imported details remain on the device while an idempotent daily
+summary can update the existing Notion Recovery record.
+
+## Health intelligence and Apple Health
+
+- Personal baselines use robust medians over a configurable 21, 28, or 42-day
+  window. Wearable signals need seven prior nights to enter Readiness and 14
+  nights to support high confidence.
+- Training guidance chooses normal, reduced, recovery, or pause mode. A pain
+  report always overrides the score.
+- Behavior experiments compare the following day's reliable Readiness and wait
+  for at least four days in each group. The UI calls these associations, never
+  causes.
+- The Worker accepts sleep, HRV, resting heart rate, respiratory rate, active
+  energy, steps, exercise/stand minutes, VO₂ max, oxygen saturation, wrist
+  temperature, and deep/REM sleep from the existing import endpoints.
+- `ios/RepHealthBridge/` contains the SwiftUI HealthKit companion starter. It
+  requires Xcode signing because browsers cannot access HealthKit directly.
 
 ## Open locally
 
@@ -159,7 +176,8 @@ notification doesn't arrive.
 
 The Vitals tab's screenshot importer is manual — you take a screenshot, pick
 it, review the numbers. This section sets up a fully automatic path instead:
-your sleep, HRV, resting heart rate, respiratory rate, and active energy get
+your sleep, HRV, resting heart rate, respiratory rate, active energy, steps,
+exercise/stand minutes, VO₂ max, oxygen saturation, wrist temperature, and sleep stages get
 read from the Health app every day and sent to the server, which the app
 then picks up the next time you open it. No screenshot, no manual save, no
 app-opening required for the export step itself.
