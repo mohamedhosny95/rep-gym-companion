@@ -1,5 +1,5 @@
-const CACHE = "rep-companion-v62";
-const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=62", "./auth.js?v=62", "./health-data.js?v=62", "./i18n.js", "./features.js?v=62", "./qrcode.js?v=62", "./health-engine.js?v=62", "./app.js?v=62", "./enhancements.js?v=62", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CACHE = "rep-companion-v63";
+const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=63", "./auth.js?v=63", "./storage.js?v=63", "./health-data.js?v=63", "./i18n.js", "./features.js?v=63", "./health-engine.js?v=63", "./bootstrap.js?v=63", "./app.js?v=63", "./sync.js?v=63", "./enhancements.js?v=63", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const ATLAS_ASSETS = ["./assets/gym-anatomy-atlas.webp", "./assets/mobility-anatomy-atlas.webp", "./assets/core-anatomy-atlas.webp", "./assets/cardio-anatomy-atlas.webp", "./assets/gym-anatomy-front-atlas.webp", "./assets/mobility-anatomy-front-atlas.webp", "./assets/core-anatomy-front-atlas.webp", "./assets/cardio-anatomy-front-atlas.webp", "./assets/priority-motion-atlas.webp"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => {
@@ -18,6 +18,7 @@ self.addEventListener("fetch", event => {
   // would otherwise serve a stale "no new data" answer forever for a repeated
   // ?since= query, hiding newly imported data.
   if (new URL(event.request.url).pathname.startsWith("/api/")) { event.respondWith(fetch(event.request)); return; }
+  if (event.request.mode === "navigate") { event.respondWith(fetch(event.request).then(response => { const copy=response.clone();caches.open(CACHE).then(cache=>cache.put("./index.html",copy));return response; }).catch(()=>caches.match("./index.html"))); return; }
   event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
     const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); return response;
   }).catch(() => caches.match("./index.html"))));
