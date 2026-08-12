@@ -1,4 +1,3 @@
-import {acceptedSyncReceipt,drainSyncOutbox,enqueueSyncJob,findSyncJob,findSyncReceipt,processSyncJob,syncOutboxHealth} from "./sync-outbox.js";
 
 const NOTION_VERSION = "2026-03-11";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -643,8 +642,10 @@ async function syncFood(env,payload,source) {
   if(!guard.healthy)throw Error(guard.error||"The Notion food destination is not ready.");
   const marker=`[REP:${safeText(payload.id,100)}]`,result=await notionRequest(env,`/data_sources/${source}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Notes",rich_text:{contains:marker}}})});
   if(result.results?.length){
-    const receipt=await verifyNotionPage(env,result.results[0].id,source);
-    return json({ok:true,...receipt,kind:"food",entryId:safeText(payload.id,100),created:0,skipped:1});
+    const pageId=result.results[0].id;
+    await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties:foodProperties(payload)})});
+    const receipt=await verifyNotionPage(env,pageId,source);
+    return json({ok:true,...receipt,kind:"food",entryId:safeText(payload.id,100),created:0,updated:1});
   }
   const createdPage=await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties:foodProperties(payload)})});
   const receipt=await verifyNotionPage(env,createdPage.id,source);
@@ -716,7 +717,7 @@ async function hmacSha256(keyBytes, dataBytes) {
 }
 
 // The master pairing secret is accepted only for initial setup and external
-// automations. Browser clients exchange it for a signed, expiring credential.
+// automations. Browser clients exchange it for a signed device credential.
 const credentialEncoder = new TextEncoder(), credentialDecoder = new TextDecoder();
 const SESSION_COOKIE = "__Host-rep_session", SESSION_MAX_AGE = 400 * 86400;
 const deviceKey = id => `device:${id}`;
@@ -744,7 +745,12 @@ async function verifyCredential(env, token, expectedType = "device") {
     const expected = b64urlEncode(await hmacSha256(credentialEncoder.encode(env.REP_SYNC_KEY), credentialEncoder.encode(encoded)));
     if (!(await timingSafeEqual(signature, expected))) return null;
     const payload = JSON.parse(credentialDecoder.decode(b64urlDecode(encoded))), now = Math.floor(Date.now() / 1000);
-    if (payload.typ !== expectedType || !Number.isFinite(payload.exp) || payload.exp <= now || Number(payload.iat) > now + 60) return null;
+    if (payload.typ !== expectedType || !Number.isFinite(payload.iat) || Number(payload.iat) > now + 60) return null;
+    // Device credentials issued since v67 stay valid until their device record
+    // is explicitly revoked. Handoff links and legacy device credentials retain
+    // their expiry checks.
+    if (expectedType !== "device" && (!Number.isFinite(payload.exp) || payload.exp <= now)) return null;
+    if (expectedType === "device" && payload.exp !== undefined && (!Number.isFinite(payload.exp) || payload.exp <= now)) return null;
     return payload;
   } catch { return null; }
 }
@@ -752,7 +758,7 @@ async function registeredDevice(env, payload) {
   if (!payload?.reg) return true; // one-time migration path for legacy rep1 credentials
   if (!env.PUSH_KV) return false;
   const record = await env.PUSH_KV.get(deviceKey(payload.jti), "json");
-  return Boolean(record && !record.revokedAt && Number(record.expiresAt) > Date.now());
+  return Boolean(record && !record.revokedAt);
 }
 async function authInfo(request, env) {
   if (!env.REP_SYNC_KEY || String(env.REP_SYNC_KEY).length < 32) return null;
@@ -774,13 +780,13 @@ function capabilities(env) {
 }
 async function issueDeviceCredential(env, request) {
   if (!env.PUSH_KV) throw Error("Device pairing requires PUSH_KV.");
-  const now = Math.floor(Date.now() / 1000), exp = now + SESSION_MAX_AGE, jti = crypto.randomUUID();
-  const credential = await signCredential(env, { typ: "device", iat: now, exp, jti, reg: 1 });
-  await env.PUSH_KV.put(deviceKey(jti), JSON.stringify({ id: jti, createdAt: new Date(now * 1000).toISOString(), expiresAt: exp * 1000, lastSeenAt: new Date().toISOString(), label: safeText(request?.headers.get("user-agent") || "Browser", 160) }), { expirationTtl: SESSION_MAX_AGE + 86400 });
-  return { credential, deviceId: jti, expiresAt: new Date(exp * 1000).toISOString() };
+  const now = Math.floor(Date.now() / 1000), jti = crypto.randomUUID();
+  const credential = await signCredential(env, { typ: "device", iat: now, jti, reg: 1 });
+  await env.PUSH_KV.put(deviceKey(jti), JSON.stringify({ id: jti, createdAt: new Date(now * 1000).toISOString(), lastSeenAt: new Date().toISOString(), label: safeText(request?.headers.get("user-agent") || "Browser", 160) }));
+  return { credential, deviceId: jti, expiresAt: null, persistent: true };
 }
 function pairedSessionResponse(body, device, status = 200) {
-  return json({ ...body, credential: "cookie", deviceId: device.deviceId, expiresAt: device.expiresAt }, status, { "set-cookie": sessionCookie(device.credential) });
+  return json({ ...body, credential: "cookie", deviceId: device.deviceId, expiresAt: device.expiresAt, persistent: device.persistent === true }, status, { "set-cookie": sessionCookie(device.credential) });
 }
 async function handoffState(env, jti, action) {
   if (env.PAIRING_COORDINATOR) {
@@ -950,7 +956,7 @@ function infrastructureHealth(env){
 async function sendSystemHealthAlert(env,record){
   if(!env.PUSH_KV||!env.VAPID_PRIVATE_KEY_JWK||!env.VAPID_PUBLIC_KEY)return {sent:0};
   const list=await env.PUSH_KV.list({prefix:"sub:",limit:1000});let sent=0;
-  const message={title:"Health OS sync needs attention",body:record.notion?.error||`${record.outbox?.failed||record.outbox?.pending||0} sync jobs need attention.`};
+  const message={title:"Health OS sync needs attention",body:record.notion?.error||"The direct Notion connection needs attention."};
   for(const key of list.keys){
     const subscription=await env.PUSH_KV.get(key.name,"json");if(!subscription?.subscription)continue;
     try{const response=await sendWebPush(env,subscription.subscription,message);if(response.status===404||response.status===410)await env.PUSH_KV.delete(key.name);else if(response.ok)sent++;}catch{}
@@ -961,13 +967,12 @@ async function sendSystemHealthAlert(env,record){
 async function monitorSystemHealth(env){
   const previous=await env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json");
   if(previous?.checkedAt&&Date.now()-Date.parse(previous.checkedAt)<4*60*1000)return previous;
-  const [notion,outbox]=await Promise.all([notionHealth(env),syncOutboxHealth(env)]);
-  const oldestAgeMs=outbox.oldest?Math.max(0,Date.now()-Date.parse(outbox.oldest)):0,consecutiveFailures=notion.healthy?0:(Number(previous?.consecutiveFailures)||0)+1;
-  const issue=consecutiveFailures>=2||outbox.failed>0||(outbox.pending>0&&oldestAgeMs>15*60*1000);
-  const record={checkedAt:new Date().toISOString(),notion,outbox:{...outbox,oldestAgeMs},consecutiveFailures,issue};
+  const notion=await notionHealth(env),consecutiveFailures=notion.healthy?0:(Number(previous?.consecutiveFailures)||0)+1;
+  const issue=consecutiveFailures>=2;
+  const record={checkedAt:new Date().toISOString(),notion,sync:{mode:"direct",queued:false},consecutiveFailures,issue};
   if(env.PUSH_KV)await env.PUSH_KV.put(SYSTEM_HEALTH_KEY,JSON.stringify(record),{expirationTtl:60*60*24*30});
   if(issue&&env.PUSH_KV){
-    const signature=JSON.stringify([notion.healthy,notion.error,outbox.pending,outbox.failed,oldestAgeMs>15*60*1000]),priorAlert=await env.PUSH_KV.get(SYSTEM_ALERT_KEY,"json"),due=!priorAlert||priorAlert.signature!==signature||Date.now()-Date.parse(priorAlert.sentAt)>6*60*60*1000;
+    const signature=JSON.stringify([notion.healthy,notion.error]),priorAlert=await env.PUSH_KV.get(SYSTEM_ALERT_KEY,"json"),due=!priorAlert||priorAlert.signature!==signature||Date.now()-Date.parse(priorAlert.sentAt)>6*60*60*1000;
     if(due){const result=await sendSystemHealthAlert(env,record);await env.PUSH_KV.put(SYSTEM_ALERT_KEY,JSON.stringify({signature,sentAt:new Date().toISOString(),sent:result.sent}),{expirationTtl:60*60*24*30});}
   }
   return record;
@@ -1000,22 +1005,20 @@ async function route(request, env, ctx) {
     if (request.method === "POST") {
       if (await rateLimited(request, "pair-check", 20, 60, env)) return rateLimitResponse();
       const auth = await authInfo(request, env);
-      if (!auth) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
+      if (!auth) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
       if (auth.type === "master" || auth.type === "legacy-device") {
         const device = await issueDeviceCredential(env, request);
         return pairedSessionResponse({ ok: true, ...capabilities(env), deviceCredential: true, migrated: auth.type === "legacy-device" }, device);
       }
       const record = await env.PUSH_KV?.get(deviceKey(auth.payload.jti), "json");
-      if (record) { record.lastSeenAt = new Date().toISOString(); await env.PUSH_KV.put(deviceKey(auth.payload.jti), JSON.stringify(record), { expirationTtl: Math.max(86400, Math.ceil((record.expiresAt - Date.now()) / 1000) + 86400) }); }
-      if (Number(auth.payload.exp) - Math.floor(Date.now() / 1000) < 30 * 86400) {
-        // Rotate before expiry so an actively used installation never asks for
-        // the master key again. Keep a short grace window for another tab that
-        // may have started a request with the previous cookie concurrently.
-        if (record) { record.expiresAt = Date.now() + 3600000; record.replacedAt = new Date().toISOString(); await env.PUSH_KV.put(deviceKey(auth.payload.jti), JSON.stringify(record), { expirationTtl: 7200 }); }
+      if (record) { record.lastSeenAt = new Date().toISOString(); delete record.expiresAt; await env.PUSH_KV.put(deviceKey(auth.payload.jti), JSON.stringify(record)); }
+      if (auth.payload.exp !== undefined) {
+        // Upgrade a still-valid legacy credential to the persistent registry
+        // model. This is the only automatic credential rotation.
         const device = await issueDeviceCredential(env, request);
         return pairedSessionResponse({ ok: true, ...capabilities(env), deviceCredential: true, rotated: true }, device);
       }
-      return json({ ok: true, ...capabilities(env), credential: "cookie", deviceId: auth.payload.jti, expiresAt: new Date(auth.payload.exp * 1000).toISOString(), deviceCredential: true }, 200, { "set-cookie": sessionCookie(auth.token) });
+      return json({ ok: true, ...capabilities(env), credential: "cookie", deviceId: auth.payload.jti, expiresAt: null, persistent: true, deviceCredential: true }, 200, { "set-cookie": sessionCookie(auth.token) });
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
@@ -1094,32 +1097,24 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/system-health") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null,{status:204}) : json({ok:false,error:"Method not allowed."},405);
-    if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
-    const [notion,outbox,monitor]=await Promise.all([notionHealth(env),syncOutboxHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
+    if (!(await paired(request, env))) return json({ok:false,error:"This device is not paired or was revoked."},401);
+    const [notion,monitor]=await Promise.all([notionHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
     const infrastructure=infrastructureHealth(env);
-    return json({ok:true,version:"66",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
+    return json({ok:true,version:"67",checkedAt:new Date().toISOString(),notion,sync:{mode:"direct",queued:false},monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
       if (await rateLimited(request, "notion-sync", 60, 60, env)) return rateLimitResponse();
       if (requestTooLarge(request, 2_000_000)) return json({ ok: false, error: "Sync payload is too large." }, 413);
-      if (!(await paired(request, env))) return json({ ok: false, error: "Pairing key is incorrect or expired." }, 401);
+      if (!(await paired(request, env))) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
       try {
-        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), digest = idempotency ? b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(idempotency)))) : "", marker = digest ? `sync:${digest}` : "";
-        const body = await request.clone().json().catch(() => null);
+        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), raw = await request.text(), body = JSON.parse(raw);
         if(!body||(!body.workout&&!body.kind))return json({ok:false,error:"Invalid sync payload."},400);
-        if(!digest||!env.PUSH_KV)return executeSyncBody(env,body);
-        if(!ctx){
-          const existing=await findSyncReceipt(env,digest);if(existing?.ok&&existing?.verified)return json({...existing,duplicate:true});
-          const response=await executeSyncBody(env,body),receipt=await response.clone().json().catch(()=>null);
-          if(response.ok&&receipt?.ok&&receipt?.verified)await env.PUSH_KV.put(`syncreceipt:${digest}`,JSON.stringify(receipt),{expirationTtl:60*60*24*30});
-          return response;
-        }
-        const queued=await enqueueSyncJob(env,digest,body,{force:request.headers.get("x-rep-sync-force")==="true"});
-        if(queued?.receipt)return json({...queued.receipt,duplicate:true});
-        if(queued?.job?.status==="failed")return json({ok:false,error:queued.job.lastError||"Notion sync failed after automatic retries.",jobId:digest},502);
-        ctx?.waitUntil(processSyncJob(env,digest,jobBody=>executeSyncBody(env,jobBody)));
-        return json(acceptedSyncReceipt(queued.job),202,{"location":`/api/sync-status?id=${encodeURIComponent(digest)}`});
+        const digest = idempotency && env.PUSH_KV ? b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(`${idempotency}\n${raw}`)))) : "";
+        if(digest){const existing=await env.PUSH_KV.get(`syncreceipt:${digest}`,"json");if(existing?.ok&&existing?.verified)return json({...existing,duplicate:true});}
+        const response=await executeSyncBody(env,body),receipt=await response.clone().json().catch(()=>null);
+        if(digest&&response.ok&&receipt?.ok&&receipt?.verified)await env.PUSH_KV.put(`syncreceipt:${digest}`,JSON.stringify(receipt),{expirationTtl:60*60*24*30});
+        return response;
       }
       catch (error) { return json({ ok: false, error: safeText(error?.message || "Sync failed.", 300) }, 502); }
     }
@@ -1128,12 +1123,7 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/sync-status") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null,{status:204}) : json({ok:false,error:"Method not allowed."},405);
-    if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
-    const id=safeText(url.searchParams.get("id"),180);if(!id)return json({ok:false,error:"Job id is required."},400);
-    const receipt=await findSyncReceipt(env,id);if(receipt?.ok&&receipt?.verified)return json({...receipt,duplicate:true});
-    const job=await findSyncJob(env,id);if(!job)return json({ok:false,error:"Sync job was not found."},404);
-    if(job.status==="failed")return json({ok:false,error:job.lastError||"Notion sync failed after automatic retries.",jobId:id},502);
-    return json(acceptedSyncReceipt(job),202);
+    return json({ok:false,error:"Sync jobs were removed in v67. Send data directly to /api/notion-sync."},410);
   }
   if (url.pathname === "/api/push/public-key") {
     if (request.method === "GET") return json({ ok: true, key: env.VAPID_PUBLIC_KEY || null });
@@ -1168,6 +1158,6 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([sendScheduledReminders(env),drainSyncOutbox(env,body=>executeSyncBody(env,body)),monitorSystemHealth(env)]));
+    ctx.waitUntil(Promise.all([sendScheduledReminders(env),monitorSystemHealth(env)]));
   }
 };

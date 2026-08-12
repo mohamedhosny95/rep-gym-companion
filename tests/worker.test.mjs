@@ -18,11 +18,12 @@ const foodSource=()=>({id:"97671c61-586a-4443-aea6-00b1d9f835a7",object:"data_so
 const call=(environment,path,init={},ctx)=>worker.fetch(new Request(`https://rep.example${path}`,init),environment,ctx);
 const read=async response=>({status:response.status,cookie:response.headers.get("set-cookie"),body:await response.json()});
 
-test("master key is exchanged for a revocable HttpOnly cookie shared by tabs",async()=>{
+test("master key is exchanged once for a persistent, revocable device cookie",async()=>{
   const environment=env(),result=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-  assert.equal(result.status,200); assert.equal(result.body.ok,true); assert.equal(result.body.credential,"cookie"); assert.match(result.cookie,/^__Host-rep_session=rep1\./); assert.match(result.cookie,/HttpOnly/); assert.match(result.cookie,/SameSite=Strict/); assert.ok(Date.parse(result.body.expiresAt)>Date.now());
+  assert.equal(result.status,200); assert.equal(result.body.ok,true); assert.equal(result.body.credential,"cookie"); assert.equal(result.body.persistent,true); assert.equal(result.body.expiresAt,null); assert.match(result.cookie,/^__Host-rep_session=rep1\./); assert.match(result.cookie,/HttpOnly/); assert.match(result.cookie,/SameSite=Strict/);
   const cookie=result.cookie.split(";",1)[0],device=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{cookie}}));
-  assert.equal(device.status,200); assert.equal(device.body.deviceCredential,true); assert.equal(device.body.credential,"cookie");
+  assert.equal(device.status,200); assert.equal(device.body.deviceCredential,true); assert.equal(device.body.credential,"cookie"); assert.equal(device.body.persistent,true); assert.equal(device.body.expiresAt,null);
+  const registration=await environment.PUSH_KV.get(`device:${result.body.deviceId}`,"json");assert.equal(registration.expiresAt,undefined);
 });
 
 test("bad pairing credentials are rejected",async()=>{
@@ -114,8 +115,8 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
   }finally{globalThis.fetch=originalFetch;}
 });
 
-test("sync jobs are accepted durably and become verified receipts",async()=>{
-  const environment={...env(),NOTION_TOKEN:"secret"},entryId="food-outbox-1",context={promises:[],waitUntil(promise){this.promises.push(promise);}};
+test("sync writes directly even when an execution context is supplied",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},entryId="food-direct-1",context={promises:[],waitUntil(promise){this.promises.push(promise);}};
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async(input,init={})=>{
     const url=String(input);
@@ -126,20 +127,19 @@ test("sync jobs are accepted durably and become verified receipts",async()=>{
     throw new Error(`Unexpected fetch ${url}`);
   };
   try{
-    const accepted=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":`food-${entryId}`},body:JSON.stringify({kind:"food",payload:{id:entryId,date:"2026-08-11T10:00:00.000Z",food_name:"Milk",mealType:"Breakfast",logMethod:"Ingredients",calories:103,protein_g:7,carbs_g:10,fat_g:4}})},context));
-    assert.equal(accepted.status,202);assert.equal(accepted.body.accepted,true);assert.equal(accepted.body.verified,false);assert.ok(accepted.body.jobId);
-    await Promise.all(context.promises);
-    const status=await read(await call(environment,`/api/sync-status?id=${encodeURIComponent(accepted.body.jobId)}`,{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(status.status,200);assert.equal(status.body.verified,true);assert.equal(status.body.entryId,entryId);
+    const saved=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":`food-${entryId}`},body:JSON.stringify({kind:"food",payload:{id:entryId,date:"2026-08-11T10:00:00.000Z",food_name:"Milk",mealType:"Breakfast",logMethod:"Ingredients",calories:103,protein_g:7,carbs_g:10,fat_g:4}})},context));
+    assert.equal(saved.status,200);assert.equal(saved.body.ok,true);assert.equal(saved.body.verified,true);assert.equal(saved.body.entryId,entryId);assert.equal(context.promises.length,0);
+    const status=await read(await call(environment,"/api/sync-status",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+    assert.equal(status.status,410);assert.match(status.body.error,/removed/);
   }finally{globalThis.fetch=originalFetch;}
 });
 
-test("authenticated system health is read-only and reports the outbox",async()=>{
+test("authenticated system health reports direct synchronization",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret",GEMINI_API_KEY:"ai"},originalFetch=globalThis.fetch;
   globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"66");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"67");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.deepEqual(result.body.sync,{mode:"direct",queued:false});assert.equal(result.body.outbox,undefined);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
 });
 
@@ -149,8 +149,8 @@ test("Notion destination guard reports schema drift with the correct visible vie
   try{const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));assert.equal(result.body.notion.healthy,false);assert.deepEqual(result.body.notion.schema.missing,["Notes"]);assert.equal(result.body.notion.destination.name,"View of Food Entries");}finally{globalThis.fetch=originalFetch;}
 });
 
-test("scheduled monitoring stores current Notion and outbox health",async()=>{
+test("scheduled monitoring stores current Notion and direct-sync health",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret"},context={promises:[],waitUntil(promise){this.promises.push(promise);}},originalFetch=globalThis.fetch;
   globalThis.fetch=async()=>new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
-  try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
+  try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.deepEqual(monitor.sync,{mode:"direct",queued:false});assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
 });

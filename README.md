@@ -1,6 +1,13 @@
 # Health OS
 
-Version 66 adds a coverage-aware Apple Watch health system:
+Version 67 adds direct, device-wide synchronization:
+
+- Every save goes straight to Notion and returns a verified receipt; there is no browser or Cloudflare outbox.
+- Settings → Sync has one **Sync everything** button for workouts, meals, recovery, sleep, nutrition, and daily care.
+- The pairing key is entered once per device. The Worker stores a revocable device registration without an expiry, and active browser sessions refresh their secure cookie automatically.
+- A device stays paired until it is revoked, unpaired, or its browser site data is cleared. The master pairing key is never stored in the browser.
+
+Version 66 added a coverage-aware Apple Watch health system:
 
 - A data-confidence score that never disguises missing measurements as poor readiness.
 - Daily energy, soreness, stress, pain, and illness check-ins.
@@ -11,7 +18,7 @@ Version 66 adds a coverage-aware Apple Watch health system:
 
 The native companion and existing Shortcut/Health Auto Export routes share the same bounded `/api/vitals/import` pipeline. Raw heart-rate samples remain in Apple Health; Rep receives only daily aggregates and coverage counts.
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 65 adds a guarded Notion destination, scheduled health monitoring, a unified Sync Center, live-integration CI, runnable infrastructure diagnostics, and a proper client source/build boundary on top of the durable version 63 sync architecture.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Local data still saves while offline, but synchronization is explicit and direct: failed writes are shown as not saved and are never hidden in a retry queue.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -21,20 +28,19 @@ selector in normal document flow so it cannot cover Health content while
 scrolling. Raw imported details remain on the device while an idempotent daily
 summary can update the existing Notion Recovery record.
 
-## Version 65 reliability architecture
+## Version 67 reliability architecture
 
 - The visible Notion destination is permanently named **View of Food Entries**
   and links to database `6433f54c…` / view `bde632d4…`. The Worker validates
   the original `Food Entries` data source, Trash state, integration access, and
   every required property type before a food write can enter the normal flow.
-- The once-per-minute Worker schedule now records Notion and outbox health.
-  Two consecutive destination failures, failed jobs, or a queue older than 15
-  minutes become an actionable incident and can trigger one deduplicated push
-  alert every six hours.
-- Settings → Sync is the unified activity center for Training, Nutrition, and
-  Health writes. It shows the device queue, server outbox, errors, retries,
-  confirmed Notion links, the exact destination, infrastructure readiness, and
-  the last successful sync.
+- The once-per-minute Worker schedule records Notion health. Two consecutive
+  destination failures become an actionable incident and can trigger one
+  deduplicated push alert every six hours.
+- Settings → Sync is the single activity center for Training, Nutrition, and
+  Health writes. One action sends every supported local record directly and
+  shows verified links, direct failures, infrastructure readiness, and the last
+  successful sync.
 - `scripts/live-notion-check.mjs` can validate a private test data source with a
   real create/read/archive receipt. GitHub Actions runs it weekly or manually
   when `NOTION_TEST_TOKEN` and `NOTION_TEST_DATA_SOURCE_ID` secrets exist.
@@ -42,24 +48,19 @@ summary can update the existing Notion Recovery record.
   import endpoint now have runnable checks. The iPhone bridge also provides a
   **Test connection** button before HealthKit authorization.
 
-The durable version 63 foundations remain:
+The retained reliability foundations are:
 
-- Every Notion write enters a Cloudflare KV outbox before the UI considers it
-  in progress. The Worker retries transient failures with bounded exponential
-  backoff, the once-per-minute cron drains work left by a closed tab, and the
-  client removes an item only after a verified Notion page receipt.
-- The client retries when it regains focus or connectivity and checks pending
-  work every minute while open. An hourly timer is unnecessary: entries normally
-  sync immediately, while the outbox covers closed tabs and temporary outages.
-- Large histories and pending queues live in IndexedDB. Small preferences remain
-  in localStorage, preserving fast startup and existing installations.
+- Every Notion write is completed inside its request and is considered successful
+  only after the Worker re-reads the saved page. Content-aware idempotency receipts
+  prevent duplicate retries without turning work into a job queue.
+- Source records remain in IndexedDB, so an offline or failed direct write never
+  loses health data. The global button can resend the complete local dataset.
 - Today contains the next actions; Training separates Today, Program, and
   History; Nutrition separates Log, Today, and Plan; Health keeps Vitals,
   Wellness, and Insights. Settings owns language, units, schedule, targets,
   coaching, connections, devices, and backups.
 - Settings → Connections & security includes a read-only Notion health check and
-  outbox counts. Worker logs record accepted, retried, failed, and completed job
-  events without logging health payloads.
+  reports that synchronization is direct with zero queued jobs.
 - QR support loads only when creating a pairing handoff, navigation uses a
   network-first service-worker strategy, and the social preview is about 216 KB
   instead of roughly 2 MB.
@@ -412,13 +413,6 @@ GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Wor
 Production is deployed by Cloudflare's direct GitHub integration, which
 should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
 is used only for the non-deploying verification workflow described above.
-
-This repo previously carried a `.openai/hosting.json` file linking the
-Worker to an OpenAI Apps hosting project. That file has been removed — the
-app has no runtime dependency on ChatGPT or OpenAI's Apps platform, and the
-Cloudflare Worker should be owned and deployed from a Cloudflare account you
-control rather than one managed through ChatGPT. See the migration runbook
-for moving the live site off the OpenAI-managed Cloudflare account.
 
 Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
 `VITALS_IMPORT_KEY`, and deploy once with the Durable Object migration in
