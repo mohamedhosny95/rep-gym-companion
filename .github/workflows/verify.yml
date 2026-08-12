@@ -7,10 +7,12 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
-# Safety net only: catches syntax errors, dist/outputs drift, and functional
-# regressions (via a headless Playwright smoke test) before they reach
-# Cloudflare, which deploys straight from `main` on every push via its own
-# GitHub integration. This workflow never deploys anything.
+# Catches syntax errors, dist/outputs drift, and functional regressions (via
+# a headless Playwright smoke test) on every push. The verify and e2e jobs
+# below are a safety net only and never deploy anything themselves; the
+# gated deploy-production job further down is the sole production deployer,
+# running only for `main` and only after verify and e2e both pass. Cloudflare's
+# own direct Git integration must stay disabled — see docs/RELEASE_SAFETY.md.
 
 on:
   push:

@@ -82,7 +82,7 @@ function withSecurityHeaders(response, requestId = "") {
 // cost of brute-forcing REP_SYNC_KEY or hammering the paid Gemini endpoint. For a
 // guaranteed limit, also enable a Cloudflare Rate Limiting Rule on /api/* in the dashboard.
 async function rateLimited(request, bucket, limit, windowSeconds, env) {
-  const binding = bucket.includes("analyze") ? env?.AI_RATE_LIMITER : ["pair-check", "pair-claim", "push-subscribe"].includes(bucket) ? env?.PAIR_RATE_LIMITER : null;
+  const binding = bucket.includes("analyze") ? env?.AI_RATE_LIMITER : ["pair-check", "pair-claim", "push-subscribe", "pair-handoff", "push-test", "push-unsubscribe", "pair-devices-delete"].includes(bucket) ? env?.PAIR_RATE_LIMITER : null;
   if (binding?.limit) {
     // Never key an authentication limiter by the credential being guessed: an
     // attacker could rotate guesses to receive a fresh bucket every request.
@@ -805,6 +805,7 @@ async function handoffState(env, jti, action) {
 }
 async function createPairHandoff(request, env) {
   if (!(await paired(request, env))) return json({ ok: false, error: "This device is not paired." }, 401);
+  if (await rateLimited(request, "pair-handoff", 20, 60, env)) return rateLimitResponse();
   const now = Math.floor(Date.now() / 1000), exp = now + 300, jti = crypto.randomUUID(), token = await signCredential(env, { typ: "handoff", iat: now, exp, jti });
   if (!(await handoffState(env, jti, "create"))) return json({ ok: false, error: "Secure pairing handoff storage is unavailable." }, 503);
   const url = new URL(request.url); url.pathname = "/"; url.search = `?pair=${encodeURIComponent(token)}`;
@@ -911,6 +912,7 @@ async function subscribePush(request, env) {
 async function unsubscribePush(request, env) {
   if (!env.PUSH_KV) return json({ ok: true });
   if (!(await paired(request, env))) return json({ ok: false, error: "Pairing is required." }, 401);
+  if (await rateLimited(request, "push-unsubscribe", 20, 60, env)) return rateLimitResponse();
   const body = await request.json().catch(() => null);
   const endpoint = safeText(body?.endpoint, 500);
   if (endpoint) await env.PUSH_KV.delete(pushKvKey(endpoint));
@@ -982,6 +984,7 @@ async function monitorSystemHealth(env){
 
 async function testPush(request,env){
   if(!(await paired(request,env)))return json({ok:false,error:"Pairing is required."},401);
+  if(await rateLimited(request,"push-test",20,60,env))return rateLimitResponse();
   if(!infrastructureHealth(env).push.configured)return json({ok:false,error:"Push is not fully configured."},503);
   const body=await request.json().catch(()=>null),endpoint=safeText(body?.endpoint,1800);
   if(!endpoint)return json({ok:false,error:"A subscribed device endpoint is required."},400);
@@ -1059,6 +1062,7 @@ async function route(request, env, ctx) {
       return json({ ok: true, devices });
     }
     if (request.method === "DELETE") {
+      if (await rateLimited(request, "pair-devices-delete", 20, 60, env)) return rateLimitResponse();
       const body = await request.json().catch(() => null), id = safeText(body?.deviceId, 80);
       if (!id) return json({ ok: false, error: "deviceId is required." }, 400);
       await env.PUSH_KV?.delete(deviceKey(id));
