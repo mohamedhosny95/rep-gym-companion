@@ -115,6 +115,42 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
   }finally{globalThis.fetch=originalFetch;}
 });
 
+test("workout sync verifies each created page with a fresh Notion read before reporting success",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",NOTION_DATA_SOURCE_ID:"11111111-1111-4111-8111-111111111111"},pageId="22222222-2222-4222-8222-222222222222";
+  const workout={id:"workout-1",date:"2026-08-11",entries:[{entry:"Bench Press · Set 1",exercise:"Bench Press",set:1,weight:60,reps:8}]};
+  const originalFetch=globalThis.fetch,calls=[];
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input);calls.push({url,method:init.method||"GET"});
+    if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const saved=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({workout})}));
+    assert.equal(saved.status,200);assert.equal(saved.body.ok,true);assert.equal(saved.body.verified,true);assert.equal(saved.body.kind,"workout");assert.equal(saved.body.created,1);assert.equal(saved.body.skipped,0);assert.match(saved.body.notionUrl,/notion\.so/);
+    assert.equal(calls.some(item=>item.method==="GET"&&item.url.endsWith(`/pages/${pageId}`)),true,"the created page must be re-read, not just trusted from the create response");
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test("workout sync reports failure instead of a false receipt when Notion can't confirm the created page",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",NOTION_DATA_SOURCE_ID:"11111111-1111-4111-8111-111111111111"},pageId="33333333-3333-4333-8333-333333333333";
+  const workout={id:"workout-2",date:"2026-08-11",entries:[{entry:"Squat · Set 1",exercise:"Squat",set:1,weight:100,reps:5}]};
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input);
+    if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    // The create response looks fine, but Notion's own re-read of the page (e.g. it landed archived, or in the wrong database) says otherwise — the response must trust the re-read, not the create call.
+    if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:true,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const saved=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({workout})}));
+    assert.equal(saved.status,502);assert.equal(saved.body.ok,false);assert.match(saved.body.error,/did not confirm/);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test("sync writes directly even when an execution context is supplied",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret"},entryId="food-direct-1",context={promises:[],waitUntil(promise){this.promises.push(promise);}};
   const originalFetch=globalThis.fetch;

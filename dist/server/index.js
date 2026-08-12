@@ -560,19 +560,21 @@ async function syncWorkoutBody(env, body) {
   }
   if (workout.entries.length > 100) return json({ ok: false, error: "Workout is too large." }, 413);
   let created = 0, skipped = 0;const existing=await existingEntries(env,workout.id);
+  let receipt = { verified: true };
   for (const row of workout.entries) {
     if (!row?.entry || !row?.exercise) continue;
     if (existing.has(safeText(row.entry,200))) { skipped++; continue; }
-    await notionRequest(env, "/pages", {
+    const page = await notionRequest(env, "/pages", {
       method: "POST",
       body: JSON.stringify({
         parent: { type: "data_source_id", data_source_id: env.NOTION_DATA_SOURCE_ID },
         properties: notionProperties(workout, row)
       })
     });
+    receipt = await verifyNotionPage(env, page.id, env.NOTION_DATA_SOURCE_ID);
     created++;
   }
-  return json({ ok: true, verified: true, kind: "workout", created, skipped });
+  return json({ ok: true, ...receipt, kind: "workout", created, skipped });
 }
 
 function healthSource(env, kind) {
