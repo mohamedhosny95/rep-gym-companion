@@ -308,6 +308,15 @@ function normalizeVitalsImport(value = {}) {
 // requests, so the Shortcut writes into KV here and the client picks up
 // anything new the next time it opens - reuses the same optional PUSH_KV
 // binding the push-reminder feature already uses, under a distinct prefix.
+async function storeVitalsImport(env,vitals){
+  const key=`${VITALS_IMPORT_PREFIX}${vitals.date}`,now=new Date().toISOString(),existing=await env.PUSH_KV.get(key,'json');
+  const priorRuns=Array.isArray(existing?.import_runs)?existing.import_runs:existing?.imported_at?[existing.imported_at]:[];
+  const merged={...(existing||{})};
+  for(const [field,value] of Object.entries(vitals))if(value!==null&&value!==undefined&&value!=='')merged[field]=value;
+  const record={...merged,date:vitals.date,imported_at:now,import_runs:[...new Set([...priorRuns,now])].sort().slice(-24)};
+  await env.PUSH_KV.put(key,JSON.stringify(record),{expirationTtl:60*60*24*180});
+  return record;
+}
 async function importVitals(request, env) {
   if (await rateLimited(request, "vitals-import", 30, 3600, env)) return rateLimitResponse();
   if (!(await automationPaired(request, env))) return json({ ok: false, error: "Automation key is incorrect or missing." }, 401);
@@ -315,8 +324,8 @@ async function importVitals(request, env) {
   const body = await request.json().catch(() => null);
   const vitals = normalizeVitalsImport(body || {});
   if (!vitals.date) return json({ ok: false, error: "A valid date (YYYY-MM-DD) is required." }, 400);
-  await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${vitals.date}`, JSON.stringify(vitals), { expirationTtl: 60 * 60 * 24 * 180 });
-  return json({ ok: true });
+  const stored = await storeVitalsImport(env, vitals);
+  return json({ ok: true, imported_at: stored.imported_at, runs: stored.import_runs.length });
 }
 
 // Health Auto Export (https://www.healthyapps.dev) is a third-party App
@@ -391,7 +400,7 @@ async function importVitalsHae(request, env) {
   for (const entry of entries) {
     const normalized = normalizeVitalsImport(entry);
     if (!normalized.date) continue;
-    await env.PUSH_KV.put(`${VITALS_IMPORT_PREFIX}${normalized.date}`, JSON.stringify(normalized), { expirationTtl: 60 * 60 * 24 * 180 });
+    await storeVitalsImport(env, normalized);
     imported++;
   }
   return json({ ok: true, imported });

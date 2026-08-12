@@ -20,14 +20,14 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
   }
   function strain(state,date=dateKey()){
     const key=dateKey(date),sessions=(state.history||[]).filter(item=>dateKey(item.date)===key);
-    const sessionCalories=sessions.reduce((sum,item)=>sum+(Number(item.calories)||0),0);
-    let load=sessions.reduce((sum,item)=>{
-      const rpes=(item.entries||[]).map(entry=>Number(entry.rpe)).filter(Number.isFinite);
-      const effort=rpes.length?average(rpes):6;
-      return sum+(Number(item.calories)||0)*clamp(effort/10,.2,1);
+    const sessionRpeLoad=sessions.reduce((sum,item)=>{
+      const rpes=(item.entries||[]).map(entry=>Number(entry.rpe)).filter(Number.isFinite),effort=rpes.length?average(rpes):6;
+      const minutes=Math.max(0,Number(item.duration)||0)/60;
+      return sum+minutes*clamp(effort,1,10)*.32;
     },0);
     const active=Number(state.activeEnergy?.[key]);
-    if(Number.isFinite(active)&&active>0)load+=Math.max(0,active-sessionCalories)*.4;
+    let load=Number.isFinite(active)&&active>0?active*.4+sessionRpeLoad:sessionRpeLoad;
+    if(!(Number.isFinite(active)&&active>0))load+=sessions.reduce((sum,item)=>sum+(Number(item.calories)||0)*.35,0);
     if(!load)return 0;
     return round(21*(1-Math.exp(-load/220)),1);
   }

@@ -144,10 +144,11 @@ const state = {
   daily:saved.daily||{nutrition:{},hygiene:{}}, cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||new Date().toISOString().slice(0,10),
   foodEntries:saved.foodEntries||[], water:saved.water||{}, foodDraft:null, foodNote:saved.foodNote||"", foodMealType:saved.foodMealType||"", foodLogMethod:saved.foodLogMethod||"Ingredients", foodBusy:false, foodPendingPayload:null,
   bodyWeights:saved.bodyWeights||[], mealTemplates:saved.mealTemplates||[], sleepLogs:saved.sleepLogs||[],
+  healthMetrics:saved.healthMetrics||{}, vitalsImportRuns:saved.vitalsImportRuns||{},
   pairBusy:false, pairMessage:"", reminderExpanded:{}, newTemplateOpen:false,
   lastBackupAt:saved.lastBackupAt||null, backupSnoozedUntil:saved.backupSnoozedUntil||null,
   pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
-  activeEnergy:saved.activeEnergy||{}, lastVitalsImportDate:saved.lastVitalsImportDate||null,
+  activeEnergy:saved.activeEnergy||{}, lastVitalsImportDate:saved.lastVitalsImportDate||null, lastVitalsImportAt:saved.lastVitalsImportAt||null,
   vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false, vitalsImportStatus:"", vitalsImportError:false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
@@ -158,7 +159,7 @@ new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidt
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate }));
+  localStorage.setItem(storageKey, JSON.stringify({ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, healthMetrics:state.healthMetrics, vitalsImportRuns:state.vitalsImportRuns, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate, lastVitalsImportAt:state.lastVitalsImportAt }));
 }
 let persistTimer=null;
 function persistDebounced(){
@@ -318,7 +319,9 @@ function journalInsightsCard(ar){
 function renderInsights(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",weekAgo=Date.now()-7*86400000;
-  const history7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo),sessions7=history7.length,calories7=history7.reduce((n,h)=>n+(h.calories||0),0);
+  const history7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo),sessions7=history7.length;
+  const appleDays7=Object.entries(state.activeEnergy||{}).filter(([day,value])=>new Date(day).getTime()>=weekAgo&&Number(value)>0),appleDates7=new Set(appleDays7.map(([day])=>day));
+  const calories7=Math.round(appleDays7.reduce((sum,[,value])=>sum+Number(value),0)+history7.filter(item=>!appleDates7.has(String(item.date).slice(0,10))).reduce((sum,item)=>sum+(Number(item.calories)||0),0)),usesAppleEnergy=appleDays7.length>0;
   const foodDays7=[...new Set(state.foodEntries.map(e=>String(e.date).slice(0,10)))].filter(d=>new Date(d).getTime()>=weekAgo).length;
   const weights=[...state.bodyWeights].sort((a,b)=>b.week.localeCompare(a.week));
   const weightDelta=weights.length>=2?Math.round((weights[0].kg-weights[weights.length-1].kg)*10)/10:null;
@@ -334,7 +337,7 @@ function renderInsights(){
   <section class="insight-stats">
     <article><small>${ar?"سلسلة الأيام":"DAY STREAK"}</small><strong>${computeStreak()}</strong></article>
     <article><small>${ar?"الحصص هذا الأسبوع":"SESSIONS THIS WEEK"}</small><strong>${sessions7}</strong></article>
-    <article><small>${ar?"سعرات محروقة (تقدير)":"KCAL BURNED (EST.)"}</small><strong>${calories7}</strong></article>
+    <article><small>${usesAppleEnergy?(ar?"الطاقة النشطة من أبل":"APPLE ACTIVE ENERGY"):(ar?"سعرات محروقة (تقدير)":"KCAL BURNED (EST.)")}</small><strong>${calories7}</strong></article>
     <article><small>${ar?"أيام تسجيل الطعام":"FOOD LOGGED"}</small><strong>${foodDays7}/7</strong></article>
     <article><small>${ar?"اتجاه الوزن":"WEIGHT TREND"}</small><strong>${weightText}</strong></article>
     <article><small>${ar?"متوسط النوم (7 أيام)":"SLEEP AVG (7D)"}</small><strong class="${sleepAvg!==null&&sleepAvg<minSleep?"warn":""}">${sleepAvg!==null?`${sleepAvg}h`:"—"}</strong></article>
@@ -1086,12 +1089,26 @@ function vitalsScreenshotCard(ar){
 // not daily content - tucked behind a disclosure so the daily-use sleep/
 // energy forms below get the visual weight instead. The sync-health line and
 // any stale-sync warning stay outside it since those need to stay visible.
+function importRunStatus(ar){
+  const runs=state.vitalsImportRuns[isoDay()]||[],hours=runs.map(value=>new Date(value).getHours()).filter(Number.isFinite);
+  const slots=[{label:'06:00',done:hours.some(h=>h>=4&&h<9)},{label:'12:00',done:hours.some(h=>h>=10&&h<15)},{label:'18:00',done:hours.some(h=>h>=16&&h<21)},{label:'23:45',done:hours.some(h=>h>=21)}];
+  const last=state.lastVitalsImportAt?new Date(state.lastVitalsImportAt):null,lastText=last&&!Number.isNaN(last.getTime())?last.toLocaleString(ar?'ar-EG':'en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):null;
+  return `<div class='vitals-review-grid import-run-grid'>${slots.map(slot=>`<div><small>${slot.label}</small><strong>${slot.done?(ar?'وصل':'Received'):(ar?'بانتظار':'Pending')}</strong></div>`).join('')}</div>${lastText?`<p class='vitals-import-copy'>${ar?'آخر استلام ناجح':'Last successful import'}: ${esc(lastText)}</p>`:''}`;
+}
+function healthMetricsCard(ar){
+  const dates=Object.keys(state.healthMetrics||{}).sort().reverse(),metric=state.healthMetrics[isoDay()]||state.healthMetrics[dates[0]];
+  if(!metric)return '';
+  const values=[[ar?'الخطوات':'Steps',metric.steps,''],[ar?'دقائق التمرين':'Exercise',metric.exerciseMinutes,' min'],[ar?'دقائق الوقوف':'Stand',metric.standMinutes,' min'],['VO₂ max',metric.vo2Max,''],['SpO₂',metric.oxygenSaturation,'%'],[ar?'حرارة المعصم':'Wrist temp',metric.wristTemperature,'°C'],[ar?'النوم العميق':'Deep sleep',metric.deepSleepHours,'h'],['REM',metric.remSleepHours,'h']].filter(([,value])=>value!==null&&value!==undefined);
+  if(!values.length)return '';
+  return `<section class='recovery-card wide'><span class='card-kicker'>${ar?'مقاييس صحة أبل':'APPLE HEALTH METRICS'}</span><h2>${ar?'آخر قراءة يومية':'Latest daily reading'}</h2><div class='sleep-summary'>${values.map(([label,value,unit])=>`<div><small>${label}</small><strong>${Math.round(Number(value)*10)/10}${unit}</strong></div>`).join('')}</div><p class='sleep-hint'>${ar?'تُعرض للاتجاه والسياق، ولا تُستخدم للتشخيص.':'Used for trends and context, not diagnosis.'}</p></section>`;
+}
 function importCard(ar){
   const connected=Boolean(localStorage.getItem(syncKeyStorage));
-  const last=state.lastVitalsImportDate,stale=daysSinceVitalsImport();
+  const last=state.lastVitalsImportDate,stale=daysSinceVitalsImport(),runStatus=importRunStatus(ar);
   const staleWarning=stale!==null&&stale>=2?`<p class="vitals-status is-error">${ar?`لم تصل بيانات جديدة منذ ${stale} أيام. تحقق من أن أتمتة الاختصار ما زالت تعمل في تطبيق الاختصارات ← تبويب الأتمتة.`:`No new data for ${stale} days. Check that the Shortcuts automation is still enabled under Shortcuts → Automation.`}</p>`:"";
   return `<section class="vitals-import-card import-card"><div class="supplement-head"><div><small>${ar?"استيراد":"IMPORT"}</small><strong>${last?(ar?`آخر مزامنة: ${last}`:`Last synced: ${last}`):(ar?"لم يُعدّ بعد":"Not set up yet")}</strong></div></div>
     ${staleWarning}
+    ${runStatus}
     <details class="import-details">
       <summary>${ar?"لقطة شاشة أو أتمتة كاملة ←":"Screenshot import or full automation →"}</summary>
       <div class="import-details-body">
@@ -1101,7 +1118,7 @@ function importCard(ar){
             :`<button class="quiet vitals-connect-button" data-vitals-connect type="button">${ar?"اتصل من تبويب التغذية لتفعيل الاستيراد ←":"Connect in the Nutrition tab to enable import →"}</button>`}
         </div>
         <div class="import-option">
-          <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Set up an Apple Shortcuts automation to send your Health data here automatically every morning, without opening the app — see the README for full setup steps."}</p>
+          <p class="vitals-import-copy">${ar?"أعدّ اختصار أبل (Shortcuts) ليرسل بيانات صحتك تلقائياً كل صباح دون الحاجة لفتح التطبيق — راجع ملف README لخطوات الإعداد الكاملة.":"Use four daily Apple Shortcuts automations (06:00, 12:00, 18:00, and 23:45) to refresh Health data without opening the app — see the README for setup."}</p>
           <button class="quiet vitals-connect-button" data-vitals-check-now type="button">${ar?"تحقق الآن":"Check now"}</button>
         </div>
       </div>
@@ -1164,20 +1181,20 @@ function saneVital(raw,key){
 }
 function applyVitalsEntry(entry){
   const existing=state.sleepLogs.find(s=>s.date===entry.date);
-  const bedtime=entry.bedtime||existing?.bedtime||"",wake=entry.wake_time||existing?.wake||"";
-  let hours=computeSleepHours(bedtime,wake);
-  if((!hours||hours<=0)&&Number.isFinite(Number(entry.sleep_hours))&&Number(entry.sleep_hours)>0)hours=Math.round(Number(entry.sleep_hours)*10)/10;
+  const bedtime=entry.bedtime||existing?.bedtime||'',wake=entry.wake_time||existing?.wake||'';
+  const measuredHours=Number(entry.sleep_hours);
+  let hours=Number.isFinite(measuredHours)&&measuredHours>0&&measuredHours<=16?Math.round(measuredHours*10)/10:computeSleepHours(bedtime,wake);
   if((!hours||hours<=0)&&existing?.hours)hours=existing.hours;
   if(hours>16)hours=existing?.hours||null;
   const dropped=[];
   const readVital=(raw,key,label,fallback)=>{
     const value=saneVital(raw,key);
-    if(value===null&&raw!==null&&raw!==undefined&&raw!=="")dropped.push(label);
+    if(value===null&&raw!==null&&raw!==undefined&&raw!=='')dropped.push(label);
     return value??fallback??null;
   };
-  const hrv=readVital(entry.hrv_ms,"hrv","HRV",existing?.hrv);
-  const rhr=readVital(entry.resting_hr_bpm,"rhr","resting HR",existing?.rhr);
-  const resp=readVital(entry.respiratory_rate_bpm,"resp","respiratory rate",existing?.resp);
+  const hrv=readVital(entry.hrv_ms,'hrv','HRV',existing?.hrv);
+  const rhr=readVital(entry.resting_hr_bpm,'rhr','resting HR',existing?.rhr);
+  const resp=readVital(entry.respiratory_rate_bpm,'resp','respiratory rate',existing?.resp);
   if(hours&&hours>0){
     state.sleepLogs=state.sleepLogs.filter(s=>s.date!==entry.date);
     state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours,hrv,rhr,resp});
@@ -1185,6 +1202,11 @@ function applyVitalsEntry(entry){
   }
   const activeEnergyValue=Number(entry.active_energy_kcal);
   if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0&&activeEnergyValue<=10000)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
+  const prior=state.healthMetrics[entry.date]||{},number=(value,min,max)=>{const n=Number(value);return Number.isFinite(n)&&n>=min&&n<=max?n:null;};
+  state.healthMetrics[entry.date]={...prior,date:entry.date,source:entry.source||prior.source||'Apple Health',importedAt:entry.imported_at||prior.importedAt||null,steps:number(entry.steps,0,200000)??prior.steps??null,exerciseMinutes:number(entry.exercise_minutes,0,1440)??prior.exerciseMinutes??null,standMinutes:number(entry.stand_minutes,0,1440)??prior.standMinutes??null,vo2Max:number(entry.vo2_max,5,100)??prior.vo2Max??null,oxygenSaturation:number(entry.oxygen_saturation_pct,50,100)??prior.oxygenSaturation??null,wristTemperature:number(entry.wrist_temperature_c,20,45)??prior.wristTemperature??null,deepSleepHours:number(entry.sleep_deep_hours,0,10)??prior.deepSleepHours??null,remSleepHours:number(entry.sleep_rem_hours,0,10)??prior.remSleepHours??null};
+  const runs=[...(state.vitalsImportRuns[entry.date]||[]),...(Array.isArray(entry.import_runs)?entry.import_runs:entry.imported_at?[entry.imported_at]:[])];
+  state.vitalsImportRuns[entry.date]=[...new Set(runs.filter(Boolean))].sort().slice(-24);
+  if(entry.imported_at)state.lastVitalsImportAt=entry.imported_at;
   return {date:entry.date,dropped,noSleep:!(hours&&hours>0)};
 }
 async function fetchPendingVitals(showStatus=false){
@@ -1253,6 +1275,7 @@ function renderVitals(){
   ${sleepTrackerCard(ar)}
   ${journalCard(ar)}
   ${activeEnergyCard(ar)}
+  ${healthMetricsCard(ar)}
   ${importCard(ar)}`;
   bindVitalsTools();
 }
@@ -1330,8 +1353,8 @@ function showLogActivity(){
     <p class="activity-hint">${ar?"للرياضات غير المنظمة مثل البادل وكرة القدم — مدة وسعرات محروقة من ساعة أبل، لا قائمة تمارين موجهة.":"For unstructured sports like padel and football — duration and calories burned from your Apple Watch, not a guided exercise list."}</p>
     <div class="activity-types">${ACTIVITY_TYPES.map(([id,label],i)=>`<button data-activity-type="${id}" class="${i===0?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
     <input class="activity-custom" data-activity-custom type="text" maxlength="40" placeholder="${ar?"اسم النشاط":"Activity name"}" style="display:none">
-    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"سعرات محروقة":"Calories burned"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
-    <p class="activity-hint">${ar?"من ساعة أبل — عدّل الرقم إذا اختلف.":"From your Apple Watch — adjust the number if it differs."}</p>
+    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة من ساعة أبل":"Apple Watch Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
+    <p class="activity-hint">${ar?"استخدم السعرات النشطة، وليس إجمالي السعرات، من ملخص تمرين ساعة أبل.":"Use Active Calories—not Total Calories—from the Apple Watch workout summary."}</p>
     <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية":"Optional notes"}"></textarea>
     <button data-save-activity>${ar?"حفظ النشاط":"Save activity"}</button>
     <button class="quiet" data-close-activity>${ar?"إلغاء":"Cancel"}</button>`;

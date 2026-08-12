@@ -26,6 +26,12 @@ test("sleep coaching includes personal need, debt, and prior-day demand",()=>{
   assert.ok(need.demand>0); assert.match(bed.time,/^\d{2}:\d{2}$/); assert.ok(bed.reason.includes("training demand"));
 });
 
+test("Apple Active Energy is authoritative while workout duration and RPE still affect strain",()=>{
+  const state=matureState(); state.activeEnergy[date()]=500; state.history.push({date:date(),duration:3600,calories:300,entries:[{rpe:8}]});
+  const withSession=health.strain(state,date()),energyOnly=health.strain({...state,history:[]},date());
+  assert.ok(withSession>energyOnly); assert.ok(withSession<21);
+});
+
 test("weekly review never claims diagnosis or causation",()=>{
   const review=health.weeklyReview(matureState(),date(),profile);
   assert.equal(typeof review.headline,"string"); assert.ok(review.daysLogged>=1);
