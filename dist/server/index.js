@@ -299,6 +299,10 @@ function normalizeVitalsImport(value = {}) {
     wrist_temperature_c: clampOrNull(value.wrist_temperature_c, 20, 45),
     sleep_deep_hours: clampOrNull(value.sleep_deep_hours, 0, 10),
     sleep_rem_hours: clampOrNull(value.sleep_rem_hours, 0, 10),
+    coverage_minutes: clampOrNull(value.coverage_minutes, 0, 1440),
+    heart_rate_samples: clampOrNull(value.heart_rate_samples, 0, 100000),
+    workout_hr_samples: clampOrNull(value.workout_hr_samples, 0, 100000),
+    watch_battery_pct: clampOrNull(value.watch_battery_pct, 0, 100),
     source: safeText(value.source || "health-import", 60)
   };
 }
@@ -1093,7 +1097,7 @@ async function route(request, env, ctx) {
     if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
     const [notion,outbox,monitor]=await Promise.all([notionHealth(env),syncOutboxHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
     const infrastructure=infrastructureHealth(env);
-    return json({ok:true,version:"65",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
+    return json({ok:true,version:"66",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {

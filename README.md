@@ -1,5 +1,16 @@
 # Health OS
 
+Version 66 adds a coverage-aware Apple Watch health system:
+
+- A data-confidence score that never disguises missing measurements as poor readiness.
+- Daily energy, soreness, stress, pain, and illness check-ins.
+- Personalized 7-, 28-, and 90-day sleep, HRV, resting-heart-rate, respiratory-rate, VO₂ max, weight, waist, and blood-pressure trends.
+- A repeatable Apple Watch charging window and workout-recording preflight.
+- A privacy-preserving JSON health report export.
+- An iOS HealthKit companion foundation in `ios/RepHealthCompanion` using authorization, observer queries, background delivery, local aggregation, and Keychain-protected configuration.
+
+The native companion and existing Shortcut/Health Auto Export routes share the same bounded `/api/vitals/import` pipeline. Raw heart-rate samples remain in Apple Health; Rep receives only daily aggregates and coverage counts.
+
 A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 65 adds a guarded Notion destination, scheduled health monitoring, a unified Sync Center, live-integration CI, runnable infrastructure diagnostics, and a proper client source/build boundary on top of the durable version 63 sync architecture.
 
 Food entries are never labelled as synced from a generic network success. The
