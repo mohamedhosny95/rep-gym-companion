@@ -1,5 +1,5 @@
-const CACHE = "rep-companion-v66";
-const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=66", "./auth.js?v=66", "./storage.js?v=66", "./health-data.js?v=66", "./i18n.js", "./features.js?v=66", "./health-engine.js?v=66", "./health-coverage.js?v=66", "./bootstrap.js?v=66", "./app.js?v=66", "./sync.js?v=66", "./sync-center.js?v=66", "./enhancements.js?v=66", "./health-ui.js?v=66", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CACHE = "rep-companion-v67";
+const CORE_ASSETS = ["./", "./index.html", "./styles.css?v=67", "./auth.js?v=67", "./storage.js?v=67", "./health-data.js?v=67", "./i18n.js", "./features.js?v=67", "./health-engine.js?v=67", "./health-coverage.js?v=67", "./bootstrap.js?v=67", "./app.js?v=67", "./sync.js?v=67", "./sync-center.js?v=67", "./enhancements.js?v=67", "./health-ui.js?v=67", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const ATLAS_ASSETS = ["./assets/gym-anatomy-atlas.webp", "./assets/mobility-anatomy-atlas.webp", "./assets/core-anatomy-atlas.webp", "./assets/cardio-anatomy-atlas.webp", "./assets/gym-anatomy-front-atlas.webp", "./assets/mobility-anatomy-front-atlas.webp", "./assets/core-anatomy-front-atlas.webp", "./assets/cardio-anatomy-front-atlas.webp", "./assets/priority-motion-atlas.webp"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => {

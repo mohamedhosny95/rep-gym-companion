@@ -444,7 +444,7 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 [role="dialog"]:focus{outline:none}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
-/* v66 measurement coverage and long-term health */
+/* v67 measurement coverage and long-term health */
 .coverage-card,.morning-card,.charging-card,.workout-guard,.long-term-card{margin:16px 0;padding:20px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,var(--panel),var(--panel-2));display:grid;gap:18px}
 .coverage-card{grid-template-columns:auto 1fr;align-items:start}.coverage-card.good,.workout-guard.good{border-color:rgba(201,255,61,.45)}.coverage-card.medium{border-color:rgba(255,211,106,.45)}.coverage-card.warning,.charging-card.warning,.workout-guard.warning{border-color:#7b4b34}
 .coverage-score{width:110px;aspect-ratio:1;border-radius:50%;display:grid;place-content:center;text-align:center;background:#0d110f;box-shadow:inset 0 0 0 8px rgba(201,255,61,.14)}.coverage-score strong{font-size:28px}.coverage-score span{font-size:12px;color:var(--muted)}
