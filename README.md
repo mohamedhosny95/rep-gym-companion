@@ -1,6 +1,6 @@
 # Health OS
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 64 adds a guarded Notion destination, scheduled health monitoring, a unified Sync Center, live-integration CI, runnable infrastructure diagnostics, and a proper client source/build boundary on top of the durable version 63 sync architecture.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Version 65 adds a guarded Notion destination, scheduled health monitoring, a unified Sync Center, live-integration CI, runnable infrastructure diagnostics, and a proper client source/build boundary on top of the durable version 63 sync architecture.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -10,7 +10,7 @@ selector in normal document flow so it cannot cover Health content while
 scrolling. Raw imported details remain on the device while an idempotent daily
 summary can update the existing Notion Recovery record.
 
-## Version 64 reliability architecture
+## Version 65 reliability architecture
 
 - The visible Notion destination is permanently named **View of Food Entries**
   and links to database `6433f54c…` / view `bde632d4…`. The Worker validates
@@ -71,27 +71,28 @@ The durable version 63 foundations remain:
 
 ## Open locally
 
-Open `outputs/index.html` in a browser. For reliable service-worker and offline testing, serve `outputs/` with any local static web server.
+Open `dist/client/index.html` in a browser. For reliable service-worker and offline testing, serve `dist/client/` with any local static web server.
 
 ## Project folders
 
-- `outputs/` — ready-to-open static app and downloadable ZIP
-- `src/client/` — editable browser application source
-- `dist/client/` — deployment-ready client files (this is what Cloudflare deploys)
-- `dist/server/` — server-side Notion/Gemini sync endpoint
+- `src/client/` — the only editable browser application source
+- `dist/client/` — generated deployment files served by Cloudflare
+- `dist/server/` — Cloudflare Worker source for Notion, Gemini, pairing, push, and sync
+- `ios/RepHealthBridge/` — the optional native HealthKit bridge starter
 
-`src/client/` is the only browser source of truth. `dist/client/` and `outputs/`
-are generated copies and must not be hand-edited. **After editing anything under
+`src/client/` is the only browser source of truth. `dist/client/` is generated
+and must not be hand-edited. Downloadable builds are produced as CI artifacts
+instead of being committed as a second application copy and ZIP. **After editing anything under
 `src/client/`, run:**
 
 ```sh
 node scripts/sync-static.mjs
 ```
 
-This copies your changes into `outputs/` and rebuilds
-`outputs/rep-gym-companion.zip`. A GitHub Actions workflow
-(`.github/workflows/verify.yml`) checks on every push that the two folders
-match, along with a syntax check on all JS, and runs a headless end-to-end
+This rebuilds `dist/client/`. A GitHub Actions workflow
+(`.github/workflows/verify.yml`) checks on every push that source and deployment
+files match, uploads the deployable client from `main` as a short-lived artifact,
+syntax-checks all JS, and runs a headless end-to-end
 smoke test — it does not deploy anything; Cloudflare's own GitHub
 integration still owns deployment (see below).
 

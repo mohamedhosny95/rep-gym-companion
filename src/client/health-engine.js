@@ -4,7 +4,7 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
   const DAY=86400000;
   const clamp=(n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
   const round=(n,d=0)=>{const p=10**d;return Math.round(n*p)/p;};
-  const dateKey=value=>String(value||new Date().toISOString()).slice(0,10);
+  const dateKey=value=>{if(value)return String(value).slice(0,10);const date=new Date();return [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");};
   const shiftDay=(date,days)=>new Date(new Date(`${dateKey(date)}T12:00:00Z`).getTime()+days*DAY).toISOString().slice(0,10);
   const average=values=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
   const median=values=>{const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return null;const middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;};

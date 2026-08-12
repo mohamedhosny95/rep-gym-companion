@@ -33,7 +33,7 @@ jobs:
       - name: Syntax-check all JavaScript
         run: |
           set -e
-          find dist scripts -name "*.js" -o -name "*.mjs" | while read -r file; do
+          find src dist/server scripts -type f \( -name "*.js" -o -name "*.mjs" \) | while read -r file; do
             echo "checking $file"
             node --check "$file"
           done
@@ -48,6 +48,15 @@ jobs:
       - name: Run Worker and state regression tests
         run: npm test
 
+      - name: Upload deployable client
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: health-os-client
+          path: dist/client
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Reject committed secret values
         run: |
           if git grep -nE '(NOTION_TOKEN|GEMINI_API_KEY|REP_SYNC_KEY)=[^[:space:]]+' -- ':!README.md' ':!.env.example'; then
@@ -58,7 +67,6 @@ jobs:
       - name: Check generated client copies (run npm run sync if this fails)
         run: |
           diff -rq src/client dist/client
-          diff -rq dist/client outputs --exclude=rep-gym-companion.zip
 
   e2e:
     runs-on: ubuntu-latest
