@@ -409,6 +409,13 @@ Production is deployed by Cloudflare's direct GitHub integration, which
 should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
 is used only for the non-deploying verification workflow described above.
 
+This repo previously carried a `.openai/hosting.json` file linking the
+Worker to an OpenAI Apps hosting project. That file has been removed — the
+app has no runtime dependency on ChatGPT or OpenAI's Apps platform, and the
+Cloudflare Worker should be owned and deployed from a Cloudflare account you
+control rather than one managed through ChatGPT. See the migration runbook
+for moving the live site off the OpenAI-managed Cloudflare account.
+
 Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
 `VITALS_IMPORT_KEY`, and deploy once with the Durable Object migration in
 `wrangler.jsonc`. In GitHub, protect `main` and require both `verify` and `e2e`.

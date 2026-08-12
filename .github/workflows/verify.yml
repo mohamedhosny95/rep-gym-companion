@@ -42,7 +42,6 @@ jobs:
         run: |
           set -e
           node -e "JSON.parse(require('fs').readFileSync('dist/client/manifest.webmanifest','utf8'))"
-          node -e "JSON.parse(require('fs').readFileSync('.openai/hosting.json','utf8'))"
           node -e "JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))"
 
       - name: Run Worker and state regression tests
