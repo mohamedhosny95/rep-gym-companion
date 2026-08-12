@@ -139,7 +139,7 @@ test("authenticated system health is read-only and reports the outbox",async()=>
   globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"64");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"65");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
 });
 
