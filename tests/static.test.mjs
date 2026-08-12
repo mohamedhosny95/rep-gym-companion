@@ -70,7 +70,7 @@ test("offline versions, local dates, durable storage, and accessibility stay ali
   assert.match(bootstrap,/version="65"/);assert.match(sw,/rep-companion-v65/);assert.doesNotMatch(enhancements,/\?v=64/);
   assert.doesNotMatch(html,/id="app" aria-live/);assert.match(enhancements,/role","dialog"/);assert.match(css,/font-size:16px/);
   assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/date\.getFullYear\(\)/);
-  assert.match(storage,/state:\$\{key\}/);assert.doesNotMatch(storage,/JSON\.stringify\(local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
+  assert.match(storage,/state:\$\{key\}/);assert.match(storage,/JSON\.stringify\(legacy\.local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
   assert.doesNotMatch(sw,/catch\(\(\) => caches\.match\("\.\/index\.html"\)\)/);
   assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length>120/);assert.match(worker,/version:"65"/);
 });
