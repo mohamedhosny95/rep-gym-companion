@@ -20,8 +20,8 @@ test("every local script in the document exists",async()=>{
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
-test("the v64 service worker uses network-first navigation and never caches API responses",async()=>{
-  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v64/); assert.match(sw,/auth\.js\?v=64/); assert.match(sw,/sync-center\.js\?v=64/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the v65 service worker uses network-first navigation and never caches API responses",async()=>{
+  const sw=await read("outputs/sw.js"); assert.match(sw,/rep-companion-v65/); assert.match(sw,/auth\.js\?v=65/); assert.match(sw,/sync-center\.js\?v=65/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw,/request\.mode === "navigate"/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
