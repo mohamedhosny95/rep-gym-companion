@@ -48,10 +48,10 @@ jobs:
         run: npm test
 
       - name: Upload deployable client
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: health-os-client
+          name: health-os-client-${{ github.sha }}
           path: dist/client
           if-no-files-found: error
           retention-days: 14
@@ -65,7 +65,8 @@ jobs:
 
       - name: Check generated client copies (run npm run sync if this fails)
         run: |
-          diff -rq src/client dist/client
+          npm run sync
+          git diff --exit-code -- dist/client
 
   e2e:
     runs-on: ubuntu-latest
@@ -100,3 +101,27 @@ jobs:
 
       - name: Verify real Notion schema, write, receipt, and cleanup
         run: npm run test:notion-live
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [verify, e2e]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: health-os-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run sync
+      - name: Deploy the verified main commit
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

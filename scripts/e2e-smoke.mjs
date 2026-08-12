@@ -29,6 +29,17 @@ function assertTrue(condition, label) {
   if (!condition) failures.push(label);
   console.log(`${condition ? "PASS" : "FAIL"}: ${label}`);
 }
+async function assertAccessibleView(page,label){
+  const result=await page.locator("main").evaluate(main=>{
+    const visible=element=>{const style=getComputedStyle(element),box=element.getBoundingClientRect();return !element.hidden&&style.display!=="none"&&style.visibility!=="hidden"&&box.width>0&&box.height>0;};
+    const unnamed=[...main.querySelectorAll("button,a[href]")].filter(visible).filter(element=>!(element.getAttribute("aria-label")||element.textContent||"").trim()).length;
+    const unlabeled=[...main.querySelectorAll("input:not([type=hidden]),textarea,select")].filter(visible).filter(element=>!element.getAttribute("aria-label")&&!element.closest("label")&&!element.id).length;
+    return {unnamed,unlabeled,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  assertTrue(result.unnamed===0,`${label} has no unnamed visible actions`);
+  assertTrue(result.unlabeled===0,`${label} has no unlabeled visible form controls`);
+  assertTrue(result.overflow<=1,`${label} has no horizontal viewport overflow`);
+}
 
 await new Promise(resolve => server.listen(port, resolve));
 const baseUrl = `http://localhost:${port}`;
@@ -53,6 +64,12 @@ try {
   await page.waitForSelector("text=Move well.", { timeout: 10000 });
   assertTrue(true, "Training tab loads");
   assertTrue(await page.locator('.today-training-action').count() === 1, "Training opens on the focused Today view");
+  await assertAccessibleView(page,"Training Today");
+  assertTrue(await page.locator('.workout-guard').count() === 0, "Training preflight stays out of the daily page until it is needed");
+  await page.click('[data-start-today]');
+  await page.waitForTimeout(150);
+  assertTrue(await page.locator('.workout-preflight-panel').count() === 1, "Starting a plan opens the short preflight step when checks are missing");
+  await page.click('[data-close-preflight]');
   await page.click('[data-training-view="program"]');
   await page.waitForTimeout(200);
 
@@ -119,6 +136,13 @@ try {
   assertTrue(healthNavPosition === "relative", "Health section selector stays in the page flow instead of floating over content");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Explainable Today Coach appears in Vitals");
   assertTrue(await page.locator(".health-quality-card").count() === 1, "Health import quality card appears in Vitals");
+  const summaryHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
+  assertTrue(summaryHeight<2200,`Vitals summary stays focused (height ${summaryHeight}px)`);
+  await page.click('[data-workflow="log"]');
+  await page.waitForTimeout(150);
+  assertTrue(await page.locator('.sleep-card:visible').count()===1,"Health logging has a dedicated workflow");
+  assertTrue(await page.locator('.health-quality-card:visible').count()===0,"Connection diagnostics stay out of the logging workflow");
+  await assertAccessibleView(page,"Health Log");
   await page.fill("[data-sleep-bedtime]", "23:00");
   await page.fill("[data-sleep-wake]", "06:00");
   await page.click(".sleep-form button[type=submit]");
@@ -131,6 +155,10 @@ try {
   // food
   await page.click('[data-app-tab="food"]');
   await page.waitForTimeout(300);
+  const composerTop=await page.locator('.meal-composer').evaluate(element=>element.getBoundingClientRect().top);
+  assertTrue(composerTop<900,`Meal composer is reachable in the first mobile screen (${Math.round(composerTop)}px)`);
+  assertTrue(await page.locator('.food-connect:visible').count()===0,"Connection setup does not block normal meal logging");
+  await assertAccessibleView(page,"Nutrition Log");
   await page.fill("[data-food-note]", "test meal");
   await page.click("[data-manual-food]");
   await page.waitForTimeout(300);

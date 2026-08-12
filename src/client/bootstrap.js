@@ -1,5 +1,5 @@
 (async function(){
-  const version="67";
+  const version=window.REP_BUILD_VERSION||"__BUILD_VERSION__";
   const load=src=>new Promise((resolve,reject)=>{
     const script=document.createElement("script");
     script.src=`${src}?v=${version}`;

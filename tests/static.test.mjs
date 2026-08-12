@@ -20,8 +20,8 @@ test("every local script in the document exists",async()=>{
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
-test("the v67 service worker uses network-first navigation and never caches API responses",async()=>{
-  const sw=await read("dist/client/sw.js"); assert.match(sw,/rep-companion-v67/); assert.match(sw,/auth\.js\?v=67/); assert.match(sw,/sync-center\.js\?v=67/); assert.match(sw,/health-coverage\.js\?v=67/); assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+test("the content-versioned service worker uses network-first navigation and never caches API responses",async()=>{
+  const sw=await read("dist/client/sw.js"),meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version,"content build version is generated");assert.match(sw,new RegExp(`rep-companion-\\$\\{BUILD_VERSION\\}`));assert.match(sw,/\.\/auth\.js/);assert.match(sw,/\.\/sync-center\.js/);assert.match(sw,/\.\/health-coverage\.js/);assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw,/request\.mode === "navigate"/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
@@ -42,7 +42,7 @@ test("health navigation stays in document flow and synchronization is direct and
 test("durable state is split into IndexedDB and optional assets load on demand",async()=>{
   const storage=await read("dist/client/storage.js"),enhancements=await read("dist/client/enhancements.js");
   assert.match(storage,/indexedDB\.open/);assert.match(storage,/syncQueue/);assert.match(storage,/foodEntries/);assert.match(storage,/pagehide/);
-  assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/script\.src=`\$\{src\}\?v=67`/);
+  assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/REP_BUILD_VERSION/);
 });
 
 test("startup and social assets stay within their performance budgets",async()=>{
@@ -57,10 +57,11 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
   assert.doesNotMatch(enhancements,/localStorage\.setItem\(syncKeyStorage,caps\.credential/);
 });
 
-test("source and deployment client copies are byte-identical",async()=>{
-  for(const file of ["index.html","auth.js","storage.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","health-ui.js","features.js","qrcode.js","enhancements.js"]){
+test("deployment client is deterministically built from source",async()=>{
+  const meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version);
+  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","health-ui.js","features.js","qrcode.js","enhancements.js"]){
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
-    assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);assert.deepEqual(source,deployed,`${file} is built from src/client`);
+    assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }
 });
 
@@ -68,7 +69,7 @@ test("offline versions, local dates, durable storage, and accessibility stay ali
   const [html,bootstrap,sw,app,engine,storage,features,enhancements,css,worker]=await Promise.all([
     read("dist/client/index.html"),read("dist/client/bootstrap.js"),read("dist/client/sw.js"),read("dist/client/app.js"),read("dist/client/health-engine.js"),read("dist/client/storage.js"),read("dist/client/features.js"),read("dist/client/enhancements.js"),read("dist/client/styles.css"),read("dist/server/index.js")
   ]);
-  assert.match(bootstrap,/version="67"/);assert.match(sw,/rep-companion-v67/);assert.doesNotMatch(enhancements,/\?v=66/);
+  assert.match(bootstrap,/REP_BUILD_VERSION/);assert.match(sw,/BUILD_VERSION/);assert.doesNotMatch(enhancements,/\?v=6[0-9]/);
   assert.doesNotMatch(html,/id="app" aria-live/);assert.match(enhancements,/role","dialog"/);assert.match(css,/font-size:16px/);
   assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/date\.getFullYear\(\)/);
   assert.match(storage,/state:\$\{key\}/);assert.match(storage,/JSON\.stringify\(legacy\.local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
@@ -80,9 +81,9 @@ test("coverage-aware health features and native companion stay wired",async()=>{
   const [html,bootstrap,coverage,ui,storage,readme,swift]=await Promise.all([
     read("dist/client/index.html"),read("dist/client/bootstrap.js"),read("dist/client/health-coverage.js"),read("dist/client/health-ui.js"),read("dist/client/storage.js"),read("ios/RepHealthCompanion/README.md"),read("ios/RepHealthCompanion/HealthKitSyncCoordinator.swift")
   ]);
-  assert.match(html,/health-coverage\.js\?v=67/);assert.match(bootstrap,/health-ui\.js/);
+  assert.match(html,/health-coverage\.js\?v=[a-f0-9]{12}/);assert.match(bootstrap,/health-ui\.js/);
   for(const marker of ["coverage","longTerm","chargingAdvice","workoutGuard"])assert.match(coverage,new RegExp(marker));
-  for(const marker of ["MORNING CHECK","WORKOUT PREFLIGHT","PERSONAL BASELINE","data-health-report"])assert.match(ui,new RegExp(marker));
+  for(const marker of ["MORNING CHECK","WORKOUT PREFLIGHT","PERSONAL BASELINE","data-health-report","healthWorkflow","workout-preflight-panel"])assert.match(ui,new RegExp(marker));
   assert.match(storage,/bodyMeasurements/);assert.match(storage,/healthMetrics/);
   assert.match(readme,/Background Delivery/);assert.match(swift,/HKObserverQuery/);assert.match(swift,/enableBackgroundDelivery/);assert.match(swift,/KeychainStore/);
 });

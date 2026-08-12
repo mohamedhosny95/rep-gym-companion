@@ -143,10 +143,10 @@ The script creates one clearly labelled test row, verifies its receipt and
 parent data source, then archives it in `finally`, including when validation
 fails after creation. Never point this test at a production log database.
 
-If you change any file referenced by the service worker's asset list
-(`dist/client/sw.js`), bump the `CACHE` name and the `?v=` query strings in
-that file and in `dist/client/index.html` together, so installed clients
-pick up the new version instead of serving a stale cached copy.
+`npm run sync` derives a deterministic 12-character build version from the
+contents of `src/client/`, injects it into the deployable HTML, bootstrap, and
+service worker, and rebuilds `dist/client/`. Cache names and asset query strings
+must not be edited manually.
 
 ## Notion sync configuration
 
@@ -410,28 +410,18 @@ updates the same calendar-day record, so the schedule does not create duplicates
 
 GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Worker is the sole production runtime. The application has no runtime dependency on ChatGPT Sites or OpenAI Apps hosting.
 
-Production is deployed by Cloudflare's direct GitHub integration, which
-should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
-is used only for the non-deploying verification workflow described above.
+Production is deployed only by the gated `deploy-production` GitHub Actions
+job after `verify` and `e2e` pass on `main`. Configure the protected GitHub
+`production` environment and disable Cloudflare's direct branch deployment.
+See [`docs/RELEASE_SAFETY.md`](docs/RELEASE_SAFETY.md).
 
 Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
 `VITALS_IMPORT_KEY`, and deploy once with the Durable Object migration in
 `wrangler.jsonc`. In GitHub, protect `main` and require both `verify` and `e2e`.
 
-**Verify this is actually scoped to `main`.** On PR #7, Cloudflare posted a
-"Deployment successful" comment for the *feature branch's* commit, and the
-link it gave pointed at the Worker's `production` environment — with no
-separate Preview URL. `wrangler.jsonc` defines no `env` blocks, so there is
-only one environment for Cloudflare to deploy into. Taken together, this
-suggests the git integration may be deploying **every push, on every
-branch, straight to production** — not just merges to `main` — which means
-in-progress branch work can go live, and there's no isolated environment to
-test changes against before they're user-facing.
-
-To confirm and fix, in the Cloudflare dashboard: **Workers & Pages →
-rep-gym-companion → Settings → Build** — check the configured production
-branch and whether non-production branches are set to deploy to Preview
-URLs (or not deploy at all) rather than production. This is a dashboard
-setting, not something in this repo, so it can't be fixed by a commit here.
+The earlier direct Cloudflare Git integration must remain disabled: it was
+observed deploying a feature-branch commit to the production environment.
+Pull requests now produce a per-commit deployable artifact for review, while
+production waits for the gated `main` workflow.
 
 Never commit secret values. Environment files are ignored by Git.

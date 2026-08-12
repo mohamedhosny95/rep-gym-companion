@@ -2,6 +2,7 @@
 (function(){
   const coverage=window.REP_HEALTH_COVERAGE;
   if(!coverage)return;
+  const shell=window.REP_UI_SHELL,uiState=window.REP_UI_STATE;
   const today=()=>coverage.dayKey();
   const ar=()=>state.lang==="ar";
   const num=(value,digits=0)=>Number.isFinite(Number(value))?Number(value).toFixed(digits):"—";
@@ -61,13 +62,13 @@
     </section>`;
   }
 
-  function bind(){
+  function bind({onWorkoutReady}={}){
     document.querySelector("[data-morning-checkin]")?.addEventListener("submit",event=>{
       event.preventDefault();const form=new FormData(event.currentTarget),date=today(),record={date:new Date().toISOString(),energy:Number(form.get("energy")),soreness:Number(form.get("soreness")),stress:Number(form.get("stress")),sleep:Number((state.sleepLogs||[]).find(row=>String(row.date).slice(0,10)===date)?.hours)||null,pain:form.get("pain")==="on",illness:form.get("illness")==="on",notes:String(form.get("notes")||"").trim()};
       state.recoveryCheckins=(state.recoveryCheckins||[]).filter(row=>String(row.date||"").slice(0,10)!==date);state.recoveryCheckins.unshift(record);state.recoveryCheckins=state.recoveryCheckins.slice(0,120);queueHealth("recovery",record);persist();renderVitals();
     });
     document.querySelector("[data-charging-plan]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);state.chargingPlan={time:String(form.get("time")||"20:00"),minutes:Math.max(20,Math.min(120,Number(form.get("minutes"))||45))};persist();event.currentTarget.querySelector("output").textContent=ar()?"تم الحفظ.":"Routine saved.";});
-    document.querySelector("[data-workout-check]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);state.workoutChecks={...(state.workoutChecks||{}),[today()]:{watch:form.get("watch")==="on",workout:form.get("workout")==="on",checkedAt:new Date().toISOString()}};persist();setPrimaryTab("train");});
+    document.querySelector("[data-workout-check]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);state.workoutChecks={...(state.workoutChecks||{}),[today()]:{watch:form.get("watch")==="on",workout:form.get("workout")==="on",checkedAt:new Date().toISOString()}};persist();document.querySelector(".workout-preflight-panel")?.remove();if(onWorkoutReady)onWorkoutReady();else setPrimaryTab("train");});
     document.querySelector("[data-body-measurement]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget),date=today(),weight=Number(form.get("weight")),waist=Number(form.get("waist")),systolic=Number(form.get("systolic")),diastolic=Number(form.get("diastolic"));
       if(Number.isFinite(weight)&&weight>=30&&weight<=300){const week=weekKey(new Date());state.bodyWeights=(state.bodyWeights||[]).filter(row=>row.week!==week);state.bodyWeights.unshift({week,date:new Date().toISOString(),kg:weight});}
       if([waist,systolic,diastolic].some(Number.isFinite)){state.bodyMeasurements=(state.bodyMeasurements||[]).filter(row=>String(row.date||"").slice(0,10)!==date);state.bodyMeasurements.unshift({date:new Date().toISOString(),waist_cm:Number.isFinite(waist)?waist:null,systolic:Number.isFinite(systolic)?systolic:null,diastolic:Number.isFinite(diastolic)?diastolic:null});state.bodyMeasurements=state.bodyMeasurements.slice(0,400);}
@@ -76,9 +77,30 @@
     document.querySelector("[data-health-report]")?.addEventListener("click",()=>{const payload={generatedAt:new Date().toISOString(),coverage:coverage.coverage(state,today()),baseline:coverage.longTerm(state,today()),recentCheckins:(state.recoveryCheckins||[]).slice(0,28),measurements:(state.bodyMeasurements||[]).slice(0,90),disclaimer:"General wellness trends; not a diagnosis."},blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=`rep-health-report-${today()}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);});
   }
 
+  function organizeHealthWorkflow(){
+    const active=uiState?.get("healthWorkflow")||"summary",rtl=ar();
+    const nav=shell?.tabs({label:rtl?"مهام الحيوية":"Vitals workflows",active,items:[["summary",rtl?"الملخص":"Summary"],["log",rtl?"تسجيل":"Log"],["data",rtl?"البيانات":"Data & setup"]].map(([id,label])=>({id,label})),onChange:id=>{uiState?.set("healthWorkflow",id);renderVitals();},className:"workflow-nav health-workflow-nav"});
+    const anchor=document.querySelector(".health-subnav");if(nav&&anchor)anchor.insertAdjacentElement("afterend",nav);
+    const groups=[];
+    document.querySelectorAll(".coverage-card,.health-coach-card,.vitals-trio").forEach(element=>groups.push([element,"summary"]));
+    document.querySelectorAll(".morning-card,.sleep-card,.journal-card,.active-energy-card,.vitals-import-card.is-review").forEach(element=>groups.push([element,"log"]));
+    document.querySelectorAll(".charging-card,.health-quality-card,.vitals-import-card:not(.is-review),.recovery-card.wide:not(.sleep-card):not(.journal-card)").forEach(element=>groups.push([element,"data"]));
+    shell?.showOnly(groups,active);
+    document.documentElement.dataset.healthWorkflow=active;
+  }
+
+  function needsWorkoutPreflight(){
+    const guard=coverage.workoutGuard(state,today()),manual=state.workoutChecks?.[today()]||{};
+    return !(guard.ready&&manual.watch&&manual.workout);
+  }
+  function openWorkoutPreflight(proceed){
+    document.querySelector(".workout-preflight-panel")?.remove();
+    const panel=document.createElement("div");panel.className="exit-confirm workout-preflight-panel";panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");panel.setAttribute("aria-label",ar()?"فحص ما قبل التمرين":"Workout preflight");panel.innerHTML=`<button class="dialog-close" data-close-preflight aria-label="${ar()?"إغلاق":"Close"}">×</button>${workoutCard()}`;document.body.append(panel);panel.querySelector("[data-close-preflight]").onclick=()=>panel.remove();bind({onWorkoutReady:proceed});panel.querySelector("input,button")?.focus();
+  }
+
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
-  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${coverageCard()}${morningCard()}${chargingCard()}`);bind();};
+  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
   renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
-  renderHome=function(){baseHome();const anchor=document.querySelector(".today-training-action")||document.querySelector(".module-subnav")||document.querySelector(".health-status");anchor?.insertAdjacentHTML("afterend",workoutCard());bind();};
+  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();else if(state.activeTab==="train")renderHome();
 })();

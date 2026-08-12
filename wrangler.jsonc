@@ -3,7 +3,8 @@
   "name": "rep-gym-companion",
   "main": "dist/server/index.js",
   "keep_vars": true,
-  "compatibility_date": "2026-08-09",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",

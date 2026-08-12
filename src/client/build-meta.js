@@ -1,0 +1,1 @@
+window.REP_BUILD_VERSION="__BUILD_VERSION__";

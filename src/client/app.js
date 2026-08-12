@@ -1439,13 +1439,15 @@ addEventListener("online",()=>{network();fetchPendingVitals();});addEventListene
 // frequently never surfaces the update banner below. Forcing an active
 // registration.update() whenever the app is actually opened/foregrounded
 // makes that check happen every time, not just on the browser's own schedule.
-if("serviceWorker" in navigator && location.protocol.startsWith("http")) addEventListener("load",async()=>{
-  const reg=await navigator.serviceWorker.register("./sw.js");
+async function registerServiceWorker(){
+  if(!("serviceWorker" in navigator)||!location.protocol.startsWith("http"))return;
+  const reg=await navigator.serviceWorker.register(`./sw.js?v=${window.REP_BUILD_VERSION||"dev"}`);
   reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});
   reg.update().catch(()=>{});
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update().catch(()=>{});});
   addEventListener("pageshow",()=>reg.update().catch(()=>{}));
-});
+}
+if(document.readyState==="complete")registerServiceWorker().catch(()=>{});else addEventListener("load",()=>registerServiceWorker().catch(()=>{}),{once:true});
 // Always land on Home on a fresh app open, regardless of which tab was last
 // active - that's the whole point of a dedicated landing screen. Mid-session
 // tab switches (setPrimaryTab) still work normally and aren't affected.
