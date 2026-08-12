@@ -16,7 +16,10 @@
   }
 
   function hygieneItems(){
-    return Object.entries(state.daily?.hygiene||{}).filter(([,day])=>Object.values(day?.checked||{}).some(Boolean)||day?.notes).map(([date,day])=>{
+    const care=state.daily?.hygiene||{},habits=state.daily?.habits||{},dates=new Set([...Object.keys(care),...Object.entries(habits).filter(([,day])=>Object.keys(day?.checked||{}).length>0).map(([date])=>date)]);
+    return [...dates].filter(date=>Object.values(care[date]?.checked||{}).some(Boolean)||care[date]?.notes||Object.keys(habits[date]?.checked||{}).length>0).map(date=>{
+      const combined=window.REP_HABITS?.payloadForDate?.(date);if(combined)return healthItem("hygiene",combined);
+      const day=care[date]||{};
       const checked=day.checked||{},keys=Object.keys(checked),done=keys.filter(key=>checked[key]).length,complete=prefix=>{const group=keys.filter(key=>key.startsWith(`${prefix}-`));return group.length>0&&group.every(key=>checked[key]);};
       return healthItem("hygiene",{date,morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:complete("post"),hairRoutineComplete:complete("hair"),spf:Boolean(checked["morning-0"]),floss:Boolean(checked["evening-1"]),beardOil:Boolean(checked["morning-3"]&&checked["evening-3"]),showerWithin30m:Boolean(checked["post-0"]),completion:keys.length?Math.round(done/keys.length*100):0,notes:day.notes||""});
     });

@@ -16,7 +16,7 @@ test("every local script in the document exists",async()=>{
   const html=await read("dist/client/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"dist","client",source))));
   assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
-  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync.js","enhancements.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
+  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync.js","enhancements.js","habits.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
@@ -26,7 +26,7 @@ test("the content-versioned service worker uses network-first navigation and nev
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=14/);
+  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=15/);
 });
 
 test("health navigation stays in document flow and synchronization is direct and unified",async()=>{
@@ -45,6 +45,13 @@ test("durable state is split into IndexedDB and optional assets load on demand",
   assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/REP_BUILD_VERSION/);
 });
 
+test("daily habits are bilingual, durable, streak-aware, and included in direct sync",async()=>{
+  const [habits,sync,app,sw]=await Promise.all([read("dist/client/habits.js"),read("dist/client/sync.js"),read("dist/client/app.js"),read("dist/client/sw.js")]);
+  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","صدقة","صيام","حفظ القرآن","Workout","أذكار الصباح والمساء","Read","Water"])assert.match(habits,new RegExp(marker));
+  assert.match(habits,/state\.daily\.habits/);assert.match(habits,/payloadForDate/);assert.match(habits,/Habit tracker:/);assert.match(habits,/function streak/);assert.match(habits,/Last 7 days/);
+  assert.match(sync,/state\.daily\?\.habits/);assert.match(sync,/REP_HABITS\?\.payloadForDate/);assert.match(app,/state\.daily\?\.habits/);assert.match(sw,/\.\/habits\.js/);
+});
+
 test("startup and social assets stay within their performance budgets",async()=>{
   const social=await stat(join(root,"dist","client","rep-social-preview.png")),html=await read("dist/client/index.html"),sw=await read("dist/client/sw.js");
   assert.ok(social.size<300_000,`social preview is ${social.size} bytes`);
@@ -59,7 +66,7 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
 
 test("deployment client is deterministically built from source",async()=>{
   const meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version);
-  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","health-ui.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","health-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }

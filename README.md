@@ -7,6 +7,12 @@ Version 67 adds direct, device-wide synchronization:
 - The pairing key is entered once per device. The Worker stores a revocable device registration without an expiry, and active browser sessions refresh their secure cookie automatically.
 - A device stays paired until it is revoked, unpaired, or its browser site data is cleared. The master pairing key is never stored in the browser.
 
+The Today screen also includes a bilingual daily habit tracker for sleep,
+night prayer, Fajr prayer, charity, fasting, Quran memorization, training,
+morning/evening adhkar, reading, and hydration. Check-ins are available offline,
+included in encrypted backups, show seven-day progress and per-habit streaks,
+and merge into the verified Notion Daily Care record during synchronization.
+
 Version 66 added a coverage-aware Apple Watch health system:
 
 - A data-confidence score that never disguises missing measurements as poor readiness.

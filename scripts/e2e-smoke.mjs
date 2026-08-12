@@ -58,6 +58,13 @@ try {
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
+  assertTrue(await page.locator("[data-habit-id]").count() === 10, "Today shows the ten requested daily habits");
+  await page.click('[data-habit-id="sleep"]');
+  assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "A habit can be checked off");
+  await page.evaluate(()=>window.REP_STORE.flush());
+  await page.reload({waitUntil:"load"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "Habit completion survives a reload");
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);

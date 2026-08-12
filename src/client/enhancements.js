@@ -1,7 +1,7 @@
 /* Health OS v58 intelligence, safety, and flexibility layer.
    Kept separate from the recovered v55 client so upgrades remain reviewable. */
 (function(){
-  const APP_SCHEMA=14,features=window.REP_FEATURES,health=window.REP_HEALTH_ENGINE,syncCenter=window.REP_SYNC_CENTER;
+  const APP_SCHEMA=15,features=window.REP_FEATURES,health=window.REP_HEALTH_ENGINE,syncCenter=window.REP_SYNC_CENTER;
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DEFAULT_SCHEDULE={
     Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"cardio"},Tuesday:{morning:true,focus:"gym"},

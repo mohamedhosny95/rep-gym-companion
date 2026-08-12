@@ -199,7 +199,7 @@ function programStatus(){
 }
 function healthStatusStrip(){const gate=recoveryGate(),program=programStatus(),ar=state.lang==="ar";let label=ar?"جاهز للتقدم":"Progress available",tone="good";if(gate.hold){label=ar?`${gate.flags} علامات خطر · ثبّت الحمل`:`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label=ar?"موعد مراجعة البرنامج":"Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${ar?"قرار اليوم":"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${ar?`الأسبوع ${program.week}`:`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
 
-function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0;}
+function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0||Object.keys(state.daily?.habits||{}).length>0;}
 function notionProtected(){return Boolean(localStorage.getItem(syncKeyStorage))&&!["failed","auth"].includes(state.syncState);}
 function needsBackupReminder(){
   if(!hasMeaningfulData())return false;
