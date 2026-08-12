@@ -23,9 +23,10 @@
     book:'<svg viewBox="0 0 24 24"><path d="M3 4h6a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H3ZM21 4h-6a3 3 0 0 0-3 3v14a3 3 0 0 1 3-3h6Z"/></svg>',
     water:'<svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 14h-11ZM8 3h8M9 7l1-4h4l1 4"/></svg>'
   };
-  const NOTION_HABITS_URL="https://app.notion.com/p/3bafa9cab092812897badd73c45a3d84?pvs=204";
+  const NOTION_HABITS_URL="https://app.notion.com/p/20e4226c53694ea79692dff9839a132f?pvs=204";
   const habitMap=new Map(HABITS.map(habit=>[habit.id,habit]));
-  let syncTimer=null;
+  const syncTimers=new Map();
+  let hygieneSyncTimer=null;
   let reorderMode=false,draggedId=null;
 
   function orderedHabits(){
@@ -82,25 +83,31 @@
       completion:total?Math.round(doneTotal/total*100):0,notes:[String(care.notes||"").trim(),habitNote].filter(Boolean).join("\n"),habitChecks
     };
   }
+  function payloadForHabit(date,id){
+    const habit=habitMap.get(id);if(!habit)return null;
+    const isComplete=checked(date,id);
+    return {date,id,name:habit.en,nameAr:habit.ar,completed:isComplete,streak:isComplete?streak(id):0,updatedAt:bucket(date).updatedAt||new Date().toISOString(),notes:detail(habit,false)||""};
+  }
   function hasEntries(date){const value=bucket(date);return Object.keys(value.checked||{}).length>0;}
-  function scheduleSync(date){
-    clearTimeout(syncTimer);
+  function scheduleSync(date,id){
     if(!repAuth?.isPaired?.()||!navigator.onLine)return;
-    syncTimer=setTimeout(()=>queueHealth("hygiene",payloadForDate(date)),650);
+    const key=`${date}:${id}`;clearTimeout(syncTimers.get(key));
+    syncTimers.set(key,setTimeout(()=>{const habitPayload=payloadForHabit(date,id);if(habitPayload)queueHealth("habit",habitPayload);syncTimers.delete(key);},650));
+    clearTimeout(hygieneSyncTimer);hygieneSyncTimer=setTimeout(()=>queueHealth("hygiene",payloadForDate(date)),800);
   }
   function toggle(id){
     if(!habitMap.has(id))return;
     const date=isoDay(),value=bucket(date,true);value.checked=value.checked&&typeof value.checked==="object"?value.checked:{};
     value.checked[id]=!Boolean(value.checked[id]);value.updatedAt=new Date().toISOString();
     if(value.checked[id]&&navigator.vibrate)navigator.vibrate(30);
-    persist();scheduleSync(date);renderOverview();
+    persist();scheduleSync(date,id);renderOverview();
   }
   function label(habit,ar){return ar?habit.ar:habit.en;}
   function detail(habit,ar){return ar?habit.detailAr:habit.detailEn;}
   function render(){
     const ar=state.lang==="ar",date=isoDay(),done=completed(date),ordered=orderedHabits(),percent=Math.round(done.length/HABITS.length*100),days=Array.from({length:7},(_,index)=>dateKey(index-6));
     const section=document.createElement("section");section.className="habit-tracker";section.setAttribute("aria-labelledby","habitTrackerTitle");
-    section.innerHTML=`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتندمج مع سجل العناية اليومية في Notion.":"Check-ins stay available offline and merge into the Daily Care record in Notion."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح صفحة Notion":"Open Notion page"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${HABITS.length}</strong></div></div>
+    section.innerHTML=`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتُحدَّث مباشرةً في سجل العادات داخل Notion.":"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح سجل العادات":"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${HABITS.length}</strong></div></div>
       ${totalStreak()?`<div class="habit-streak-banner"><span>🔥</span><strong>${totalStreak()} ${ar?"أيام مكتملة متتالية":"fully completed days"}</strong></div>`:""}
       <div class="habit-grid ${reorderMode?"is-reordering":""}">${ordered.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit,ar),description=detail(habit,ar),action=isDone?(ar?"مكتمل":"completed"):(ar?"غير مكتمل":"not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${ar?"يوم متتالٍ":"day streak"}`:(ar?"ابدأ اليوم":"Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls"><span aria-hidden="true">↕</span><button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${ar?`نقل ${name} لأعلى`:`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===ordered.length-1?"disabled":""} aria-label="${ar?`نقل ${name} لأسفل`:`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
       <details class="habit-history"><summary><span>${ar?"آخر 7 أيام":"Last 7 days"}</span><strong>${ar?"عرض التقدم":"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,p=Math.round(n/HABITS.length*100),today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString(ar?"ar-EG":"en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${HABITS.length}</strong></div>`;}).join("")}</div></details>`;
@@ -117,7 +124,7 @@
   }
   function mount(){const existing=document.querySelector(".habit-tracker");existing?.remove();const section=render(),anchor=document.querySelector(".home-today-card");if(anchor)anchor.insertAdjacentElement("afterend",section);else app.append(section);}
 
-  window.REP_HABITS={definitions:HABITS,orderedHabits,bucket,completed,streak,payloadForDate,hasEntries,notionUrl:NOTION_HABITS_URL};
+  window.REP_HABITS={definitions:HABITS,orderedHabits,bucket,completed,streak,payloadForDate,payloadForHabit,hasEntries,notionUrl:NOTION_HABITS_URL};
   const baseOverview=renderOverview;
   renderOverview=function(){baseOverview();mount();};
   if(state.view==="home-overview")renderOverview();

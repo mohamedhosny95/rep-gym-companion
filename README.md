@@ -165,10 +165,10 @@ The deployed server expects these environment variables (see `.env.example`):
 - `CANONICAL_ORIGIN` — the one production origin all browser tabs must use
 - `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
-Recovery, nutrition, hygiene, and food databases use their checked-in public
+Recovery, nutrition, hygiene, habit, and food databases use their checked-in public
 data-source IDs by default. They can be overridden with
 `NOTION_RECOVERY_DATA_SOURCE_ID`, `NOTION_NUTRITION_DATA_SOURCE_ID`,
-`NOTION_HYGIENE_DATA_SOURCE_ID`, and `NOTION_FOOD_DATA_SOURCE_ID`.
+`NOTION_HYGIENE_DATA_SOURCE_ID`, `NOTION_HABIT_DATA_SOURCE_ID`, and `NOTION_FOOD_DATA_SOURCE_ID`.
 `NOTION_FOOD_VIEW_URL` optionally overrides the visible link only; its default
 is the canonical `View of Food Entries` URL supplied by the owner.
 

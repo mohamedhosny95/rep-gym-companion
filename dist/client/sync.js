@@ -1,12 +1,12 @@
 (function(){
   const REQUEST_TIMEOUT_MS=30000,SIGNATURES_KEY="rep-sync-signatures-v1";
   const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
-  const activityLabel=item=>item.payload?.food_name||item.payload?.rawNote||item.workout?.type||item.payload?.plan||item.payload?.date||item.kind||"Sync record";
+  const activityLabel=item=>item.payload?.food_name||item.payload?.rawNote||item.payload?.name||item.workout?.type||item.payload?.plan||item.payload?.date||item.kind||"Sync record";
   const record=(item,status,extra={})=>window.REP_SYNC_CENTER?.record(state,{id:item.id,kind:item.kind,label:activityLabel(item),status,...extra});
   const signatures=()=>{try{return JSON.parse(localStorage.getItem(SIGNATURES_KEY)||"{}");}catch{return {};}};
   const saveSignatures=value=>localStorage.setItem(SIGNATURES_KEY,JSON.stringify(value));
   const workoutItem=entry=>({id:`workout-${entry.id}`,kind:"workout",workout:{id:String(entry.id),date:entry.date,type:typeMap[entry.session]||entry.activityLabel||"Recovery",duration:entry.duration,entries:entry.entries}});
-  const healthItem=(kind,payload)=>({id:`${kind}-${kind==="food"?(payload.id||Date.now()):payload.date}`,kind,payload:{...payload}});
+  const healthItem=(kind,payload)=>({id:`${kind}-${kind==="food"?(payload.id||Date.now()):kind==="habit"?`${payload.date}-${payload.id}`:payload.date}`,kind,payload:{...payload}});
 
   function nutritionItem(){
     if(typeof foodProfile!=="function"||typeof todayFoodEntries!=="function")return null;
@@ -25,13 +25,19 @@
     });
   }
 
+  function habitItems(){
+    const days=state.daily?.habits||{};
+    return Object.entries(days).flatMap(([date,day])=>Object.keys(day?.checked||{}).map(id=>window.REP_HABITS?.payloadForHabit?.(date,id))).filter(Boolean).map(payload=>healthItem("habit",payload));
+  }
+
   function collectEverything(){
     const items=[
       ...(state.history||[]).filter(entry=>entry?.entries?.length).map(workoutItem),
       ...(state.foodEntries||[]).filter(entry=>entry?.id&&entry?.date).map(entry=>healthItem("food",entry)),
       ...(state.recoveryCheckins||[]).filter(entry=>entry?.date).map(entry=>healthItem("recovery",entry)),
       ...(state.sleepLogs||[]).filter(entry=>entry?.date).map(entry=>healthItem("sleep",{...entry,sleep:entry.sleep??entry.hours})),
-      ...hygieneItems()
+      ...hygieneItems(),
+      ...habitItems()
     ];
     const nutrition=nutritionItem();if(nutrition)items.push(nutrition);
     return [...new Map(items.map(item=>[item.id,item])).values()];

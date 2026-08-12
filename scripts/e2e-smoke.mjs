@@ -65,7 +65,7 @@ try {
   await page.reload({waitUntil:"load"});
   await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
   assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "Habit completion survives a reload");
-  assertTrue(await page.locator('.habit-head-actions a[href*="3bafa9cab092812897badd73c45a3d84"]').count() === 1, "Habit tracker links to its Notion companion page");
+  assertTrue(await page.locator('.habit-head-actions a[href*="20e4226c53694ea79692dff9839a132f"]').count() === 1, "Habit tracker links to the Habit Log inside the Workout Hub");
   await page.click('[data-habit-reorder]');
   const firstHabitBefore=await page.locator('[data-habit-card]').first().getAttribute('data-habit-card');
   await page.locator(`[data-habit-order-id="${firstHabitBefore}"][data-habit-move="down"]`).click();

@@ -6,6 +6,7 @@ const HEALTH_DATA_SOURCES = {
   sleep: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
   nutrition: "fcfdaac1-87a5-4fc7-b437-42e1b247b80e",
   hygiene: "1890e774-1ad7-4904-a9ec-84267cd222a2",
+  habit: "e4ed7261-0722-43be-84b7-a0fffc414a11",
   food: "97671c61-586a-4443-aea6-00b1d9f835a7"
 };
 const FOOD_DESTINATION = {
@@ -578,13 +579,19 @@ async function syncWorkoutBody(env, body) {
 }
 
 function healthSource(env, kind) {
-  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",sleep:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID",food:"NOTION_FOOD_DATA_SOURCE_ID"};
+  const names={recovery:"NOTION_RECOVERY_DATA_SOURCE_ID",sleep:"NOTION_RECOVERY_DATA_SOURCE_ID",nutrition:"NOTION_NUTRITION_DATA_SOURCE_ID",hygiene:"NOTION_HYGIENE_DATA_SOURCE_ID",habit:"NOTION_HABIT_DATA_SOURCE_ID",food:"NOTION_FOOD_DATA_SOURCE_ID"};
   return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
 }
 
 async function existingHealthPage(env, dataSourceId, date) {
   const result=await notionRequest(env,`/data_sources/${dataSourceId}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Date",date:{equals:safeText(date,10)}}})});
   return result.results?.[0]?.id || null;
+}
+
+async function existingHabitPage(env,dataSourceId,payload){
+  const entry=`${safeText(payload.date,10)} · ${safeText(payload.id,80)}`;
+  const result=await notionRequest(env,`/data_sources/${dataSourceId}/query`,{method:"POST",body:JSON.stringify({page_size:1,filter:{property:"Entry",title:{equals:entry}}})});
+  return result.results?.[0]?.id||null;
 }
 
 function recoveryProperties(payload) {
@@ -627,6 +634,16 @@ function hygieneProperties(payload) {
   };
 }
 
+function habitProperties(payload){
+  const allowed=new Set(["Sleep","Night prayer","Fajr prayer","Sadqa","Quran wird","Quran memorization","Workout","Morning & evening adhkar","Reading","Water"]),name=safeText(payload.name,80);
+  if(!safeText(payload.id,80)||!allowed.has(name))return null;
+  return {
+    "Entry":{title:richText(`${safeText(payload.date,10)} · ${safeText(payload.id,80)}`)},"Date":{date:{start:safeText(payload.date,10)}},"Habit":{select:{name}},"Habit ID":{rich_text:richText(payload.id)},
+    "Completed":{checkbox:Boolean(payload.completed)},"Streak":{number:Math.max(0,Math.min(370,Number(payload.streak)||0))},"Source":{select:{name:"Rep Gym Companion"}},
+    "Updated At":{date:{start:safeText(payload.updatedAt,40)||new Date().toISOString()}},"Notes":{rich_text:richText([safeText(payload.nameAr,100),safeText(payload.notes,500)].filter(Boolean).join(" · "))}
+  };
+}
+
 function foodProperties(payload) {
   const method=["Photo","Restaurant","Ingredients","Barcode","Voice","Re-log","Template"].includes(payload.logMethod)?payload.logMethod:"Ingredients";
   const meal=["Breakfast","Lunch","Dinner","Snack"].includes(payload.mealType)?payload.mealType:"Snack",marker=`[REP:${safeText(payload.id,100)}]`;
@@ -659,9 +676,9 @@ async function syncHealthBody(env, body) {
   const kind=safeText(body?.kind,20),payload=body?.payload,source=healthSource(env,kind);
   if(!source||!payload||!/^\d{4}-\d{2}-\d{2}$/.test(safeText(payload.date,10)))return json({ok:false,error:"Invalid health log payload."},400);
   if(kind==="food")return syncFood(env,payload,source);
-  const builders={recovery:recoveryProperties,sleep:sleepProperties,nutrition:nutritionProperties,hygiene:hygieneProperties},properties=builders[kind]?.(payload);
+  const builders={recovery:recoveryProperties,sleep:sleepProperties,nutrition:nutritionProperties,hygiene:hygieneProperties,habit:habitProperties},properties=builders[kind]?.(payload);
   if(!properties)return json({ok:false,error:"Unsupported health log type."},400);
-  const pageId=await existingHealthPage(env,source,payload.date);
+  const pageId=kind==="habit"?await existingHabitPage(env,source,payload):await existingHealthPage(env,source,payload.date);
   const savedPage=pageId
     ? await notionRequest(env,`/pages/${pageId}`,{method:"PATCH",body:JSON.stringify({properties})})
     : await notionRequest(env,"/pages",{method:"POST",body:JSON.stringify({parent:{type:"data_source_id",data_source_id:source},properties})});

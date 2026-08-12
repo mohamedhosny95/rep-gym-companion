@@ -646,7 +646,7 @@ function recordSession(){
 function queueWorkout(record){
   if(!record?.entries?.length)return;persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`workout-${record.id}`,kind:"workout",workout:{id:String(record.id),date:record.date,type:record.activityLabel||"Recovery",duration:record.duration,entries:record.entries}});
 }
-function queueHealth(kind,payload){persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`${kind}-${kind==="food"?(payload.id||Date.now()):payload.date}`,kind,payload});}
+function queueHealth(kind,payload){persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`${kind}-${kind==="food"?(payload.id||Date.now()):kind==="habit"?`${payload.date}-${payload.id}`:payload.date}`,kind,payload});}
 
 async function syncPending(){
   return window.REP_SYNC_RUNTIME?.syncEverything?.();

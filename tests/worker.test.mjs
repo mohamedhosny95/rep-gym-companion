@@ -174,6 +174,27 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
   }finally{globalThis.fetch=originalFetch;}
 });
 
+test("habit check-ins create once and then update the same verified Notion row",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},source="e4ed7261-0722-43be-84b7-a0fffc414a11",pageId="44444444-4444-4444-8444-444444444444",calls=[];
+  let stored=false;
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input),body=init.body?JSON.parse(init.body):null;calls.push({url,method:init.method||"GET",body});
+    if(url.endsWith(`/data_sources/${source}/query`)){const results=stored?[{id:pageId}]:[];return new Response(JSON.stringify({results}),{status:200,headers:{"content-type":"application/json"}});}
+    if(url.endsWith("/pages")&&init.method==="POST"){stored=true;return new Response(JSON.stringify({id:pageId}),{status:200,headers:{"content-type":"application/json"}});}
+    if(url.endsWith(`/pages/${pageId}`)&&init.method==="PATCH")return new Response(JSON.stringify({id:pageId}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:source},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const save=completed=>call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":"habit-2026-08-12-quran-wird"},body:JSON.stringify({kind:"habit",payload:{date:"2026-08-12",id:"quran-wird",name:"Quran wird",nameAr:"ورد القرآن",completed,streak:completed?3:0,updatedAt:"2026-08-12T15:00:00.000Z",notes:"Read pages of the Quran"}})}).then(read);
+    const created=await save(true);assert.equal(created.status,200);assert.equal(created.body.verified,true);assert.equal(created.body.kind,"habit");assert.equal(created.body.created,1);
+    const updated=await save(false);assert.equal(updated.status,200);assert.equal(updated.body.verified,true);assert.equal(updated.body.updated,1);
+    assert.equal(calls.filter(item=>item.url.endsWith("/pages")&&item.method==="POST").length,1);
+    const patch=calls.find(item=>item.url.endsWith(`/pages/${pageId}`)&&item.method==="PATCH");assert.equal(patch.body.properties.Completed.checkbox,false);assert.equal(patch.body.properties["Habit ID"].rich_text[0].text.content,"quran-wird");
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test("workout sync verifies each created page with a fresh Notion read before reporting success",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret",NOTION_DATA_SOURCE_ID:"11111111-1111-4111-8111-111111111111"},pageId="22222222-2222-4222-8222-222222222222";
   const workout={id:"workout-1",date:"2026-08-11",entries:[{entry:"Bench Press · Set 1",exercise:"Bench Press",set:1,weight:60,reps:8}]};
