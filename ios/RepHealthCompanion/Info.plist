@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>NSHealthShareUsageDescription</key><string>Rep uses your authorized Apple Health measurements to calculate personal recovery trends and data confidence.</string>
+  <key>NSHealthUpdateUsageDescription</key><string>Rep Health Companion does not write data to Apple Health.</string>
+</dict></plist>
