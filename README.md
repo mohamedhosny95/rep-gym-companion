@@ -8,8 +8,8 @@ Version 67 adds direct, device-wide synchronization:
 - A device stays paired until it is revoked, unpaired, or its browser site data is cleared. The master pairing key is never stored in the browser.
 
 The Today screen also includes a bilingual daily habit tracker for sleep,
-night prayer, Fajr prayer, charity, fasting, Quran memorization, training,
-morning/evening adhkar, reading, and hydration. Check-ins are available offline,
+night prayer, Fajr prayer, charity, Quran wird (reading Quran pages), Quran
+memorization, training, morning/evening adhkar, reading, and hydration. Check-ins are available offline,
 included in encrypted backups, show seven-day progress and per-habit streaks,
 and merge into the verified Notion Daily Care record during synchronization.
 
