@@ -36,7 +36,8 @@ const baseUrl = `http://localhost:${port}`;
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const consoleErrors = [];
 try {
-  const page = await (await browser.newContext({ viewport: { width: 390, height: 900 } })).newPage();
+  const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const page = await context.newPage();
   page.on("pageerror", err => consoleErrors.push(`pageerror: ${err.message}`));
   page.on("console", msg => { if (msg.type() === "error") consoleErrors.push(`console.error: ${msg.text()}`); });
 
@@ -165,6 +166,13 @@ try {
   assertTrue((await page.evaluate(() => document.documentElement.dir)) === "rtl", "Language toggle flips to RTL");
   await page.click('[data-language="en"]');
   await page.waitForTimeout(200);
+
+  await page.evaluate(()=>navigator.serviceWorker.ready);
+  await context.setOffline(true);
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  assertTrue(await page.locator("main h1").count()>0,"A first controlled reload starts fully offline from the precache");
+  await context.setOffline(false);
 
   assertTrue(consoleErrors.length === 0, `No console/page errors during the run (found ${consoleErrors.length})`);
   if (consoleErrors.length) console.log(consoleErrors.join("\n"));

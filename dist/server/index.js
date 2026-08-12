@@ -391,11 +391,17 @@ async function importVitalsHae(request, env) {
   if (await rateLimited(request, "vitals-import-hae", 30, 3600, env)) return rateLimitResponse();
   if (!(await automationPaired(request, env))) return json({ ok: false, error: "Automation key is incorrect or missing." }, 401);
   if (!env.PUSH_KV) return json({ ok: false, error: "Automated import isn't configured on the server yet. In Cloudflare, create a KV namespace and bind it as PUSH_KV." }, 501);
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") return json({ ok: false, error: "Invalid JSON body." }, 400);
+  if(requestTooLarge(request,2_000_000))return json({ok:false,error:"Health export is too large."},413);
+  const raw=await request.text().catch(()=>"");
+  if(new TextEncoder().encode(raw).byteLength>2_000_000)return json({ok:false,error:"Health export is too large."},413);
+  let body;try{body=JSON.parse(raw);}catch{return json({ok:false,error:"Invalid JSON body."},400);}
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "Invalid JSON body." }, 400);
+  const metrics=Array.isArray(body?.data?.metrics)?body.data.metrics:[],sleep=Array.isArray(body?.data?.sleep)?body.data.sleep:[];
+  if(metrics.length>100||sleep.length>1000||metrics.some(metric=>Array.isArray(metric?.data)&&metric.data.length>5000))return json({ok:false,error:"Health export contains too many records."},413);
   let entries;
   try { entries = parseHaeExport(body); } catch { return json({ ok: false, error: "Could not parse the Health Auto Export payload." }, 400); }
   if (!entries.length) return json({ ok: false, error: "No recognizable sleep, recovery, activity, or fitness data found in this export." }, 400);
+  if(entries.length>120)return json({ok:false,error:"Health export spans too many days; send at most 120 days per request."},413);
   let imported = 0;
   for (const entry of entries) {
     const normalized = normalizeVitalsImport(entry);
@@ -416,13 +422,10 @@ async function pendingVitals(request, env) {
   let cursor;
   for (let page = 0; page < 10; page++) {
     const list = await env.PUSH_KV.list({ prefix: VITALS_IMPORT_PREFIX, cursor });
-    for (const key of list.keys) {
-      const date = key.name.slice(VITALS_IMPORT_PREFIX.length);
-      if (date < since) continue;
-      const raw = await env.PUSH_KV.get(key.name);
-      if (raw) entries.push(JSON.parse(raw));
-    }
-    if (list.list_complete) break;
+    const eligible=list.keys.filter(key=>key.name.slice(VITALS_IMPORT_PREFIX.length)>=since).slice(0,366);
+    const values=await Promise.all(eligible.map(key=>env.PUSH_KV.get(key.name,"json").catch(()=>null)));
+    entries.push(...values.filter(Boolean));
+    if(entries.length>=366||list.list_complete) break;
     cursor = list.cursor;
   }
   entries.sort((a, b) => a.date.localeCompare(b.date));
@@ -1090,7 +1093,7 @@ async function route(request, env, ctx) {
     if (!(await paired(request, env))) return json({ok:false,error:"Pairing key is incorrect or expired."},401);
     const [notion,outbox,monitor]=await Promise.all([notionHealth(env),syncOutboxHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
     const infrastructure=infrastructureHealth(env);
-    return json({ok:true,version:"64",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
+    return json({ok:true,version:"65",checkedAt:new Date().toISOString(),notion,outbox,monitor,infrastructure,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
