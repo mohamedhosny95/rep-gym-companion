@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import worker from "../dist/server/index.js";
+import worker, { PairingCoordinator } from "../dist/server/index.js";
 
 class MemoryKV {
   constructor(){ this.values=new Map(); }
@@ -9,6 +9,40 @@ class MemoryKV {
   async put(key,value){ this.values.set(key,String(value)); }
   async delete(key){ this.values.delete(key); }
   async list({prefix="",limit=1000}={}){ return {keys:[...this.values.keys()].filter(key=>key.startsWith(prefix)).sort().slice(0,limit).map(name=>({name})),list_complete:true}; }
+}
+
+// A real Durable Object only ever runs one transaction() at a time — that
+// serialization, not just the read/delete logic inside it, is what makes a
+// claim atomic. This fake storage reproduces exactly that guarantee (via a
+// promise queue) so tests exercise the actual exported PairingCoordinator
+// class instead of re-describing its intended behavior in a mock.
+class MemoryDurableObjectStorage {
+  constructor(){ this.values=new Map(); this.queue=Promise.resolve(); }
+  // Real storage I/O has latency, which is exactly the window a race needs to
+  // slip through. Without a delay on both get and delete, two same-tick calls
+  // stay in lockstep on Node's single-threaded event loop and never actually
+  // interleave — a broken (non-transactional) claim path would pass this
+  // suite by accident even though it isn't atomic. Delaying only get was not
+  // enough: it let the first call's delete finish before the second call's
+  // get resolved, so this only reproduces a genuine race with both delayed.
+  async get(key){ await new Promise(resolve=>setTimeout(resolve,5)); return this.values.get(key); }
+  async put(key,value){ this.values.set(key,value); }
+  async delete(key){ await new Promise(resolve=>setTimeout(resolve,5)); this.values.delete(key); }
+  transaction(callback){
+    const run=()=>callback({get:key=>this.get(key),put:(key,value)=>this.put(key,value),delete:key=>this.delete(key)});
+    const result=this.queue.then(run);
+    this.queue=result.then(()=>{},()=>{});
+    return result;
+  }
+}
+class MemoryPairingCoordinatorNamespace {
+  constructor(){ this.objects=new Map(); }
+  idFromName(name){ return name; }
+  get(id){
+    if(!this.objects.has(id))this.objects.set(id,new PairingCoordinator({storage:new MemoryDurableObjectStorage()}));
+    const instance=this.objects.get(id);
+    return { fetch:(url,init)=>instance.fetch(new Request(url,init)) };
+  }
 }
 
 const allowLimiter={limit:async()=>({success:true})};
@@ -37,6 +71,31 @@ test("QR handoff can be claimed once",async()=>{
   const claim=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})});
   const first=await read(await claim()); assert.equal(first.status,200); assert.equal(first.body.credential,"cookie"); assert.match(first.cookie,/^__Host-rep_session=rep1\./);
   const second=await read(await claim()); assert.equal(second.status,401);
+});
+
+test("QR handoff is claimed once through the real PairingCoordinator Durable Object",async()=>{
+  // Same scenario as above, but with PAIRING_COORDINATOR bound so handoffState()
+  // takes the Durable Object branch instead of the plain-KV fallback.
+  const environment={...env(),PAIRING_COORDINATOR:new MemoryPairingCoordinatorNamespace()};
+  const handoff=await read(await call(environment,"/api/pair/handoff",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  assert.equal(handoff.status,200); const token=new URL(handoff.body.url).searchParams.get("pair"); assert.ok(token);
+  const claim=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})});
+  const first=await read(await claim()); assert.equal(first.status,200); assert.equal(first.body.credential,"cookie"); assert.match(first.cookie,/^__Host-rep_session=rep1\./);
+  const second=await read(await claim()); assert.equal(second.status,401);
+});
+
+test("two simultaneous QR claims against the same handoff cannot both succeed",async()=>{
+  const environment={...env(),PAIRING_COORDINATOR:new MemoryPairingCoordinatorNamespace()};
+  const handoff=await read(await call(environment,"/api/pair/handoff",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  const token=new URL(handoff.body.url).searchParams.get("pair"); assert.ok(token);
+  const claimOnce=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}).then(read);
+  // Fired together, not sequentially, so the two requests actually race
+  // inside PairingCoordinator's storage.transaction() rather than one
+  // trivially completing before the other starts.
+  const [a,b]=await Promise.all([claimOnce(),claimOnce()]);
+  assert.deepEqual([a.status,b.status].sort(),[200,401]);
+  const winner=a.status===200?a:b;
+  assert.equal(winner.body.credential,"cookie"); assert.match(winner.cookie,/^__Host-rep_session=rep1\./);
 });
 
 test("Apple Shortcuts vitals import is validated and returned",async()=>{
