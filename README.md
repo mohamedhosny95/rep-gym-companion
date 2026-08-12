@@ -78,7 +78,7 @@ The retained reliability foundations are:
 - The Worker accepts sleep, HRV, resting heart rate, respiratory rate, active
   energy, steps, exercise/stand minutes, VO₂ max, oxygen saturation, wrist
   temperature, and deep/REM sleep from the existing import endpoints.
-- `ios/RepHealthBridge/` contains the SwiftUI HealthKit companion starter. It
+- `ios/RepHealthCompanion/` contains the SwiftUI HealthKit companion starter. It
   requires Xcode signing because browsers cannot access HealthKit directly.
 
 ## Open locally
@@ -90,7 +90,7 @@ Open `dist/client/index.html` in a browser. For reliable service-worker and offl
 - `src/client/` — the only editable browser application source
 - `dist/client/` — generated deployment files served by Cloudflare
 - `dist/server/` — Cloudflare Worker source for Notion, Gemini, pairing, push, and sync
-- `ios/RepHealthBridge/` — the optional native HealthKit bridge starter
+- `ios/RepHealthCompanion/` — the optional native HealthKit companion starter
 
 `src/client/` is the only browser source of truth. `dist/client/` is generated
 and must not be hand-edited. Downloadable builds are produced as CI artifacts

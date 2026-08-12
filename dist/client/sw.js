@@ -1,4 +1,4 @@
-const BUILD_VERSION="03854c1f5a7e";
+const BUILD_VERSION="28f3e0c4ac19";
 const CACHE = `rep-companion-${BUILD_VERSION}`;
 const versioned=path=>`${path}?v=${BUILD_VERSION}`;
 const CORE_ASSETS = ["./", "./index.html", ...["./styles.css","./build-meta.js","./auth.js","./storage.js","./ui-state.js","./ui-shell.js","./health-data.js","./i18n.js","./features.js","./health-engine.js","./health-coverage.js","./bootstrap.js","./app.js","./sync.js","./sync-center.js","./enhancements.js","./health-ui.js"].map(versioned), "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
