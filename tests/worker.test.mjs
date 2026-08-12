@@ -41,13 +41,13 @@ test("QR handoff can be claimed once",async()=>{
 test("Apple Shortcuts vitals import is validated and returned",async()=>{
   const environment=env(),headers={"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY};
   const imported=await read(await call(environment,"/api/vitals/import",{method:"POST",headers,body:JSON.stringify(
-    {date:"2026-08-10",sleep_hours:7.5,hrv_ms:58,resting_hr_bpm:54,respiratory_rate_bpm:14.2,active_energy_kcal:710,steps:10400,vo2_max:42.1,oxygen_saturation_pct:97,wrist_temperature_c:36.4,source:"HealthKit"}
+    {date:"2026-08-10",sleep_hours:7.5,hrv_ms:58,resting_hr_bpm:54,respiratory_rate_bpm:14.2,active_energy_kcal:710,steps:10400,vo2_max:42.1,oxygen_saturation_pct:97,wrist_temperature_c:36.4,coverage_minutes:1320,heart_rate_samples:640,workout_hr_samples:80,watch_battery_pct:62,source:"Rep HealthKit Companion"}
   )}));
   assert.equal(imported.status,200); assert.equal(imported.body.ok,true);
   const pending=await read(await call(environment,"/api/vitals/pending?since=2026-08-09",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
   assert.deepEqual(pending.body.entries.map(entry=>entry.date),["2026-08-10"]);
   assert.equal(pending.body.entries[0].sleep_hours,7.5); assert.equal(pending.body.entries[0].hrv_ms,58);
-  assert.equal(pending.body.entries[0].steps,10400); assert.equal(pending.body.entries[0].vo2_max,42.1); assert.equal(pending.body.entries[0].source,"HealthKit");
+  assert.equal(pending.body.entries[0].steps,10400); assert.equal(pending.body.entries[0].vo2_max,42.1); assert.equal(pending.body.entries[0].coverage_minutes,1320); assert.equal(pending.body.entries[0].heart_rate_samples,640); assert.equal(pending.body.entries[0].workout_hr_samples,80); assert.equal(pending.body.entries[0].watch_battery_pct,62); assert.equal(pending.body.entries[0].source,"Rep HealthKit Companion");
   assert.equal(typeof pending.body.entries[0].imported_at,"string"); assert.equal(pending.body.entries[0].import_runs.length,1);
   await read(await call(environment,"/api/vitals/import",{method:"POST",headers,body:JSON.stringify({date:"2026-08-10",active_energy_kcal:760,source:"HealthKit"})}));
   const refreshed=await read(await call(environment,"/api/vitals/pending?since=2026-08-10",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
@@ -139,7 +139,7 @@ test("authenticated system health is read-only and reports the outbox",async()=>
   globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"65");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"66");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.equal(result.body.outbox.configured,true);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
 });
 
