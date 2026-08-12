@@ -26,7 +26,7 @@ test("the content-versioned service worker uses network-first navigation and nev
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=15/);
+  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=16/);
 });
 
 test("health navigation stays in document flow and synchronization is direct and unified",async()=>{
@@ -47,9 +47,10 @@ test("durable state is split into IndexedDB and optional assets load on demand",
 
 test("daily habits are bilingual, durable, streak-aware, and included in direct sync",async()=>{
   const [habits,sync,app,sw]=await Promise.all([read("dist/client/habits.js"),read("dist/client/sync.js"),read("dist/client/app.js"),read("dist/client/sw.js")]);
-  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","Sadqa","صدقة","ورد القرآن","حفظ القرآن","Workout","أذكار الصباح والمساء","Read","Water"])assert.match(habits,new RegExp(marker));
-  assert.doesNotMatch(habits,/Fasting|صيام|en:"Charity"/);assert.match(habits,/Read pages of the Quran/);
+  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","Sadqa","صدقة","ورد القرآن","حفظ القرآن","Workout","أذكار الصباح والمساء","Reading","Water"])assert.match(habits,new RegExp(marker));
+  assert.doesNotMatch(habits,/Fasting|صيام|en:"Charity"|30 minutes|30 دقيقة/);assert.match(habits,/Read pages of the Quran/);
   assert.match(habits,/state\.daily\.habits/);assert.match(habits,/payloadForDate/);assert.match(habits,/Habit tracker:/);assert.match(habits,/function streak/);assert.match(habits,/Last 7 days/);
+  assert.match(habits,/state\.habitOrder/);assert.match(habits,/data-habit-reorder/);assert.match(habits,/data-habit-move/);assert.match(habits,/dragstart/);assert.match(habits,/Open Notion page/);
   assert.match(sync,/state\.daily\?\.habits/);assert.match(sync,/REP_HABITS\?\.payloadForDate/);assert.match(app,/state\.daily\?\.habits/);assert.match(sw,/\.\/habits\.js/);
 });
 

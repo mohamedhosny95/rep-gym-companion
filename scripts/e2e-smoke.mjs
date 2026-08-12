@@ -65,6 +65,16 @@ try {
   await page.reload({waitUntil:"load"});
   await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
   assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "Habit completion survives a reload");
+  assertTrue(await page.locator('.habit-head-actions a[href*="3bafa9cab092812897badd73c45a3d84"]').count() === 1, "Habit tracker links to its Notion companion page");
+  await page.click('[data-habit-reorder]');
+  const firstHabitBefore=await page.locator('[data-habit-card]').first().getAttribute('data-habit-card');
+  await page.locator(`[data-habit-order-id="${firstHabitBefore}"][data-habit-move="down"]`).click();
+  const firstHabitAfter=await page.locator('[data-habit-card]').first().getAttribute('data-habit-card');
+  assertTrue(firstHabitAfter!==firstHabitBefore,"Habit order can be changed with accessible controls");
+  await page.evaluate(()=>window.REP_STORE.flush());
+  await page.reload({waitUntil:"load"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  assertTrue(await page.locator('[data-habit-card]').first().getAttribute('data-habit-card')===firstHabitAfter,"Custom habit order survives a reload");
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);
