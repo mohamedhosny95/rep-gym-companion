@@ -405,6 +405,10 @@ updates the same calendar-day record, so the schedule does not create duplicates
 
 ## Deployment
 
+**Production:** [rep-gym-companion.mohamedahmedhosny95.workers.dev](https://rep-gym-companion.mohamedahmedhosny95.workers.dev)
+
+GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Worker is the sole production runtime. The application has no runtime dependency on ChatGPT Sites or OpenAI Apps hosting.
+
 Production is deployed by Cloudflare's direct GitHub integration, which
 should trigger `npx wrangler deploy` only on push to `main`. GitHub Actions
 is used only for the non-deploying verification workflow described above.
