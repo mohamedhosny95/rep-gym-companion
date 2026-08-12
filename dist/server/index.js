@@ -1104,7 +1104,10 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/notion-sync") {
     if (request.method === "POST") {
-      if (await rateLimited(request, "notion-sync", 60, 60, env)) return rateLimitResponse();
+      // A single user-triggered Sync everything run may legitimately contain
+      // hundreds of local records. Authentication and sequential client writes
+      // keep this bounded without cutting a full-device sync off at 60 items.
+      if (await rateLimited(request, "notion-sync", 600, 60, env)) return rateLimitResponse();
       if (requestTooLarge(request, 2_000_000)) return json({ ok: false, error: "Sync payload is too large." }, 413);
       if (!(await paired(request, env))) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
       try {
