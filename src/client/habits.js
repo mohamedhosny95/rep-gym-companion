@@ -3,7 +3,7 @@
     {id:"sleep",icon:"bed",en:"Sleep",ar:"النوم",detailEn:"7–8 hours of night sleep",detailAr:"7–8 ساعات من النوم الليلي"},
     {id:"night-prayer",icon:"moon",en:"Night prayer",ar:"قيام الليل"},
     {id:"fajr",icon:"dawn",en:"Fajr prayer",ar:"صلاة الفجر"},
-    {id:"charity",icon:"charity",en:"Charity",ar:"صدقة"},
+    {id:"sadqa",icon:"charity",en:"Sadqa",ar:"صدقة"},
     {id:"quran-wird",icon:"heart",en:"Quran wird",ar:"ورد القرآن",detailEn:"Read pages of the Quran",detailAr:"قراءة صفحات من القرآن"},
     {id:"quran",icon:"quran",en:"Quran memorization",ar:"حفظ القرآن"},
     {id:"workout",icon:"workout",en:"Workout",ar:"تمرين"},

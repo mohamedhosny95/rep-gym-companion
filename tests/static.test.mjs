@@ -47,8 +47,8 @@ test("durable state is split into IndexedDB and optional assets load on demand",
 
 test("daily habits are bilingual, durable, streak-aware, and included in direct sync",async()=>{
   const [habits,sync,app,sw]=await Promise.all([read("dist/client/habits.js"),read("dist/client/sync.js"),read("dist/client/app.js"),read("dist/client/sw.js")]);
-  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","صدقة","ورد القرآن","حفظ القرآن","Workout","أذكار الصباح والمساء","Read","Water"])assert.match(habits,new RegExp(marker));
-  assert.doesNotMatch(habits,/Fasting|صيام/);assert.match(habits,/Read pages of the Quran/);
+  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","Sadqa","صدقة","ورد القرآن","حفظ القرآن","Workout","أذكار الصباح والمساء","Read","Water"])assert.match(habits,new RegExp(marker));
+  assert.doesNotMatch(habits,/Fasting|صيام|en:"Charity"/);assert.match(habits,/Read pages of the Quran/);
   assert.match(habits,/state\.daily\.habits/);assert.match(habits,/payloadForDate/);assert.match(habits,/Habit tracker:/);assert.match(habits,/function streak/);assert.match(habits,/Last 7 days/);
   assert.match(sync,/state\.daily\?\.habits/);assert.match(sync,/REP_HABITS\?\.payloadForDate/);assert.match(app,/state\.daily\?\.habits/);assert.match(sw,/\.\/habits\.js/);
 });
