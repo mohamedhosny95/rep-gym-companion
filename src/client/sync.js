@@ -72,10 +72,26 @@
     if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage=state.lang==="ar"?"اقرن هذا الجهاز مرة واحدة أولاً.":"Pair this device once first.";updateSyncPanel();return;}
     if(!navigator.onLine){state.syncState="failed";state.syncMessage=state.lang==="ar"?"لا يوجد اتصال. لم تتم إضافة أي شيء إلى قائمة انتظار.":"You are offline. Nothing was added to a queue.";updateSyncPanel();return;}
     const items=collectEverything();state.syncState="syncing";state.syncProgress={done:0,total:items.length,failed:0};state.syncMessage="";updateSyncPanel();
-    for(const item of items){
-      try{await sendItem(item,{force:true});}
-      catch(error){state.syncProgress.failed++;record(item,"failed",{error:String(error.message||error).slice(0,180),updatedAt:new Date().toISOString()});if(error.auth){repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";state.pairMessage=state.lang==="ar"?"تم إلغاء اقتران هذا الجهاز.":"This device was unpaired or revoked.";break;}}
-      finally{state.syncProgress.done++;updateSyncPanel();}
+    const markFailed=(item,message)=>{
+      state.syncProgress.failed++;state.syncProgress.done++;
+      record(item,"failed",{error:message,updatedAt:new Date().toISOString()});
+      if(item.kind==="food"){const entry=state.foodEntries.find(food=>food.id===item.payload?.id);if(entry){entry.notionSync="failed";entry.notionError=message;}}
+      updateSyncPanel();
+    };
+    for(let index=0;index<items.length;index++){
+      const item=items[index];
+      try{await sendItem(item,{force:true});state.syncProgress.done++;updateSyncPanel();}
+      catch(error){
+        markFailed(item,String(error.message||error).slice(0,180));
+        if(error.auth){
+          repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";state.pairMessage=state.lang==="ar"?"تم إلغاء اقتران هذا الجهاز.":"This device was unpaired or revoked.";
+          // Every item this run didn't reach is shown as not saved too, rather
+          // than silently keeping whatever status it had before this run.
+          const notAttempted=state.lang==="ar"?"لم تتم المحاولة: تم إلغاء اقتران الجهاز.":"Not attempted: this device was unpaired.";
+          for(const remaining of items.slice(index+1))markFailed(remaining,notAttempted);
+          break;
+        }
+      }
     }
     if(state.syncState!=="auth")state.syncState=state.syncProgress.failed?"failed":"synced";
     state.syncMessage=state.syncProgress.failed?`${state.syncProgress.failed} record${state.syncProgress.failed===1?"":"s"} could not be saved directly.`:"";persist();

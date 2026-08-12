@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import worker from "../dist/server/index.js";
+import worker, { PairingCoordinator } from "../dist/server/index.js";
 
 class MemoryKV {
   constructor(){ this.values=new Map(); }
@@ -9,6 +9,40 @@ class MemoryKV {
   async put(key,value){ this.values.set(key,String(value)); }
   async delete(key){ this.values.delete(key); }
   async list({prefix="",limit=1000}={}){ return {keys:[...this.values.keys()].filter(key=>key.startsWith(prefix)).sort().slice(0,limit).map(name=>({name})),list_complete:true}; }
+}
+
+// A real Durable Object only ever runs one transaction() at a time — that
+// serialization, not just the read/delete logic inside it, is what makes a
+// claim atomic. This fake storage reproduces exactly that guarantee (via a
+// promise queue) so tests exercise the actual exported PairingCoordinator
+// class instead of re-describing its intended behavior in a mock.
+class MemoryDurableObjectStorage {
+  constructor(){ this.values=new Map(); this.queue=Promise.resolve(); }
+  // Real storage I/O has latency, which is exactly the window a race needs to
+  // slip through. Without a delay on both get and delete, two same-tick calls
+  // stay in lockstep on Node's single-threaded event loop and never actually
+  // interleave — a broken (non-transactional) claim path would pass this
+  // suite by accident even though it isn't atomic. Delaying only get was not
+  // enough: it let the first call's delete finish before the second call's
+  // get resolved, so this only reproduces a genuine race with both delayed.
+  async get(key){ await new Promise(resolve=>setTimeout(resolve,5)); return this.values.get(key); }
+  async put(key,value){ this.values.set(key,value); }
+  async delete(key){ await new Promise(resolve=>setTimeout(resolve,5)); this.values.delete(key); }
+  transaction(callback){
+    const run=()=>callback({get:key=>this.get(key),put:(key,value)=>this.put(key,value),delete:key=>this.delete(key)});
+    const result=this.queue.then(run);
+    this.queue=result.then(()=>{},()=>{});
+    return result;
+  }
+}
+class MemoryPairingCoordinatorNamespace {
+  constructor(){ this.objects=new Map(); }
+  idFromName(name){ return name; }
+  get(id){
+    if(!this.objects.has(id))this.objects.set(id,new PairingCoordinator({storage:new MemoryDurableObjectStorage()}));
+    const instance=this.objects.get(id);
+    return { fetch:(url,init)=>instance.fetch(new Request(url,init)) };
+  }
 }
 
 const allowLimiter={limit:async()=>({success:true})};
@@ -37,6 +71,31 @@ test("QR handoff can be claimed once",async()=>{
   const claim=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})});
   const first=await read(await claim()); assert.equal(first.status,200); assert.equal(first.body.credential,"cookie"); assert.match(first.cookie,/^__Host-rep_session=rep1\./);
   const second=await read(await claim()); assert.equal(second.status,401);
+});
+
+test("QR handoff is claimed once through the real PairingCoordinator Durable Object",async()=>{
+  // Same scenario as above, but with PAIRING_COORDINATOR bound so handoffState()
+  // takes the Durable Object branch instead of the plain-KV fallback.
+  const environment={...env(),PAIRING_COORDINATOR:new MemoryPairingCoordinatorNamespace()};
+  const handoff=await read(await call(environment,"/api/pair/handoff",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  assert.equal(handoff.status,200); const token=new URL(handoff.body.url).searchParams.get("pair"); assert.ok(token);
+  const claim=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})});
+  const first=await read(await claim()); assert.equal(first.status,200); assert.equal(first.body.credential,"cookie"); assert.match(first.cookie,/^__Host-rep_session=rep1\./);
+  const second=await read(await claim()); assert.equal(second.status,401);
+});
+
+test("two simultaneous QR claims against the same handoff cannot both succeed",async()=>{
+  const environment={...env(),PAIRING_COORDINATOR:new MemoryPairingCoordinatorNamespace()};
+  const handoff=await read(await call(environment,"/api/pair/handoff",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  const token=new URL(handoff.body.url).searchParams.get("pair"); assert.ok(token);
+  const claimOnce=()=>call(environment,"/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}).then(read);
+  // Fired together, not sequentially, so the two requests actually race
+  // inside PairingCoordinator's storage.transaction() rather than one
+  // trivially completing before the other starts.
+  const [a,b]=await Promise.all([claimOnce(),claimOnce()]);
+  assert.deepEqual([a.status,b.status].sort(),[200,401]);
+  const winner=a.status===200?a:b;
+  assert.equal(winner.body.credential,"cookie"); assert.match(winner.cookie,/^__Host-rep_session=rep1\./);
 });
 
 test("Apple Shortcuts vitals import is validated and returned",async()=>{
@@ -112,6 +171,42 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
     const request=()=>call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":idempotency},body:JSON.stringify({kind:"food",payload:{id:entryId,date:"2026-08-11T10:00:00.000Z",food_name:"100 ml milk",mealType:"Snack",logMethod:"Ingredients",calories:61,protein_g:3.2,carbs_g:4.8,fat_g:3.3}})});
     const first=await read(await request());assert.equal(first.status,200);assert.equal(first.body.ok,true);assert.equal(first.body.verified,true);assert.equal(first.body.kind,"food");assert.equal(first.body.entryId,entryId);assert.match(first.body.notionUrl,/notion\.so/);assert.equal(calls.some(item=>item.url.endsWith("/pages")&&item.method==="POST"),true);
     const callCount=calls.length,second=await read(await request());assert.equal(second.body.duplicate,true);assert.equal(second.body.verified,true);assert.equal(calls.length,callCount);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test("workout sync verifies each created page with a fresh Notion read before reporting success",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",NOTION_DATA_SOURCE_ID:"11111111-1111-4111-8111-111111111111"},pageId="22222222-2222-4222-8222-222222222222";
+  const workout={id:"workout-1",date:"2026-08-11",entries:[{entry:"Bench Press · Set 1",exercise:"Bench Press",set:1,weight:60,reps:8}]};
+  const originalFetch=globalThis.fetch,calls=[];
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input);calls.push({url,method:init.method||"GET"});
+    if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const saved=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({workout})}));
+    assert.equal(saved.status,200);assert.equal(saved.body.ok,true);assert.equal(saved.body.verified,true);assert.equal(saved.body.kind,"workout");assert.equal(saved.body.created,1);assert.equal(saved.body.skipped,0);assert.match(saved.body.notionUrl,/notion\.so/);
+    assert.equal(calls.some(item=>item.method==="GET"&&item.url.endsWith(`/pages/${pageId}`)),true,"the created page must be re-read, not just trusted from the create response");
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test("workout sync reports failure instead of a false receipt when Notion can't confirm the created page",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",NOTION_DATA_SOURCE_ID:"11111111-1111-4111-8111-111111111111"},pageId="33333333-3333-4333-8333-333333333333";
+  const workout={id:"workout-2",date:"2026-08-11",entries:[{entry:"Squat · Set 1",exercise:"Squat",set:1,weight:100,reps:5}]};
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input);
+    if(url.endsWith("/query"))return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/pages")&&init.method==="POST")return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    // The create response looks fine, but Notion's own re-read of the page (e.g. it landed archived, or in the wrong database) says otherwise — the response must trust the re-read, not the create call.
+    if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:environment.NOTION_DATA_SOURCE_ID},archived:true,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const saved=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({workout})}));
+    assert.equal(saved.status,502);assert.equal(saved.body.ok,false);assert.match(saved.body.error,/did not confirm/);
   }finally{globalThis.fetch=originalFetch;}
 });
 
