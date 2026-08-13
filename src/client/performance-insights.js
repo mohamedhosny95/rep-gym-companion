@@ -111,8 +111,8 @@
     return parts.length?round(average(parts),0):null;
   }
 
-  function experiments(state,nowKey=dateKey()){
-    const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),results=[],dailyFood=new Map(nutritionData.days.map(day=>[day.date,day]));
+  function experiments(state,nowKey=dateKey(),deps={}){
+    const strengthData=deps.strengthData||strength(state,nowKey),nutritionData=deps.nutritionData||nutrition(state,nowKey),results=[],dailyFood=new Map(nutritionData.days.map(day=>[day.date,day]));
     const exerciseMedians={};for(const item of strengthData.exercises)exerciseMedians[item.exercise]=median(item.records.map(row=>row.bestE1rm));
     const performance=strengthData.sessions.map(row=>({...row,index:exerciseMedians[row.exercise]?row.bestE1rm/exerciseMedians[row.exercise]*100:null})).filter(row=>finite(row.index));
     function compare(id,label,withRows,withoutRows){if(withRows.length<4||withoutRows.length<4)return;const withMean=average(withRows.map(row=>row.index)),withoutMean=average(withoutRows.map(row=>row.index)),effect=round(withMean-withoutMean,1);results.push({id,label,effect,withDays:withRows.length,withoutDays:withoutRows.length,confidence:confidence(Math.min(withRows.length,withoutRows.length),Math.min(1,(withRows.length+withoutRows.length)/16)),language:"association",dateRange:rangeLabel([...withRows,...withoutRows])});}
@@ -122,8 +122,8 @@
     return results.sort((a,b)=>Math.abs(b.effect)-Math.abs(a.effect));
   }
 
-  function dataQuality(state,nowKey=dateKey()){
-    const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),history=safeArray(state?.history),foods=safeArray(state?.foodEntries),weights=safeArray(state?.bodyWeights),sleep=safeArray(state?.sleepLogs),metrics=state?.healthMetrics||{};
+  function dataQuality(state,nowKey=dateKey(),deps={}){
+    const strengthData=deps.strengthData||strength(state,nowKey),nutritionData=deps.nutritionData||nutrition(state,nowKey),history=safeArray(state?.history),foods=safeArray(state?.foodEntries),weights=safeArray(state?.bodyWeights),sleep=safeArray(state?.sleepLogs),metrics=state?.healthMetrics||{};
     const duplicateIds=(rows,key)=>{const seen=new Set();let duplicates=0;for(const row of rows){const id=String(row?.[key]??"");if(!id)continue;if(seen.has(id))duplicates++;else seen.add(id);}return duplicates;};
     const duplicateWeeks=weights.length-new Set(weights.map(row=>row.week||dateKey(row.date))).size,healthDates=Object.keys(metrics).filter(key=>dateKey(key)),healthSources={};for(const key of healthDates){const source=normalizedSource(metrics[key]?.source);healthSources[source]=(healthSources[source]||0)+1;}
     const last=(rows,field="date")=>rows.map(row=>dateKey(row?.[field])).filter(Boolean).sort().at(-1)||null,freshness=key=>key===null?null:daysBetween(key,nowKey);
@@ -137,8 +137,8 @@
     return {overall,domains,duplicateCount,healthSources:sourceList,confidence:confidence(domains.filter(domain=>domain.score>=40).length,overall/100),warnings:[...(duplicateCount?[`${duplicateCount} duplicate record key${duplicateCount===1?"":"s"} detected.`]:[]),...(nutritionData.adherence28.coverage<50?["Nutrition coverage is below 50%; calorie and maintenance estimates are limited."]:[]),...(strengthData.rows.length<12?["More completed weighted sets are needed for stable strength trends."]:[])]};
   }
 
-  function goalForecast(state,goalInput,nowKey=dateKey()){
-    const goal=normalizeGoal(goalInput),strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey);let current=null,rate=null,unit="",label="",sample=0,nextAction="",evidence="";
+  function goalForecast(state,goalInput,nowKey=dateKey(),deps={}){
+    const goal=normalizeGoal(goalInput),strengthData=deps.strengthData||strength(state,nowKey),nutritionData=deps.nutritionData||nutrition(state,nowKey);let current=null,rate=null,unit="",label="",sample=0,nextAction="",evidence="";
     if(goal.type==="strength"){
       const item=strengthData.exercises.find(row=>row.exercise===goal.exercise)||strengthData.exercises[0];label=item?.exercise||goal.exercise;unit=" kg e1RM";current=item?.currentE1rm??null;rate=item?.slopePerWeek??null;sample=item?.sessionCount||0;evidence=item?`${item.sessionCount} ${item.exercise} sessions · best ${item.bestDate}`:"No weighted sessions";nextAction=!item?"Log weight and reps for at least three sessions.":item.recommendation==="progress"?"Increase by the smallest available increment only if warm-up reps are crisp and pain-free.":item.recommendation==="reduce"?"Repeat or reduce the load until RPE returns to the planned range.":item.plateau?"Keep the load and add one clean rep, or schedule a lighter week before progressing.":"Keep the current load and add a clean rep before increasing weight.";
     }else if(goal.type==="fat_loss"||goal.type==="muscle_gain"){
@@ -151,8 +151,8 @@
     return {goal,label,current,target,unit,rate,confidence:conf,sample,status,weeks:weeks===null?null:round(weeks,1),range,dateRange,nextAction,evidence};
   }
 
-  function inbox(state,controls={},nowKey=dateKey()){
-    const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),quality=dataQuality(state,nowKey),cards=[];
+  function inbox(state,controls={},nowKey=dateKey(),deps={}){
+    const strengthData=deps.strengthData||strength(state,nowKey),nutritionData=deps.nutritionData||nutrition(state,nowKey),quality=deps.quality||dataQuality(state,nowKey,{strengthData,nutritionData}),cards=[];
     function add(card){cards.push({confidence:"medium",priority:2,...card});}
     for(const item of strengthData.plateaus.slice(0,3))add({id:`plateau:${item.exercise}`,kind:"plateau",priority:3,title:`${item.exercise} may be plateauing`,body:`Estimated 1RM has not materially improved across the latest ${Math.min(3,item.sessionCount)} sessions.`,evidence:`${item.sessionCount} sessions · latest ${item.latestDate}`,action:"Keep the load, add one clean rep, or use a lighter week before progressing.",confidence:item.confidence});
     for(const item of strengthData.prs.slice(0,2))add({id:`pr:${item.exercise}:${item.bestDate}`,kind:"progress",priority:1,title:`New ${item.exercise} strength best`,body:`Estimated 1RM reached ${item.currentE1rm} kg.`,evidence:`Best set on ${item.bestDate} · ${item.sessionCount} sessions`,action:"Consolidate the result before adding another variable.",confidence:item.confidence});
@@ -164,7 +164,7 @@
   }
 
   function ask(state,question,nowKey=dateKey()){
-    const q=String(question||"").trim().toLowerCase(),strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),quality=dataQuality(state,nowKey),goal=goalForecast(state,state?.analyticsGoal,nowKey);let title="Your data summary",summary="I can answer questions about strength, plateaus, training volume, protein, calories, body weight, goals, recovery, or data quality.",bullets=[],conf="low",evidence=[];
+    const q=String(question||"").trim().toLowerCase(),strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),quality=dataQuality(state,nowKey,{strengthData,nutritionData}),goal=goalForecast(state,state?.analyticsGoal,nowKey,{strengthData,nutritionData});let title="Your data summary",summary="I can answer questions about strength, plateaus, training volume, protein, calories, body weight, goals, recovery, or data quality.",bullets=[],conf="low",evidence=[];
     const named=strengthData.exercises.find(item=>q.includes(item.exercise.toLowerCase())||(q.includes("bench")&&item.exercise==="Chest Press")||(q.includes("squat")&&item.exercise==="Leg Press")||(q.includes("back")&&item.exercise==="Seated Cable Row")||(/ضغط (الصدر|صدر)/.test(q)&&item.exercise==="Chest Press")||(/ضغط (الرجل|الساق)/.test(q)&&item.exercise==="Leg Press")||(/سحب.*(علوي|لات)/.test(q)&&item.exercise==="Lat Pulldown")||(/سحب.*(جالس|كابل)/.test(q)&&item.exercise==="Seated Cable Row"));
     if(named||/strong|e1rm|one rep|max|lift|progress|قوة|تقدم|أقصى حمل/.test(q)){
       const item=named||strengthData.exercises[0];title=item?`${item.exercise} strength`:"Strength needs more data";summary=item?`Your best estimated 1RM is ${item.currentE1rm} kg${item.change28d===null?"":`, ${item.change28d>=0?"up":"down"} ${Math.abs(item.change28d)}% across the available 28-day comparison`}.`:"Log weight and reps for at least three sessions to calculate lift-specific trends.";if(item){bullets=[item.plateau?"The recent pattern meets the app's plateau flag.":"No deterministic plateau flag is active.",`Recommended action: ${item.recommendation==="progress"?"use the smallest available increase if the warm-up is pain-free":item.recommendation==="reduce"?"repeat or reduce the load":"add a clean rep before adding load"}.`];conf=item.confidence;evidence=[`${item.sessionCount} sessions and ${item.setCount} weighted sets`,`${item.records[0].date} to ${item.records.at(-1).date}`,`Best recorded ${item.bestDate}`];}
@@ -184,7 +184,9 @@
 
   function analyze(state,options={}){
     const nowKey=dateKey(options.now)||dateKey();
-    return {nowKey,strength:strength(state,nowKey),nutrition:nutrition(state,nowKey),quality:dataQuality(state,nowKey),experiments:experiments(state,nowKey),goal:goalForecast(state,state?.analyticsGoal,nowKey),inbox:inbox(state,state?.insightControls,nowKey)};
+    const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),deps={strengthData,nutritionData};
+    const quality=dataQuality(state,nowKey,deps);
+    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality})};
   }
 
   return {GOAL_TYPES,MUSCLES,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze};
