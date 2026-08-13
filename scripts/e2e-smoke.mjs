@@ -221,11 +221,13 @@ try {
   assertTrue(await page.locator(".local-only").textContent() === "No upload", "Ask Your Data is explicitly local-only");
   await assertAccessibleView(page,"Performance Insights");
 
-  await page.click("#syncButton");
+  await page.click("#settingsButton");
+  await page.click('[data-settings-tab="sync"]');
   await page.waitForTimeout(200);
-  assertTrue(await page.locator(".sync-center").count() === 1, "Unified Sync Center opens from the global shortcut");
+  assertTrue(await page.locator(".sync-center").count() === 1, "Unified Sync Center opens from Settings");
   assertTrue((await page.locator(".destination-link").getAttribute("href")).includes("6433f54c687e4813869aaadeaf3acaab"), "Sync Center keeps the canonical View of Food Entries link");
   assertTrue(await page.locator("[data-sync-all]").count() === 1, "Sync Center exposes exactly one Sync everything action");
+  assertTrue(await page.locator('#syncButton[aria-label="Sync everything"]').count() === 1, "Header exposes one-tap Sync everything action");
   assertTrue(await page.locator("[data-sync-retry-all]").count() === 1, "Sync Center exposes recovery controls for the durable outbox");
 
   await page.waitForTimeout(200);

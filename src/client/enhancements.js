@@ -214,10 +214,18 @@
   window.renderRepSettings=renderSettings;
 
   document.querySelector("#settingsButton")?.addEventListener("click",()=>renderSettings());
-  document.querySelector("#syncButton")?.addEventListener("click",()=>renderSettings("sync"));
-  const updateSyncPanelCore=updateSyncPanel;updateSyncPanel=function(){updateSyncPanelCore();const badge=document.querySelector("[data-sync-badge]"),queued=window.REP_SYNC_OUTBOX?.summary(state.syncQueue).total||0;if(badge){badge.hidden=!queued;badge.textContent=String(Math.min(queued,9));document.querySelector("#syncButton")?.classList.toggle("has-alert",Boolean(state.systemHealth?.notion?.healthy===false||queued));}};
+  async function syncFromTopBar(){
+    if(!repAuth.isPaired()){showToast(state.lang==="ar"?"اقرن هذا الجهاز أولاً من مركز المزامنة.":"Pair this device first in the Sync Center.");renderSettings("sync");return;}
+    if(state.syncState==="syncing")return;
+    showToast(state.lang==="ar"?"جارٍ مزامنة كل شيء…":"Syncing everything…");
+    await window.REP_SYNC_RUNTIME?.syncEverything();
+    const queued=window.REP_SYNC_OUTBOX?.summary(state.syncQueue).total||0;
+    showToast(queued?(state.lang==="ar"?`${queued} سجل بانتظار التأكيد.`:`${queued} record${queued===1?"":"s"} still pending verification.`):(state.lang==="ar"?"تمت مزامنة كل شيء وتأكيده في Notion.":"Everything is synced and verified in Notion."));
+  }
+  document.querySelector("#syncButton")?.addEventListener("click",()=>void syncFromTopBar());
+  const updateSyncPanelCore=updateSyncPanel;updateSyncPanel=function(){updateSyncPanelCore();const button=document.querySelector("#syncButton"),badge=document.querySelector("[data-sync-badge]"),queued=window.REP_SYNC_OUTBOX?.summary(state.syncQueue).total||0,syncing=state.syncState==="syncing",label=state.lang==="ar"?(syncing?"جارٍ مزامنة كل شيء":"مزامنة كل شيء"):(syncing?"Syncing everything":"Sync everything");if(badge){badge.hidden=!queued;badge.textContent=String(Math.min(queued,9));}if(button){button.disabled=syncing;button.setAttribute("aria-busy",String(syncing));button.setAttribute("aria-label",label);button.setAttribute("title",label);button.classList.toggle("is-syncing",syncing);button.classList.toggle("has-alert",Boolean(state.systemHealth?.notion?.healthy===false||queued));}};
   document.querySelector("#settingsButton")?.setAttribute("title",state.lang==="ar"?"الإعدادات":"Settings");
-  document.querySelector("#syncButton")?.setAttribute("title",state.lang==="ar"?"مركز المزامنة":"Sync Center");
+  document.querySelector("#syncButton")?.setAttribute("title",state.lang==="ar"?"مزامنة كل شيء":"Sync everything");
   function prepareDialog(element){
     if(!element||element.dataset.dialogReady)return;
     element.dataset.dialogReady="true";element.setAttribute("role","dialog");element.setAttribute("aria-modal","true");element.tabIndex=-1;

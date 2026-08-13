@@ -401,6 +401,7 @@ var DeviceRegistry = class extends DurableObject2 {
 // src/server/index.js
 var NOTION_VERSION = "2026-03-11";
 var JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+var WORKOUT_DATA_SOURCE = "ed9f1653-2232-4fa5-94ed-fa8a0e139c2c";
 var HEALTH_DATA_SOURCES = {
   recovery: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
   sleep: "94f3f3a9-ca95-4f34-90dc-36090a9ec00c",
@@ -898,10 +899,11 @@ async function verifyNotionPage(env, pageId, expectedSource) {
   return notionPageReceipt(page, expectedSource);
 }
 async function existingEntries(env, workoutId) {
+  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
   const titles = /* @__PURE__ */ new Set();
   let cursor;
   for (let page = 0; page < 5; page++) {
-    const result = await notionRequest(env, `/data_sources/${env.NOTION_DATA_SOURCE_ID}/query`, {
+    const result = await notionRequest(env, `/data_sources/${source}/query`, {
       method: "POST",
       body: JSON.stringify({
         page_size: 100,
@@ -942,9 +944,10 @@ function notionProperties(workout, row) {
   return properties;
 }
 async function syncWorkoutBody(env, body) {
-  if (!env.NOTION_TOKEN || !env.NOTION_DATA_SOURCE_ID || !env.REP_SYNC_KEY) {
+  if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
+  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
   const workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
@@ -962,11 +965,11 @@ async function syncWorkoutBody(env, body) {
     const page = await notionRequest(env, "/pages", {
       method: "POST",
       body: JSON.stringify({
-        parent: { type: "data_source_id", data_source_id: env.NOTION_DATA_SOURCE_ID },
+        parent: { type: "data_source_id", data_source_id: source },
         properties: notionProperties(workout, row)
       })
     });
-    receipt = await verifyNotionPage(env, page.id, env.NOTION_DATA_SOURCE_ID);
+    receipt = await verifyNotionPage(env, page.id, source);
     created++;
   }
   return json({ ok: true, ...receipt, kind: "workout", created, skipped });

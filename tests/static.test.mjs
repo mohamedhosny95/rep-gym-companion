@@ -37,6 +37,7 @@ test("health navigation stays in document flow and synchronization uses a verifi
   assert.match(sync,/REQUEST_TIMEOUT_MS=30000/); assert.match(sync,/nextAttemptAt/); assert.match(sync,/\/api\/notion-sync/);
   assert.match(outbox,/MAX_ATTEMPTS=12/);assert.match(outbox,/retryable_failed/);assert.match(outbox,/permanently_failed/);assert.doesNotMatch(sync,/serverJobId|HEARTBEAT_MS/);assert.doesNotMatch(sync,/\/api\/sync-status/);
   const center=await read("dist/client/sync-center.js");assert.match(center,/data-sync-all/);assert.match(center,/durable device outbox/);assert.match(center,/data-sync-retry-all/);
+  const index=await read("dist/client/index.html");assert.match(index,/id="syncButton" aria-label="Sync everything"/);
 });
 
 test("durable state is split into IndexedDB and optional assets load on demand",async()=>{
