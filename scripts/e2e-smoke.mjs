@@ -58,6 +58,23 @@ try {
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
+  assertTrue(await page.locator("[data-habit-id]").count() === 10, "Today shows the ten requested daily habits");
+  await page.click('[data-habit-id="sleep"]');
+  assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "A habit can be checked off");
+  await page.evaluate(()=>window.REP_STORE.flush());
+  await page.reload({waitUntil:"load"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "Habit completion survives a reload");
+  assertTrue(await page.locator('.habit-head-actions a[href*="20e4226c53694ea79692dff9839a132f"]').count() === 1, "Habit tracker links to the Habit Log inside the Workout Hub");
+  await page.click('[data-habit-reorder]');
+  const firstHabitBefore=await page.locator('[data-habit-card]').first().getAttribute('data-habit-card');
+  await page.locator(`[data-habit-order-id="${firstHabitBefore}"][data-habit-move="down"]`).click();
+  const firstHabitAfter=await page.locator('[data-habit-card]').first().getAttribute('data-habit-card');
+  assertTrue(firstHabitAfter!==firstHabitBefore,"Habit order can be changed with accessible controls");
+  await page.evaluate(()=>window.REP_STORE.flush());
+  await page.reload({waitUntil:"load"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  assertTrue(await page.locator('[data-habit-card]').first().getAttribute('data-habit-card')===firstHabitAfter,"Custom habit order survives a reload");
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);

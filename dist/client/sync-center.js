@@ -2,7 +2,7 @@
   const DESTINATION_URL="https://app.notion.com/p/mohamedhosny95/6433f54c687e4813869aaadeaf3acaab?v=bde632d4554c4344a3a6a9e1eb15fd50&source=copy_link";
   const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   const time=(value,ar)=>value?new Date(value).toLocaleString(ar?"ar-EG":undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"—";
-  const kindLabel=(kind,ar)=>({food:ar?"وجبة":"Meal",workout:ar?"تمرين":"Workout",nutrition:ar?"ملخص تغذية":"Nutrition summary",recovery:ar?"استشفاء":"Recovery",sleep:ar?"نوم":"Sleep",hygiene:ar?"عناية يومية":"Daily care"})[kind]||(ar?"سجل":"Log");
+  const kindLabel=(kind,ar)=>({food:ar?"وجبة":"Meal",workout:ar?"تمرين":"Workout",nutrition:ar?"ملخص تغذية":"Nutrition summary",recovery:ar?"استشفاء":"Recovery",sleep:ar?"نوم":"Sleep",hygiene:ar?"عناية يومية":"Daily care",habit:ar?"عادة":"Habit"})[kind]||(ar?"سجل":"Log");
   function summary(item,ar){const payload=item.payload||item.workout||{};return payload.food_name||payload.rawNote||payload.type||payload.plan||payload.date||kindLabel(item.kind,ar);}
   function record(state,event){
     state.syncActivity=Array.isArray(state.syncActivity)?state.syncActivity:[];

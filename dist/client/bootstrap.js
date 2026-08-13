@@ -1,5 +1,5 @@
 (async function(){
-  const version=window.REP_BUILD_VERSION||"28f3e0c4ac19";
+  const version=window.REP_BUILD_VERSION||"55c1c7f8722e";
   const load=src=>new Promise((resolve,reject)=>{
     const script=document.createElement("script");
     script.src=`${src}?v=${version}`;
@@ -12,6 +12,7 @@
     await load("app.js");
     await Promise.all([load("sync.js"),load("sync-center.js")]);
     await load("enhancements.js");
+    await load("habits.js");
     await load("health-ui.js");
     document.documentElement.dataset.appReady="true";
     delete window.REP_HYDRATED_STATE;

@@ -144,7 +144,7 @@ const state = {
   logs:saved.logs||{}, swaps:saved.swaps||{}, history:saved.history||[], sessionStartedAt:saved.sessionStartedAt||null,
   reviews:saved.reviews||{}, fieldTest:saved.fieldTest||{}, voice:saved.voice!==false,
   syncQueue:saved.syncQueue||[], syncState:"idle", recoveryCheckins:saved.recoveryCheckins||[],
-  daily:saved.daily||{nutrition:{},hygiene:{}}, cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||localDay(),
+  daily:saved.daily||{nutrition:{},hygiene:{}}, habitOrder:Array.isArray(saved.habitOrder)?saved.habitOrder:[], cardioDraft:saved.cardioDraft||{}, programStart:saved.programStart||localDay(),
   foodEntries:saved.foodEntries||[], water:saved.water||{}, foodDraft:null, foodNote:saved.foodNote||"", foodMealType:saved.foodMealType||"", foodLogMethod:saved.foodLogMethod||"Ingredients", foodBusy:false, foodPendingPayload:null,
   bodyWeights:saved.bodyWeights||[], mealTemplates:saved.mealTemplates||[], sleepLogs:saved.sleepLogs||[],
   healthMetrics:saved.healthMetrics||{}, vitalsImportRuns:saved.vitalsImportRuns||{},
@@ -162,7 +162,7 @@ new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidt
 const timerDock = document.querySelector("#timerDock");
 
 function persist() {
-  window.REP_STORE?.persist(storageKey,{ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, healthMetrics:state.healthMetrics, vitalsImportRuns:state.vitalsImportRuns, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate, lastVitalsImportAt:state.lastVitalsImportAt });
+  window.REP_STORE?.persist(storageKey,{ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, habitOrder:state.habitOrder, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, healthMetrics:state.healthMetrics, vitalsImportRuns:state.vitalsImportRuns, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate, lastVitalsImportAt:state.lastVitalsImportAt });
 }
 let persistTimer=null;
 function persistDebounced(){
@@ -199,7 +199,7 @@ function programStatus(){
 }
 function healthStatusStrip(){const gate=recoveryGate(),program=programStatus(),ar=state.lang==="ar";let label=ar?"جاهز للتقدم":"Progress available",tone="good";if(gate.hold){label=ar?`${gate.flags} علامات خطر · ثبّت الحمل`:`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label=ar?"موعد مراجعة البرنامج":"Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${ar?"قرار اليوم":"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${ar?`الأسبوع ${program.week}`:`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
 
-function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0;}
+function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0||Object.keys(state.daily?.habits||{}).length>0;}
 function notionProtected(){return Boolean(localStorage.getItem(syncKeyStorage))&&!["failed","auth"].includes(state.syncState);}
 function needsBackupReminder(){
   if(!hasMeaningfulData())return false;
@@ -646,7 +646,7 @@ function recordSession(){
 function queueWorkout(record){
   if(!record?.entries?.length)return;persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`workout-${record.id}`,kind:"workout",workout:{id:String(record.id),date:record.date,type:record.activityLabel||"Recovery",duration:record.duration,entries:record.entries}});
 }
-function queueHealth(kind,payload){persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`${kind}-${kind==="food"?(payload.id||Date.now()):payload.date}`,kind,payload});}
+function queueHealth(kind,payload){persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`${kind}-${kind==="food"?(payload.id||Date.now()):kind==="habit"?`${payload.date}-${payload.id}`:payload.date}`,kind,payload});}
 
 async function syncPending(){
   return window.REP_SYNC_RUNTIME?.syncEverything?.();

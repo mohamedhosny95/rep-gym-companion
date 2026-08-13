@@ -7,6 +7,12 @@ Version 67 adds direct, device-wide synchronization:
 - The pairing key is entered once per device. The Worker stores a revocable device registration without an expiry, and active browser sessions refresh their secure cookie automatically.
 - A device stays paired until it is revoked, unpaired, or its browser site data is cleared. The master pairing key is never stored in the browser.
 
+The Today screen also includes a bilingual daily habit tracker for sleep,
+night prayer, Fajr prayer, Sadqa, Quran wird (reading Quran pages), Quran
+memorization, training, morning/evening adhkar, reading, and hydration. Check-ins are available offline,
+included in encrypted backups, show seven-day progress and per-habit streaks,
+and merge into the verified Notion Daily Care record during synchronization.
+
 Version 66 added a coverage-aware Apple Watch health system:
 
 - A data-confidence score that never disguises missing measurements as poor readiness.
@@ -159,10 +165,10 @@ The deployed server expects these environment variables (see `.env.example`):
 - `CANONICAL_ORIGIN` — the one production origin all browser tabs must use
 - `GEMINI_API_KEY` — Google Gemini API key, required for AI food analysis and the Vitals tab's Apple Health screenshot import (same key powers both)
 
-Recovery, nutrition, hygiene, and food databases use their checked-in public
+Recovery, nutrition, hygiene, habit, and food databases use their checked-in public
 data-source IDs by default. They can be overridden with
 `NOTION_RECOVERY_DATA_SOURCE_ID`, `NOTION_NUTRITION_DATA_SOURCE_ID`,
-`NOTION_HYGIENE_DATA_SOURCE_ID`, and `NOTION_FOOD_DATA_SOURCE_ID`.
+`NOTION_HYGIENE_DATA_SOURCE_ID`, `NOTION_HABIT_DATA_SOURCE_ID`, and `NOTION_FOOD_DATA_SOURCE_ID`.
 `NOTION_FOOD_VIEW_URL` optionally overrides the visible link only; its default
 is the canonical `View of Food Entries` URL supplied by the owner.
 
