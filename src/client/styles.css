@@ -14,12 +14,13 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); overscroll-behavior: none; }
+html { background: var(--bg); overscroll-behavior: none; overflow-x: hidden; }
 body {
   margin: 0;
   min-width: 0;
   width: 100%;
   min-height: 100dvh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 85% -10%, rgba(201,255,61,.10), transparent 34%),
     var(--bg);
@@ -41,12 +42,12 @@ button:not(:disabled):active, .session-card:active, .fallback-grid>button:active
 }
 .app-shell { width: min(100%, 760px); margin: 0 auto; min-height: 100dvh; }
 .topbar {
-  height: 72px; padding: max(12px, env(safe-area-inset-top)) 18px 8px;
-  display: flex; align-items: flex-end; justify-content: space-between;
+  min-height: 72px; padding: max(12px, env(safe-area-inset-top)) 18px 8px;
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; row-gap: 8px;
 }
-.brand { min-height: 48px; border: 0; background: transparent; color: var(--text); display: flex; align-items: center; gap: 10px; font-weight: 900; letter-spacing: .18em; cursor: pointer; }
-.brand-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--acid); color: var(--acid-ink); border-radius: 10px 4px 10px 4px; letter-spacing: 0; }
-.top-actions { display: flex; gap: 8px; align-items: center; }
+.brand { min-height: 48px; min-width: 0; border: 0; background: transparent; color: var(--text); display: flex; align-items: center; gap: 10px; font-weight: 900; letter-spacing: .18em; cursor: pointer; }
+.brand-mark { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--acid); color: var(--acid-ink); border-radius: 10px 4px 10px 4px; letter-spacing: 0; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; }
 .text-button { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); color: var(--text); font-size: 11px; font-weight: 900; cursor: pointer; }
 .icon-button.is-active { background: var(--acid); color: var(--acid-ink); border-color: var(--acid); box-shadow: 0 0 18px rgba(201,255,61,.3); }
 .offline-pill { height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 6px; }
@@ -389,7 +390,7 @@ html[dir="rtl"] .habit-toggle{padding:13px 12px 12px 38px}
   .target-grid{grid-template-columns:1fr 1fr}.decision-card{grid-template-columns:1fr}.decision-card>div:last-child{text-align:left}.timer-presets{grid-template-columns:1fr}.health-status{align-items:flex-start}.health-status>span{max-width:42%}
   .macro-dashboard{grid-template-columns:1fr 1fr}.macro-editor{grid-template-columns:1fr 1fr}.analysis-text{grid-template-columns:1fr}.water-custom{grid-template-columns:1fr 1fr}.water-custom label{grid-column:1/-1}.nutrition-plan-note summary{grid-template-columns:42px 1fr}.nutrition-plan-note summary>b{grid-column:2}
 }
-@media (max-width: 390px) { .brand>span:last-child{display:none}.top-actions{gap:5px}.topbar{padding-inline:12px}.text-button{font-size:9px}.guide-callout{top:48px;max-width:72%}.visual-label{top:12px;left:12px}.phase-pill{top:12px;right:8px} }
+@media (max-width: 390px) { .brand>span:last-child{display:none}.top-actions{gap:5px}.topbar{padding-inline:12px}.text-button{font-size:9px;padding:0 8px}.icon-button{width:40px;height:40px;font-size:18px}.guide-callout{top:48px;max-width:72%}.visual-label{top:12px;left:12px}.phase-pill{top:12px;right:8px} }
 @media (prefers-contrast: more) { :root{--line:#66736b;--muted:#c6cec9}.chip,.cue-details,.session-card{border-width:2px} }
 @media (min-resolution: 2dppx) { button{touch-action:manipulation} }
 
