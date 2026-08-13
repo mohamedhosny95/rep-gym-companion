@@ -1,0 +1,18 @@
+interface Env {
+  REP_SYNC_KEY?: string;
+  VITALS_IMPORT_KEY?: string;
+  NOTION_TOKEN?: string;
+  NOTION_DATA_SOURCE_ID?: string;
+  NOTION_RECOVERY_DATA_SOURCE_ID?: string;
+  NOTION_NUTRITION_DATA_SOURCE_ID?: string;
+  NOTION_HYGIENE_DATA_SOURCE_ID?: string;
+  NOTION_HABIT_DATA_SOURCE_ID?: string;
+  NOTION_FOOD_DATA_SOURCE_ID?: string;
+  NOTION_FOOD_VIEW_URL?: string;
+  GEMINI_API_KEY?: string;
+  GOOGLE_API_KEY?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY_JWK?: string;
+  VAPID_SUBJECT?: string;
+  CANONICAL_ORIGIN?: string;
+}

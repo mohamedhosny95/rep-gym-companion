@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/wrangler/config-schema.json",
   "name": "rep-gym-companion",
-  "main": "dist/server/index.js",
+  "main": "src/server/index.js",
   "keep_vars": true,
-  "compatibility_date": "2026-08-12",
+  "compatibility_date": "2026-08-13",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist/client",
@@ -12,18 +12,24 @@
     "run_worker_first": true
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": true },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 }
   },
   "durable_objects": {
     "bindings": [
-      { "name": "PAIRING_COORDINATOR", "class_name": "PairingCoordinator" }
+      { "name": "PAIRING_COORDINATOR", "class_name": "PairingCoordinator" },
+      { "name": "DEVICE_COORDINATOR", "class_name": "DeviceCoordinator" },
+      { "name": "DEVICE_REGISTRY", "class_name": "DeviceRegistry" }
     ]
   },
   "migrations": [
-    { "tag": "v1-pairing-coordinator", "new_sqlite_classes": ["PairingCoordinator"] }
+    { "tag": "v1-pairing-coordinator", "new_sqlite_classes": ["PairingCoordinator"] },
+    { "tag": "v2-device-coordination", "new_sqlite_classes": ["DeviceCoordinator", "DeviceRegistry"] }
   ],
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": ["*/5 * * * *"]
   },
   "kv_namespaces": [
     { "binding": "PUSH_KV", "id": "3bea037a1d7b43de9b9994f43a48d843" }
@@ -39,5 +45,36 @@
       "namespace_id": "41002",
       "simple": { "limit": 20, "period": 60 }
     }
-  ]
+  ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
+  "env": {
+    "staging": {
+      "name": "rep-gym-companion-staging",
+      "workers_dev": true,
+      "vars": { "ENVIRONMENT": "staging" },
+      "assets": {
+        "directory": "./dist/client",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": true
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "PAIRING_COORDINATOR", "class_name": "PairingCoordinator" },
+          { "name": "DEVICE_COORDINATOR", "class_name": "DeviceCoordinator" },
+          { "name": "DEVICE_REGISTRY", "class_name": "DeviceRegistry" }
+        ]
+      },
+      "kv_namespaces": [
+        { "binding": "PUSH_KV" }
+      ],
+      "ratelimits": [
+        { "name": "AI_RATE_LIMITER", "namespace_id": "42001", "simple": { "limit": 12, "period": 60 } },
+        { "name": "PAIR_RATE_LIMITER", "namespace_id": "42002", "simple": { "limit": 20, "period": 60 } }
+      ],
+      "triggers": { "crons": ["*/5 * * * *"] }
+    }
+  }
 }

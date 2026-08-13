@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/vitest-pool-workers/types"]
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "tests/runtime/**/*.ts",
+    "src/server/worker-configuration.d.ts"
+  ]
+}

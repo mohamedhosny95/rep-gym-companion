@@ -651,7 +651,7 @@ function queueHealth(kind,payload){persist();window.REP_SYNC_RUNTIME?.syncRecord
 async function syncPending(){
   return window.REP_SYNC_RUNTIME?.syncEverything?.();
 }
-function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage);if(state.pairBusy)return ar?"جارٍ التحقق من المفتاح…":"Checking pairing key…";if(!key)return state.syncState==="auth"?(ar?"أعد اقتران هذا الجهاز":"Pair this device again"):(ar?"يلزم الاتصال مرة واحدة":"One-time connection needed");if(state.syncState==="syncing")return ar?"جارٍ الحفظ المباشر في Notion…":"Saving directly to Notion…";if(state.syncState==="failed")return state.syncMessage||(ar?"تعذر الحفظ المباشر":"Direct save failed");return ar?"الجهاز مقترن · مزامنة مباشرة":"Device paired · direct sync";}
+function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),queued=window.REP_SYNC_OUTBOX?.summary(state.syncQueue).total||0;if(state.pairBusy)return ar?"جارٍ التحقق من المفتاح…":"Checking pairing key…";if(!key)return state.syncState==="auth"?(ar?"أعد اقتران هذا الجهاز":"Pair this device again"):(ar?"يلزم الاتصال مرة واحدة":"One-time connection needed");if(state.syncState==="syncing")return ar?"جارٍ التحقق في Notion…":"Verifying in Notion…";if(queued)return ar?`${queued} سجل قيد الانتظار`:`${queued} record${queued===1?"":"s"} pending`;return ar?"الجهاز مقترن · تمت المزامنة":"Device paired · verified sync";}
 function updateSyncPanel(){document.querySelectorAll("[data-sync-status]").forEach(status=>status.textContent=state.pairMessage||syncStatusText());document.querySelectorAll("[data-sync-all]").forEach(button=>button.disabled=state.syncState==="syncing"||!localStorage.getItem(syncKeyStorage));document.querySelectorAll("[data-save-sync-key],[data-food-pair-submit]").forEach(button=>button.disabled=state.pairBusy);}
 function refreshConnectionUI(){if(state.view==="nutrition")renderNutrition();else updateSyncPanel();}
 // validatePairingKey and connectPairingKey are defined in enhancements.js,
@@ -683,7 +683,7 @@ async function togglePushReminders(){
     if(permission!=="granted"){showToast(ar?"تم رفض إذن الإشعارات.":"Notification permission was denied.");return;}
     const reg=await navigator.serviceWorker.ready;
     const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(keyData.key)});
-    const res=await repAuth.fetch("/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),time,timezoneOffsetMinutes:new Date().getTimezoneOffset(),lang:state.lang})});
+    const res=await repAuth.fetch("/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),time,timezoneOffsetMinutes:new Date().getTimezoneOffset(),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC",lang:state.lang})});
     const data=await res.json().catch(()=>({}));
     if(!res.ok||!data.ok)throw Error(data.error||"subscribe failed");
     state.pushEndpoint=sub.endpoint;state.pushTime=time;persist();

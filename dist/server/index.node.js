@@ -166,8 +166,15 @@ async function sendWebPush(env, subscription, payload) {
   }
 }
 
+// rep-test:durable-object
+var DurableObject = class {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    this.env = env;
+  }
+};
+
 // src/server/durable-objects/device-coordinator.ts
-import { DurableObject } from "cloudflare:workers";
 function zoneParts(timestamp, timezone) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(timestamp));
   const number = (type) => Number(parts.find((part) => part.type === type)?.value);
@@ -359,8 +366,7 @@ var DeviceCoordinator = class extends DurableObject {
 };
 
 // src/server/durable-objects/device-registry.ts
-import { DurableObject as DurableObject2 } from "cloudflare:workers";
-var DeviceRegistry = class extends DurableObject2 {
+var DeviceRegistry = class extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     void ctx.blockConcurrencyWhile(async () => {

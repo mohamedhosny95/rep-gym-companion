@@ -10,6 +10,8 @@
   try{
     window.REP_HYDRATED_STATE=await window.REP_STORE?.hydrate("rep-gym-companion-v1");
     await load("app.js");
+    await load("sync-outbox.js");
+    await load("telemetry.js");
     await Promise.all([load("sync.js"),load("sync-center.js")]);
     await load("enhancements.js");
     await load("habits.js");

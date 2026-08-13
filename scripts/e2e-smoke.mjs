@@ -3,6 +3,7 @@
 // on any assertion failure or any console/page error encountered along the way.
 // Run with: node scripts/e2e-smoke.mjs
 import { chromium } from "playwright";
+import axe from "axe-core";
 import http from "node:http";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -40,6 +41,12 @@ async function assertAccessibleView(page,label){
   assertTrue(result.unlabeled===0,`${label} has no unlabeled visible form controls`);
   assertTrue(result.overflow<=1,`${label} has no horizontal viewport overflow`);
 }
+async function assertAxe(page,label){
+  const result=await page.evaluate(async()=>window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa"]}}));
+  const serious=result.violations.filter(violation=>["serious","critical"].includes(violation.impact));
+  if(serious.length)console.log(JSON.stringify(serious.map(violation=>({id:violation.id,nodes:violation.nodes.slice(0,12).map(node=>({target:node.target,summary:node.failureSummary}))})),null,2));
+  assertTrue(serious.length===0,`${label} has no serious or critical axe violations${serious.length?`: ${serious.map(item=>item.id).join(", ")}`:""}`);
+}
 
 await new Promise(resolve => server.listen(port, resolve));
 const baseUrl = `http://localhost:${port}`;
@@ -49,6 +56,13 @@ const consoleErrors = [];
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
   const page = await context.newPage();
+  await page.addInitScript(()=>{
+    window.__repVitals={lcp:0,cls:0,longTask:0};
+    try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__repVitals.lcp=Math.max(window.__repVitals.lcp,entry.startTime))).observe({type:"largest-contentful-paint",buffered:true});}catch{}
+    try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>{if(!entry.hadRecentInput)window.__repVitals.cls+=entry.value;})).observe({type:"layout-shift",buffered:true});}catch{}
+    try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__repVitals.longTask=Math.max(window.__repVitals.longTask,entry.duration))).observe({type:"longtask",buffered:true});}catch{}
+  });
+  await page.addInitScript({content:axe.source});
   page.on("pageerror", err => consoleErrors.push(`pageerror: ${err.message}`));
   page.on("console", msg => { if (msg.type() === "error") consoleErrors.push(`console.error: ${msg.text()}`); });
 
@@ -58,6 +72,9 @@ try {
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
+  const backupCheck=await page.evaluate(async()=>{const sample={app:"Rep Gym Companion",data:{foodEntries:[{id:"recovery-drill"}]}},encrypted=await window.REP_FEATURES.encryptExport(sample,"recovery-drill-passphrase"),restored=await window.REP_FEATURES.decryptExport(encrypted,"recovery-drill-passphrase");let tamperRejected=false;try{await window.REP_FEATURES.decryptExport({...encrypted,format:"older-format"},"recovery-drill-passphrase");}catch{tamperRejected=true;}return {roundTrip:JSON.stringify(sample)===JSON.stringify(restored),schema:encrypted.schema,tamperRejected};});
+  assertTrue(backupCheck.roundTrip&&backupCheck.schema===5,"Schema-5 encrypted backup completes a recovery round trip");
+  assertTrue(backupCheck.tamperRejected,"Encrypted backup rejects a tampered version header");
   assertTrue(await page.locator("[data-habit-id]").count() === 10, "Today shows the ten requested daily habits");
   await page.click('[data-habit-id="sleep"]');
   assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "A habit can be checked off");
@@ -184,7 +201,7 @@ try {
     await page.waitForTimeout(300);
   }
   assertTrue(await page.locator(".food-log article, .food-entry").count() > 0, "Manual food entry is saved and listed");
-  assertTrue((await page.locator(".food-sync-state").count()) > 0, "Food entry shows its direct-save state without creating a retry queue");
+  assertTrue((await page.locator(".food-sync-state").count()) > 0, "Food entry shows its durable save state");
   assertTrue(await page.locator("[data-food-sync-now]").count() === 0, "Food has no category-level sync button");
 
   // insights
@@ -200,7 +217,7 @@ try {
   assertTrue(await page.locator(".sync-center").count() === 1, "Unified Sync Center opens from the global shortcut");
   assertTrue((await page.locator(".destination-link").getAttribute("href")).includes("6433f54c687e4813869aaadeaf3acaab"), "Sync Center keeps the canonical View of Food Entries link");
   assertTrue(await page.locator("[data-sync-all]").count() === 1, "Sync Center exposes exactly one Sync everything action");
-  assertTrue(await page.locator("[data-sync-retry], [data-sync-retry-all]").count() === 0, "Sync Center has no queue retry controls");
+  assertTrue(await page.locator("[data-sync-retry-all]").count() === 1, "Sync Center exposes recovery controls for the durable outbox");
 
   await page.waitForTimeout(200);
   await page.click('[data-settings-tab="coach"]');
@@ -222,6 +239,34 @@ try {
     assertTrue(await page.locator("main h1").count()>0,"A first controlled reload starts fully offline from the precache");
     await context.setOffline(false);
   }else console.log("SKIP: Service worker readiness is not available in this local browser environment");
+
+  await context.setOffline(false);
+  for(const [tab,label] of [["home","Today"],["train","Training"],["food","Nutrition"],["health","Health"]]){
+    await page.click(`[data-app-tab="${tab}"]`);await page.waitForTimeout(300);await assertAxe(page,label);
+  }
+  const vitals=await page.evaluate(()=>window.__repVitals);
+  assertTrue(vitals.lcp>0&&vitals.lcp<=2500,`LCP stays within the 2.5s mobile budget (${Math.round(vitals.lcp)}ms)`);
+  assertTrue(vitals.cls<=0.1,`CLS stays within the 0.1 budget (${vitals.cls.toFixed(3)})`);
+  assertTrue(vitals.longTask<=200,`Longest main-thread task stays within 200ms (${Math.round(vitals.longTask)}ms)`);
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.click('[data-app-tab="train"]');await page.waitForTimeout(50);
+  const reducedMotion=await page.evaluate(()=>{const node=document.querySelector(".view-enter")||document.querySelector("main");const style=getComputedStyle(node);return {matches:matchMedia("(prefers-reduced-motion: reduce)").matches,animation:parseFloat(style.animationDuration)||0,transition:parseFloat(style.transitionDuration)||0};});
+  assertTrue(reducedMotion.matches&&reducedMotion.animation<=0.001&&reducedMotion.transition<=0.001,"Reduced-motion mode suppresses non-essential animation");
+  await page.emulateMedia({reducedMotion:"no-preference"});
+
+  // The app is mobile-primary. Exercise every primary destination at the
+  // compact widths we support instead of treating one 390 px viewport as a
+  // proxy for the entire phone range.
+  for(const width of [320,360,375,390,414,430]){
+    await page.setViewportSize({width,height:900});
+    for(const tab of ["home","train","food","health"]){
+      await page.click(`[data-app-tab="${tab}"]`);
+      await page.waitForTimeout(80);
+      const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...document.querySelectorAll(".app-tabs button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)}));
+      assertTrue(layout.overflow<=1,`${tab} has no horizontal overflow at ${width}px${layout.overflow>1?` (${layout.overflow}px: ${layout.offenders.join(", ")})`:""}`);
+      assertTrue(layout.targets.every(size=>size>=44),`primary navigation keeps 44px touch targets at ${width}px`);
+    }
+  }
 
   assertTrue(consoleErrors.length === 0, `No console/page errors during the run (found ${consoleErrors.length})`);
   if (consoleErrors.length) console.log(consoleErrors.join("\n"));
