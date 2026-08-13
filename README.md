@@ -1,11 +1,22 @@
 # Health OS
 
-Version 67 adds direct, device-wide synchronization:
+Version 69 adds a local-first Performance Intelligence layer:
 
-- Every save goes straight to Notion and returns a verified receipt; there is no browser or Cloudflare outbox.
-- Settings → Sync has one **Sync everything** button for workouts, meals, recovery, sleep, nutrition, and daily care.
-- The pairing key is entered once per device. The Worker stores a revocable device registration without an expiry, and active browser sessions refresh their secure cookie automatically.
-- A device stays paired until it is revoked, unpaired, or its browser site data is cleared. The master pairing key is never stored in the browser.
+- Strength Intelligence calculates per-lift estimated 1RM trends, seven-day volume load, hard sets by muscle, recent PRs, and conservative plateau/progression signals from completed weighted sets.
+- Nutrition analytics keep adherence separate from logging coverage, use a robust multi-week body-weight slope, and expose estimated maintenance calories only as a confidence-bounded range when enough intake and weigh-in data exists.
+- Strength, fat-loss, muscle-gain, and recovery goals produce forecast ranges instead of promised dates, plus one evidence-backed next action.
+- The Insight Inbox surfaces only material changes and supports seven-day snooze, dismissal, and restoration.
+- The Personal Outcome Lab compares sleep, protein adherence, and training time with normalized workout performance, requiring at least four sessions in both groups and labeling every result as an association.
+- Whole-app data quality reports coverage, freshness, duplicate keys, and Health source provenance across training, nutrition, body weight, and health data.
+- Ask Your Data runs entirely on-device through deterministic question routing and shows the records, dates, sample size, confidence, and analytical boundary behind every answer.
+
+Version 68 added a verified, durable synchronization and device-coordination architecture:
+
+- Every local change enters an IndexedDB outbox and survives offline use, refreshes, and transient Notion failures.
+- A record leaves the outbox only after the Worker writes it, reads the Notion page back, and returns a matching verified receipt.
+- Device authorization, sync receipts, and reminders live in per-device SQLite Durable Objects; reminder delivery uses per-device alarms instead of a global KV scan.
+- Strict TypeScript domain contracts, Workers-runtime tests, type-aware linting, isolated staging, structured SLO signals, anonymous web-vital telemetry, and operational/security runbooks are included.
+- The pairing key is entered once per device. It is exchanged for a revocable HttpOnly device session and is never stored in browser data.
 
 The Today screen also includes a bilingual daily habit tracker for sleep,
 night prayer, Fajr prayer, Sadqa, Quran wird (reading Quran pages), Quran
@@ -24,7 +35,7 @@ Version 66 added a coverage-aware Apple Watch health system:
 
 The native companion and existing Shortcut/Health Auto Export routes share the same bounded `/api/vitals/import` pipeline. Raw heart-rate samples remain in Apple Health; Rep receives only daily aggregates and coverage counts.
 
-A mobile-first, offline-ready Health OS built with plain HTML, CSS, and JavaScript. Local data still saves while offline, but synchronization is explicit and direct: failed writes are shown as not saved and are never hidden in a retry queue.
+A mobile-first, offline-ready Health OS built with plain HTML, CSS, JavaScript, and strict TypeScript server domains. Local data saves immediately while offline. Delivery state remains visible as pending, transmitting, retry scheduled, needs attention, or confirmed.
 
 Food entries are never labelled as synced from a generic network success. The
 Worker returns a receipt only after re-reading the saved Notion page, and each
@@ -34,42 +45,45 @@ selector in normal document flow so it cannot cover Health content while
 scrolling. Raw imported details remain on the device while an idempotent daily
 summary can update the existing Notion Recovery record.
 
-## Version 67 reliability architecture
+## Version 68 reliability architecture
 
 - The visible Notion destination is permanently named **View of Food Entries**
   and links to database `6433f54c…` / view `bde632d4…`. The Worker validates
   the original `Food Entries` data source, Trash state, integration access, and
   every required property type before a food write can enter the normal flow.
-- The once-per-minute Worker schedule records Notion health. Two consecutive
+- The five-minute Worker schedule records Notion health. Two consecutive
   destination failures become an actionable incident and can trigger one
   deduplicated push alert every six hours.
 - Settings → Sync is the single activity center for Training, Nutrition, and
-  Health writes. One action sends every supported local record directly and
-  shows verified links, direct failures, infrastructure readiness, and the last
+  Health writes. One action enqueues every supported local record and
+  shows verified links, pending/retry state, infrastructure readiness, and the last
   successful sync.
-- `scripts/live-notion-check.mjs` can validate a private test data source with a
-  real create/read/archive receipt. GitHub Actions runs it weekly or manually
-  when `NOTION_TEST_TOKEN` and `NOTION_TEST_DATA_SOURCE_ID` secrets exist.
+- `scripts/live-notion-check.mjs` validates a private test data source directly.
+  `scripts/staging-contract.mjs` goes through the isolated staging Worker, requires
+  a verified receipt, reads the created page, and archives it in `finally`.
 - Push configuration, local encrypted-backup round trips, and the HealthKit
   import endpoint now have runnable checks. The iPhone bridge also provides a
   **Test connection** button before HealthKit authorization.
 
 The retained reliability foundations are:
 
-- Every Notion write is completed inside its request and is considered successful
+- Every Notion delivery is completed inside its request and is considered successful
   only after the Worker re-reads the saved page. Content-aware idempotency receipts
   prevent duplicate retries without turning work into a job queue.
-- Source records remain in IndexedDB, so an offline or failed direct write never
-  loses health data. The global button can resend the complete local dataset.
+- Source records and the durable delivery outbox remain in IndexedDB. Exponential
+  retry is capped at 12 attempts and never hides permanently failed work.
 - Today contains the next actions; Training separates Today, Program, and
   History; Nutrition separates Log, Today, and Plan; Health keeps Vitals,
   Wellness, and Insights. Settings owns language, units, schedule, targets,
   coaching, connections, devices, and backups.
-- Settings → Connections & security includes a read-only Notion health check and
-  reports that synchronization is direct with zero queued jobs.
+- Settings → Connections & security includes Notion health, queue counts, recovery
+  controls, encrypted backup diagnostics, and per-device revocation.
 - QR support loads only when creating a pairing handoff, navigation uses a
   network-first service-worker strategy, and the social preview is about 216 KB
   instead of roughly 2 MB.
+
+Architecture, staging, SLO, threat-model/data-lifecycle, incident/recovery, and
+real-device certification details are in `docs/`.
 
 ## Health intelligence and Apple Health
 
@@ -87,6 +101,17 @@ The retained reliability foundations are:
 - `ios/RepHealthCompanion/` contains the SwiftUI HealthKit companion starter. It
   requires Xcode signing because browsers cannot access HealthKit directly.
 
+## Performance Intelligence calculations
+
+- Estimated 1RM uses the Epley formula (`weight × (1 + reps / 30)`) with repetitions capped at 15. It is a progress estimate and never an instruction to test a maximal lift.
+- Plateau flags require at least three sessions across at least 14 days with no material estimated-1RM improvement. A flag recommends holding, adding a clean repetition, or considering a lighter week; pain and symptoms still override it.
+- Nutrition adherence is calculated among logged days while 7- and 28-day coverage remains visible separately. Missing days are never silently treated as failed adherence.
+- Body-weight velocity uses a Theil–Sen median slope to reduce the effect of individual noisy weigh-ins.
+- Estimated maintenance calories require at least four weigh-ins, 14 food-log days, and 50% 28-day coverage. The displayed uncertainty widens as coverage falls.
+- Goal dates are ranges whose width depends on sample size and coverage. A target without a stable trend is labeled calibrating or off-track rather than assigned a fabricated date.
+- Personal experiments require four comparable sessions in both groups. They are exploratory personal associations, not causal or medical claims.
+- Ask Your Data does not call an external AI service. It selects a deterministic analysis, cites local record counts and date ranges, and declines conclusions when evidence is insufficient.
+
 ## Open locally
 
 Open `dist/client/index.html` in a browser. For reliable service-worker and offline testing, serve `dist/client/` with any local static web server.
@@ -94,20 +119,21 @@ Open `dist/client/index.html` in a browser. For reliable service-worker and offl
 ## Project folders
 
 - `src/client/` — the only editable browser application source
+- `src/server/` — the editable Cloudflare Worker source
 - `dist/client/` — generated deployment files served by Cloudflare
-- `dist/server/` — Cloudflare Worker source for Notion, Gemini, pairing, push, and sync
+- `dist/server/` — generated Worker deployment artifact
 - `ios/RepHealthCompanion/` — the optional native HealthKit companion starter
 
-`src/client/` is the only browser source of truth. `dist/client/` is generated
-and must not be hand-edited. Downloadable builds are produced as CI artifacts
+`src/` is the only application source of truth. `dist/` is generated
+and must not be hand-edited. Downloadable client builds are produced as CI artifacts
 instead of being committed as a second application copy and ZIP. **After editing anything under
-`src/client/`, run:**
+`src/`, run:**
 
 ```sh
 node scripts/sync-static.mjs
 ```
 
-This rebuilds `dist/client/`. A GitHub Actions workflow
+This rebuilds `dist/client/` and `dist/server/`. A GitHub Actions workflow
 (`.github/workflows/verify.yml`) checks on every push that source and deployment
 files match, uploads the deployable client from `main` as a short-lived artifact,
 syntax-checks all JS, and runs a headless end-to-end
@@ -116,11 +142,12 @@ integration still owns deployment (see below).
 
 ## Testing
 
-`scripts/e2e-smoke.mjs` is a headless Playwright test that serves
+`scripts/e2e-smoke.mjs` is a headless Playwright certification test that serves
 `dist/client/` locally and drives a real browser through the core flows:
 loading Home, previewing and starting a training session, completing it,
 logging an activity, saving a sleep log, logging food, and toggling
-language — failing on any assertion or any console/page error. Run it
+language, offline recovery, WCAG A/AA axe checks, reduced motion, six mobile
+widths, and web-performance budgets—failing on any assertion or console/page error. Run it
 locally with:
 
 ```sh
@@ -129,14 +156,23 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Fast syntax, Worker-contract, state-migration, and source-sync checks are also
+Fast syntax, strict types, type-aware linting, Node Worker contracts, real
+Workers-runtime Durable Object tests, state migrations, and source-sync checks are also
 available without launching a browser:
 
 ```sh
 npm run verify
 ```
 
-It runs automatically in CI (the `e2e` job in `verify.yml`) on every push.
+The local release gate, including Worker bundling and a Wrangler dry run, is:
+
+```sh
+npm run verify:all
+```
+
+GitHub Actions configuration is intentionally unchanged while the account's
+monthly Actions quota is exhausted. Use the local and staging gates in
+`docs/OPERATIONS.md` until the quota is available again.
 
 To run the optional real Notion contract check against a dedicated test copy of
 the Food Entries schema:
@@ -198,7 +234,8 @@ does not make the whole connection look broken.
 - Nutrition supports custom water add/set/reset, weekly weight, favourite and
   recent meals, portion scaling, and undo for destructive daily actions.
 - Automatic restore points are encrypted with a device-only key. Downloadable
-  backups use AES-256-GCM with a passphrase-derived key. Local deletion requires
+  schema-5 backups use AES-256-GCM with a passphrase-derived key and authenticate
+  their format/algorithm header to prevent unnoticed downgrade or header tampering. Local deletion requires
   two confirmations and never removes Notion pages.
 
 ## Push notifications (daily reminder)
@@ -237,23 +274,18 @@ dashboard:
    - `VAPID_SUBJECT` — `mailto:you@example.com` (a contact address push
      services may use if something's wrong with your server)
 
-4. **Redeploy.** The once-per-minute cron trigger in `wrangler.jsonc` is already
-   committed and safe to deploy before this setup is done — the send
-   function no-ops until `PUSH_KV` and both VAPID secrets exist.
+4. **Redeploy.** The five-minute cron in `wrangler.jsonc` monitors upstream
+   health only. Daily reminders are scheduled independently by the paired
+   device's Durable Object alarm and no-op until both VAPID secrets exist.
 
 Once set up, tapping "Enable" in the app requests notification permission,
 subscribes via the browser's Push API, and sends the subscription + your
-chosen time to `/api/push/subscribe`. The server checks the saved local time on
-each cron tick and records the last local day sent, so it honors the selected
-minute and cannot send the same daily reminder twice.
+chosen time to `/api/push/subscribe`. The per-device alarm records the last local
+day sent, so it honors the selected minute and cannot send the same daily reminder twice.
 
-**This is the one feature in this app whose crypto (RFC 8291 payload
-encryption + RFC 8292 VAPID signing, hand-rolled against the Workers
-runtime's Web Crypto API since there's no build step here) could not be
-verified end-to-end** — it was checked by round-tripping the same
-encrypt/decrypt derivation locally, but never against a real deployed push
-service. Test it on your own phone after setup and report back if a
-notification doesn't arrive.
+The RFC 8291 payload encryption and RFC 8292 VAPID signing are isolated in a
+strict TypeScript integration. Final delivery still depends on a real browser
+push provider, so complete the hardware push row in `docs/DEVICE_CERTIFICATION.md`.
 
 ## Automated Health data import (no screenshots, no app-opening)
 
@@ -387,7 +419,7 @@ updates the same calendar-day record, so the schedule does not create duplicates
 
 ## Server hardening
 
-`dist/server/index.js` applies a few defenses beyond basic pairing-key auth:
+`src/server/index.js` applies a few defenses beyond basic pairing-key auth:
 
 - **Rate limiting** — Cloudflare Rate Limit bindings protect AI analysis and
   pairing at the edge using network identity, so rotating guessed secrets does
@@ -401,7 +433,12 @@ updates the same calendar-day record, so the schedule does not create duplicates
 - **Atomic QR claims** — five-minute pairing handoffs are consumed by a Durable
   Object transaction so simultaneous claims cannot both succeed.
 - **Authenticated push management** — subscriptions cannot be added or removed
-  without a valid device session.
+  without a valid device session, and provider endpoints are hashed before they
+  become KV keys.
+- **Bounded provider calls** — Notion, Gemini, Open Food Facts, and Web Push
+  requests have explicit timeouts so a provider outage cannot hang a Worker request.
+- **Browser mutation origin checks** — cross-origin browser writes are rejected;
+  native automations remain supported through their restricted secret.
 - **Idempotent offline sync** — repeated queued writes carry stable keys, and
   the Worker stores completion markers so retries cannot create duplicates.
 - **Security headers** — every response (API and static assets) gets a
@@ -416,9 +453,11 @@ updates the same calendar-day record, so the schedule does not create duplicates
 
 GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Worker is the sole production runtime. The application has no runtime dependency on ChatGPT Sites or OpenAI Apps hosting.
 
-Production is deployed only by the gated `deploy-production` GitHub Actions
-job after `verify` and `e2e` pass on `main`. Configure the protected GitHub
-`production` environment and disable Cloudflare's direct branch deployment.
+The normal production path is the gated `deploy-production` GitHub Actions
+job after `verify` and `e2e` pass on `main`. While the monthly Actions quota is
+exhausted, follow the manual local + isolated-staging gate in
+`docs/OPERATIONS.md`; do not edit the workflow to work around the quota.
+Keep the protected GitHub `production` environment configured and Cloudflare's direct branch deployment disabled.
 See [`docs/RELEASE_SAFETY.md`](docs/RELEASE_SAFETY.md).
 
 Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
@@ -427,7 +466,7 @@ Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
 
 The earlier direct Cloudflare Git integration must remain disabled: it was
 observed deploying a feature-branch commit to the production environment.
-Pull requests now produce a per-commit deployable artifact for review, while
-production waits for the gated `main` workflow.
+When Actions capacity is available, pull requests produce a per-commit deployable
+artifact and production waits for the gated `main` workflow.
 
 Never commit secret values. Environment files are ignored by Git.

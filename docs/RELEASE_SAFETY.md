@@ -5,6 +5,12 @@ Production releases are owned by the `deploy-production` job in
 verification and browser E2E jobs pass, and through the protected GitHub
 `production` environment.
 
+Temporary quota-outage mode: do not weaken or edit that workflow. Follow the
+local, staging, evidence, and manual-deploy sequence in `OPERATIONS.md`. This is
+an explicit exception for unavailable Actions capacity, not a second permanent
+deployment path. Restore the protected workflow as the sole deployer when the
+quota renews.
+
 Repository administrators must complete these one-time settings:
 
 1. Resolve any GitHub Actions billing or spending-limit warning.

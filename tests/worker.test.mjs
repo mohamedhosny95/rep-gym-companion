@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import worker, { PairingCoordinator } from "../dist/server/index.js";
+import worker, { PairingCoordinator } from "../dist/server/index.node.js";
 
 class MemoryKV {
   constructor(){ this.values=new Map(); }
@@ -124,9 +124,17 @@ test("vitals routes require pairing and push stays disabled without VAPID keys",
 test("push subscription payloads are validated and stored",async()=>{
   const publicKey=Buffer.concat([Buffer.from([4]),Buffer.alloc(64,7)]).toString("base64url"),auth=Buffer.alloc(16,9).toString("base64url");
   const environment=env(),body={subscription:{endpoint:"https://push.example/subscription/1",keys:{p256dh:publicKey,auth}},time:"20:15",timezoneOffsetMinutes:-120,lang:"en"};
-  const response=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify(body)}));
-  assert.equal(response.status,200); assert.equal([...environment.PUSH_KV.values.keys()].filter(key=>key.startsWith("sub:")).length,1);
+  const pairing=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}})),cookie=pairing.cookie.split(";",1)[0];
+  const response=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example",cookie},body:JSON.stringify(body)}));
+  const subscriptionKeys=[...environment.PUSH_KV.values.keys()].filter(key=>key.startsWith("sub:"));
+  assert.equal(response.status,200); assert.equal(subscriptionKeys.length,1);
+  assert.equal(subscriptionKeys[0].includes("push.example"),false); assert.ok(subscriptionKeys[0].length<100);
   const unauthenticated=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:"{}"})); assert.equal(unauthenticated.status,401);
+});
+
+test("cross-origin browser mutations are rejected before authentication",async()=>{
+  const environment=env(),result=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{origin:"https://evil.example","x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  assert.equal(result.status,403); assert.equal(result.body.error,"Origin is not allowed.");
 });
 
 test("a registered device can be listed and individually revoked",async()=>{
@@ -231,7 +239,7 @@ test("workout sync reports failure instead of a false receipt when Notion can't 
   }finally{globalThis.fetch=originalFetch;}
 });
 
-test("sync writes directly even when an execution context is supplied",async()=>{
+test("outbox delivery returns a verified receipt without an untracked background job",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret"},entryId="food-direct-1",context={promises:[],waitUntil(promise){this.promises.push(promise);}};
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async(input,init={})=>{
@@ -250,12 +258,12 @@ test("sync writes directly even when an execution context is supplied",async()=>
   }finally{globalThis.fetch=originalFetch;}
 });
 
-test("authenticated system health reports direct synchronization",async()=>{
+test("authenticated system health reports verified outbox synchronization",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret",GEMINI_API_KEY:"ai"},originalFetch=globalThis.fetch;
   globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"67");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.deepEqual(result.body.sync,{mode:"direct",queued:false});assert.equal(result.body.outbox,undefined);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"69");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.deepEqual(result.body.sync,{mode:"verified-outbox",queued:true});assert.equal(result.body.outbox,undefined);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
 });
 
@@ -265,8 +273,18 @@ test("Notion destination guard reports schema drift with the correct visible vie
   try{const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));assert.equal(result.body.notion.healthy,false);assert.deepEqual(result.body.notion.schema.missing,["Notes"]);assert.equal(result.body.notion.destination.name,"View of Food Entries");}finally{globalThis.fetch=originalFetch;}
 });
 
-test("scheduled monitoring stores current Notion and direct-sync health",async()=>{
+test("scheduled monitoring stores current Notion and outbox health",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret"},context={promises:[],waitUntil(promise){this.promises.push(promise);}},originalFetch=globalThis.fetch;
   globalThis.fetch=async()=>new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
-  try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.deepEqual(monitor.sync,{mode:"direct",queued:false});assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
+  try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.deepEqual(monitor.sync,{mode:"verified-outbox",queued:true});assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
+});
+
+test("client telemetry accepts only paired, bounded web-vital samples",async()=>{
+  const environment=env(),sample={build:"abc123",lcpMs:1200,cls:0.01,interactionMs:80,longTaskMs:60,loadMs:900};
+  const accepted=await read(await call(environment,"/api/telemetry",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify(sample)}));
+  assert.equal(accepted.status,202);assert.equal(accepted.body.ok,true);
+  const invalid=await read(await call(environment,"/api/telemetry",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({...sample,lcpMs:-1})}));
+  assert.equal(invalid.status,400);
+  const unauthorized=await read(await call(environment,"/api/telemetry",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(sample)}));
+  assert.equal(unauthorized.status,401);
 });

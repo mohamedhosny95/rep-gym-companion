@@ -4,16 +4,35 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-static.mjs",
-    "check": "node --check src/client/build-meta.js && node --check src/client/auth.js && node --check src/client/storage.js && node --check src/client/ui-state.js && node --check src/client/ui-shell.js && node --check src/client/bootstrap.js && node --check src/client/app.js && node --check src/client/sync.js && node --check src/client/sync-center.js && node --check src/client/health-data.js && node --check src/client/i18n.js && node --check src/client/health-engine.js && node --check src/client/health-coverage.js && node --check src/client/health-ui.js && node --check src/client/habits.js && node --check src/client/enhancements.js && node --check src/client/features.js && node --check src/client/qrcode.js && node --check src/client/sw.js && node --check dist/server/index.js && node --check scripts/sync-static.mjs && node --check scripts/generate-vapid.mjs && node --check scripts/live-notion-check.mjs && node --check scripts/e2e-smoke.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "check:js": "node --check src/client/build-meta.js && node --check src/client/auth.js && node --check src/client/storage.js && node --check src/client/ui-state.js && node --check src/client/ui-shell.js && node --check src/client/bootstrap.js && node --check src/client/app.js && node --check src/client/sync-outbox.js && node --check src/client/telemetry.js && node --check src/client/sync.js && node --check src/client/sync-center.js && node --check src/client/health-data.js && node --check src/client/i18n.js && node --check src/client/health-engine.js && node --check src/client/health-coverage.js && node --check src/client/performance-insights.js && node --check src/client/health-ui.js && node --check src/client/performance-ui.js && node --check src/client/habits.js && node --check src/client/enhancements.js && node --check src/client/features.js && node --check src/client/qrcode.js && node --check src/client/sw.js && node --check src/server/index.js && node --check scripts/sync-static.mjs && node --check scripts/generate-vapid.mjs && node --check scripts/live-notion-check.mjs && node --check scripts/staging-contract.mjs && node --check scripts/e2e-smoke.mjs",
+    "types": "wrangler types src/server/worker-configuration.d.ts",
+    "typecheck": "tsc --noEmit",
+    "lint:server": "eslint src/server --max-warnings=0",
+    "check": "npm run check:js && npm run typecheck && npm run lint:server",
+    "test:node": "node --test tests/*.test.mjs",
+    "test:runtime": "WRANGLER_LOG_PATH=/tmp/rep-gym-wrangler.log vitest run",
+    "test": "npm run test:node && npm run test:runtime",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:notion-live": "node scripts/live-notion-check.mjs",
+    "test:staging": "node scripts/staging-contract.mjs",
     "verify": "npm run check && npm test",
-    "verify:all": "npm run sync && npm run verify && npm run test:e2e",
+    "verify:all": "npm run sync && npm run verify && npm run test:e2e && npm run deploy:dry-run && npm run deploy:staging:dry-run",
+    "deploy:dry-run": "wrangler deploy --env=\"\" --dry-run",
+    "deploy:staging:dry-run": "wrangler deploy --env staging --dry-run",
+    "deploy:staging": "wrangler deploy --env staging",
+    "rollback:production": "wrangler rollback",
     "generate:vapid": "node scripts/generate-vapid.mjs"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.21.2",
+    "@types/node": "^26.2.0",
+    "axe-core": "^4.13.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.8.1",
     "playwright": "^1.48.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10",
     "wrangler": "4.120.1"
   }
 }

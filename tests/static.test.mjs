@@ -15,28 +15,28 @@ test("the mobile shell exposes four primary tabs",async()=>{
 test("every local script in the document exists",async()=>{
   const html=await read("dist/client/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"dist","client",source))));
-  assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js"));
-  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync.js","enhancements.js","habits.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
+  assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js")); assert.ok(sources.includes("performance-insights.js"));
+  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync-outbox.js","telemetry.js","sync.js","enhancements.js","habits.js","performance-ui.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
 test("the content-versioned service worker uses network-first navigation and never caches API responses",async()=>{
-  const sw=await read("dist/client/sw.js"),meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version,"content build version is generated");assert.match(sw,new RegExp(`rep-companion-\\$\\{BUILD_VERSION\\}`));assert.match(sw,/\.\/auth\.js/);assert.match(sw,/\.\/sync-center\.js/);assert.match(sw,/\.\/health-coverage\.js/);assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+  const sw=await read("dist/client/sw.js"),meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version,"content build version is generated");assert.match(sw,new RegExp(`rep-companion-\\$\\{BUILD_VERSION\\}`));assert.match(sw,/\.\/auth\.js/);assert.match(sw,/\.\/sync-center\.js/);assert.match(sw,/\.\/health-coverage\.js/);assert.match(sw,/\.\/performance-insights\.js/);assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw,/request\.mode === "navigate"/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=16/);
+  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=18/);
 });
 
-test("health navigation stays in document flow and synchronization is direct and unified",async()=>{
-  const css=await read("dist/client/styles.css"),js=await read("dist/client/enhancements.js"),sync=await read("dist/client/sync.js");
+test("health navigation stays in document flow and synchronization uses a verified durable outbox",async()=>{
+  const css=await read("dist/client/styles.css"),js=await read("dist/client/enhancements.js"),sync=await read("dist/client/sync.js"),outbox=await read("dist/client/sync-outbox.js");
   assert.match(css,/\.health-subnav\{[^}]*position:relative/); assert.doesNotMatch(css,/\.health-subnav\{[^}]*position:sticky/);
   assert.match(sync,/Notion did not return a verified save receipt/); assert.match(js,/Confirmed in Notion/);
-  assert.match(sync,/syncEverything/); assert.match(sync,/collectEverything/); assert.match(sync,/data is saved on this device/);
-  assert.match(sync,/REQUEST_TIMEOUT_MS=30000/); assert.match(sync,/Nothing was queued/); assert.match(sync,/\/api\/notion-sync/);
-  assert.doesNotMatch(sync,/serverJobId|nextAttemptAt|HEARTBEAT_MS|setInterval\(resume/);assert.doesNotMatch(sync,/\/api\/sync-status/);
-  const center=await read("dist/client/sync-center.js");assert.match(center,/data-sync-all/);assert.match(center,/There is no device or server queue/);assert.doesNotMatch(center,/data-sync-retry/);
+  assert.match(sync,/syncEverything/); assert.match(sync,/collectEverything/); assert.match(sync,/processOutbox/);
+  assert.match(sync,/REQUEST_TIMEOUT_MS=30000/); assert.match(sync,/nextAttemptAt/); assert.match(sync,/\/api\/notion-sync/);
+  assert.match(outbox,/MAX_ATTEMPTS=12/);assert.match(outbox,/retryable_failed/);assert.match(outbox,/permanently_failed/);assert.doesNotMatch(sync,/serverJobId|HEARTBEAT_MS/);assert.doesNotMatch(sync,/\/api\/sync-status/);
+  const center=await read("dist/client/sync-center.js");assert.match(center,/data-sync-all/);assert.match(center,/durable device outbox/);assert.match(center,/data-sync-retry-all/);
 });
 
 test("durable state is split into IndexedDB and optional assets load on demand",async()=>{
@@ -69,10 +69,15 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
 
 test("deployment client is deterministically built from source",async()=>{
   const meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version);
-  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","health-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync-outbox.js","telemetry.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","performance-insights.js","health-ui.js","performance-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }
+});
+
+test("deployment Worker is deterministically built from source",async()=>{
+  const source=await read("src/server/index.js"),deployed=await read("dist/server/index.js");
+  assert.match(source,/durable-objects\/device-coordinator\.ts/);assert.match(deployed,/DeviceCoordinator = class extends DurableObject/);assert.match(deployed,/validateTelemetry/);assert.doesNotMatch(deployed,/from "\.\/contracts\.ts"/);
 });
 
 test("offline versions, local dates, durable storage, and accessibility stay aligned",async()=>{
@@ -84,7 +89,7 @@ test("offline versions, local dates, durable storage, and accessibility stay ali
   assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/date\.getFullYear\(\)/);
   assert.match(storage,/state:\$\{key\}/);assert.match(storage,/JSON\.stringify\(legacy\.local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
   assert.doesNotMatch(sw,/catch\(\(\) => caches\.match\("\.\/index\.html"\)\)/);
-  assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length>120/);assert.match(worker,/coverage_minutes/);assert.match(worker,/version:"67"/);assert.match(worker,/sync:\{mode:"direct",queued:false\}/);
+  assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length\s*>\s*120/);assert.match(worker,/coverage_minutes/);assert.match(worker,/version:\s*"69"/);assert.match(worker,/sync:\s*\{\s*mode:\s*"verified-outbox",\s*queued:\s*true/);
 });
 
 test("coverage-aware health features and native companion stay wired",async()=>{
@@ -96,4 +101,13 @@ test("coverage-aware health features and native companion stay wired",async()=>{
   for(const marker of ["MORNING CHECK","WORKOUT PREFLIGHT","PERSONAL BASELINE","data-health-report","healthWorkflow","workout-preflight-panel"])assert.match(ui,new RegExp(marker));
   assert.match(storage,/bodyMeasurements/);assert.match(storage,/healthMetrics/);
   assert.match(readme,/Background Delivery/);assert.match(swift,/HKObserverQuery/);assert.match(swift,/enableBackgroundDelivery/);assert.match(swift,/KeychainStore/);
+});
+
+test("performance intelligence is local, confidence-scored, and evidence-grounded",async()=>{
+  const [engine,ui,enhancements,readme]=await Promise.all([read("dist/client/performance-insights.js"),read("dist/client/performance-ui.js"),read("dist/client/enhancements.js"),read("README.md")]);
+  for(const marker of ["function e1rm","function strength","function nutrition","function experiments","function dataQuality","function goalForecast","function inbox","function ask"])assert.match(engine,new RegExp(marker));
+  for(const marker of ["GOAL FORECAST","STRENGTH INTELLIGENCE","NUTRITION → OUTCOMES","INSIGHT INBOX","PERSONAL OUTCOME LAB","WHOLE-APP DATA QUALITY","ASK YOUR DATA · LOCAL","No upload"])assert.match(ui,new RegExp(marker));
+  assert.doesNotMatch(engine,/\bfetch\s*\(/);assert.doesNotMatch(ui,/\bfetch\s*\(/);assert.match(engine,/language:\s*"association"/);assert.match(engine,/withRows\.length<4\|\|withoutRows\.length<4/);
+  for(const field of ["analyticsGoal","insightControls","analyticsQuestions","analyticsLastQuestion"])assert.match(enhancements,new RegExp(field));
+  assert.match(readme,/Theil–Sen/);assert.match(readme,/Ask Your Data does not call an external AI service/);
 });
