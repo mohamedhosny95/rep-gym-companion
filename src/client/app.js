@@ -1407,7 +1407,7 @@ document.querySelector("#homeButton").addEventListener("click",renderHome);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
-document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):state.view==="insights"?renderInsights():state.view==="vitals"?renderVitals():state.view==="settings"&&window.renderRepSettings?window.renderRepSettings():state.view==="home-overview"?renderOverview():renderHome();network();});
+document.querySelector("#langButton").addEventListener("click",()=>{state.lang=state.lang==="en"?"ar":"en";document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;document.querySelector("#langButton").textContent=U().language;persist();state.view==="recovery"?renderRecovery():state.view==="player"?renderExercise():state.view==="history"?renderHistory():state.view==="review"?renderReview():state.view==="nutrition"?renderNutrition():state.view==="hygiene"?renderHygiene():state.view==="care"?renderCareHub():state.view==="badDay"?renderBadDay():state.view==="preview"?showSessionPreview(state.previewSession):state.view==="insights"?renderInsights():state.view==="vitals"?renderVitals():state.view==="settings"&&window.renderRepSettings?window.renderRepSettings():state.view==="home-overview"?renderOverview():renderHome();renderQuickLog();network();});
 document.querySelector("#langButton").textContent=U().language;
 function showToast(message){
   document.querySelector(".toast")?.remove();
@@ -1450,8 +1450,61 @@ async function registerServiceWorker(){
   addEventListener("pageshow",()=>reg.update().catch(()=>{}));
 }
 if(document.readyState==="complete")registerServiceWorker().catch(()=>{});else addEventListener("load",()=>registerServiceWorker().catch(()=>{}),{once:true});
+// One floating action reachable from any tab (except mid-workout, where it's
+// hidden) for the three things that otherwise require navigating to a
+// specific tab first. Each action reuses the exact same handlers a manual
+// tap would hit - no parallel logging path.
+function continuingSession(){return Boolean(state.session&&sessions[state.session]&&state.index>0&&state.index<sessions[state.session].exercises.length&&state.sessionStartedAt);}
+function renderQuickLog(){
+  const container=document.querySelector("#quickLog");if(!container)return;
+  const ar=state.lang==="ar";
+  container.innerHTML=`<div class="quick-log-menu" id="quickLogMenu" hidden>
+      <button type="button" data-quick-action="workout">${ICONS.dumbbell}<span>${continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout")}</span></button>
+      <button type="button" data-quick-action="food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><span>${ar?"تسجيل وجبة":"Log a meal"}</span></button>
+      <button type="button" data-quick-action="activity">${ICONS.pulse}<span>${ar?"تسجيل نشاط":"Log an activity"}</span></button>
+    </div>
+    <button type="button" class="quick-log-fab" id="quickLogFab" aria-haspopup="true" aria-expanded="false" aria-label="${ar?"إجراء سريع":"Quick log"}">${ICONS.plus}</button>`;
+  const fab=container.querySelector("#quickLogFab"),menu=container.querySelector("#quickLogMenu");
+  fab.addEventListener("click",()=>{
+    const opening=menu.hidden;
+    if(opening)menu.querySelector('[data-quick-action="workout"] span').textContent=continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout");
+    menu.hidden=!opening;fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
+  });
+  menu.querySelectorAll("[data-quick-action]").forEach(button=>button.addEventListener("click",()=>{closeQuickLog();runQuickAction(button.dataset.quickAction);}));
+}
+function closeQuickLog(){
+  const fab=document.querySelector("#quickLogFab"),menu=document.querySelector("#quickLogMenu");
+  if(!fab||!menu||menu.hidden)return;
+  menu.hidden=true;fab.setAttribute("aria-expanded","false");fab.classList.remove("is-open");
+}
+document.addEventListener("click",e=>{if(!e.target.closest("#quickLog"))closeQuickLog();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeQuickLog();});
+function runQuickAction(action){
+  if(action==="workout"){
+    if(continuingSession()){startSession(state.session);return;}
+    state.trainingView="today";
+    setPrimaryTab("train");
+    document.querySelector("[data-start-today]")?.click();
+  }else if(action==="food"){
+    state.nutritionView="log";
+    setPrimaryTab("food");
+    document.querySelector("[data-food-note]")?.focus();
+  }else if(action==="activity"){
+    showLogActivity();
+  }
+}
+function consumeQuickLaunch(){
+  const action=new URLSearchParams(location.search).get("quick");
+  if(!action)return;
+  history.replaceState(null,"",location.pathname);
+  runQuickAction(action);
+}
 // Always land on Home on a fresh app open, regardless of which tab was last
 // active - that's the whole point of a dedicated landing screen. Mid-session
-// tab switches (setPrimaryTab) still work normally and aren't affected.
+// tab switches (setPrimaryTab) still work normally and aren't affected. A
+// manifest-shortcut launch (?quick=...) still lands here first, then
+// immediately layers its action on top, same as a manual tap would.
 renderOverview();
+renderQuickLog();
+consumeQuickLaunch();
 if(navigator.onLine&&localStorage.getItem(syncKeyStorage))setTimeout(fetchPendingVitals,1200);
