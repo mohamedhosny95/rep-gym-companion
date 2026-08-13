@@ -34,6 +34,10 @@ The engine deliberately separates outcome, driver, and guardrail metrics:
 
 Every surfaced answer includes a sample size or record count, a date range, and low/medium/high confidence. Duplicate record identifiers are excluded from calculation while remaining visible in the data-quality report. Insight Inbox identifiers are stable so snooze and dismissal state survives reloads and encrypted backup round trips.
 
+## Backups
+
+Notion is the only durable copy of synced history; nothing else in this architecture keeps an independent one. A daily cron (`17 3 * * *`, separate from the five-minute health-check cron) exports every configured data source's page ids/properties to R2 (`BACKUP_BUCKET`) with 30-day retention, reported via `infrastructure.notionBackup` on `/api/system-health`. It is export-only by design — restoring from a real loss is a manual, human-reviewed process (see Operations), not an automated write-back, since a Worker silently overwriting a live workspace on a bad assumption would be worse than the outage it's recovering from.
+
 ## Compatibility and migration
 
 Device credentials in legacy KV are copied into the relevant Durable Object on a successful authenticated request and then removed from KV. Users with a reminder created before version 68 should open reminder settings and save once to create the per-device alarm; legacy subscription records are not globally scanned because their old schema has no trustworthy device owner.

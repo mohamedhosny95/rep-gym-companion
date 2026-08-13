@@ -2,6 +2,19 @@
 
 The `staging` Wrangler environment is deliberately separate from production. Environment configuration does not inherit bindings or secrets, so configure every staging secret explicitly and use a dedicated test Notion integration and copied schema.
 
+**One-time setup — dedicated staging KV namespace.** `PUSH_KV` must not point at the
+production namespace (that would let staging reminders/imports/idempotency markers collide
+with real data). `wrangler.jsonc`'s `env.staging.kv_namespaces` entry ships with the
+placeholder id `REPLACE_WITH_STAGING_PUSH_KV_ID`. `deploy:staging:dry-run` still succeeds
+with the placeholder in place (it only validates the local bundle/config), but a real
+`npm run deploy:staging` fails once Cloudflare looks up that namespace id — replace it
+before the first non-dry-run staging deploy:
+
+```sh
+npx wrangler kv namespace create PUSH_KV --env staging
+# paste the returned id into wrangler.jsonc -> env.staging.kv_namespaces[0].id
+```
+
 ```sh
 npm run deploy:staging:dry-run
 npx wrangler secret put REP_SYNC_KEY --env staging

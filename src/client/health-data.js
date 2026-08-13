@@ -18,11 +18,6 @@ window.REP_HEALTH_GUIDE = Object.freeze({
     cardioMinimumWeeks: 3
   },
   nutrition: {
-    targets: {
-      gym: { label: "Gym", calories: 2251, protein: 182, carbs: 254, fat: 71, water: 3.5 },
-      cardio: { label: "Cardio", calories: 2294, protein: 182, carbs: 254, fat: 71, water: 3.5 },
-      rest: { label: "Rest", calories: 2211, protein: 182, carbs: 254, fat: 71, water: 3.0 }
-    },
     meals: {
       gym: [
         ["06:30", "Omelette + hot coffee", "577 kcal · P38 C68 F21"],

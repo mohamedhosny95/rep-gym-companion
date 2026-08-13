@@ -51,7 +51,7 @@ async function assertAxe(page,label){
 await new Promise(resolve => server.listen(port, resolve));
 const baseUrl = `http://localhost:${port}`;
 
-const browser = await chromium.launch({ args: ["--no-sandbox"] });
+const browser = await chromium.launch({ args: ["--no-sandbox"], executablePath: process.env.REP_E2E_CHROMIUM_PATH || undefined });
 const consoleErrors = [];
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });

@@ -237,6 +237,13 @@ does not make the whole connection look broken.
   schema-5 backups use AES-256-GCM with a passphrase-derived key and authenticate
   their format/algorithm header to prevent unnoticed downgrade or header tampering. Local deletion requires
   two confirmations and never removes Notion pages.
+- Those are both *local* backups. Notion itself — the only durable copy of
+  synced history — has its own independent daily export: create an R2 bucket
+  (`npx wrangler r2 bucket create rep-gym-companion-backups`), redeploy, and a
+  cron job writes every data source's page ids/properties to it every day with
+  30-day retention. Settings → Sync and `/api/system-health` report whether
+  it's configured and when it last ran. See `docs/OPERATIONS.md` for the
+  restore procedure (manual and human-reviewed, by design).
 
 ## Push notifications (daily reminder)
 

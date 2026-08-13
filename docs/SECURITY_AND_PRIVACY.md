@@ -9,6 +9,7 @@ Sensitive assets are health logs, pairing authority, Notion integration access, 
 | Pairing-key theft | one-time exchange, HttpOnly Secure SameSite cookie, registered device authority, five-minute atomic QR claim | rotate master key and revoke every device |
 | Replay/duplicate sync | stable client idempotency key, per-device receipt store, Notion post-write read | inspect receipt and archive duplicate manually |
 | Offline data loss | IndexedDB source plus versioned durable outbox | encrypted export and recovery drill |
+| Loss of the Notion workspace itself | daily off-workspace export of every data source to R2 (`BACKUP_BUCKET`), 30-day retention | restore manually from the most recent `notion-backup/*.json` object; see Operations |
 | Cross-device revocation race | strongly consistent DeviceCoordinator and DeviceRegistry | revoke current device and rotate master key |
 | Push subscription disclosure | subscription is per-device DO state; logs expose provider origin only | clear subscription and revoke device |
 | Injection or oversized input | explicit runtime contracts, size limits, CSP, same-origin enforcement, rate limits | disable affected adapter and inspect structured logs |
@@ -25,6 +26,7 @@ Sensitive assets are health logs, pairing authority, Notion integration access, 
 | Verified receipts | Durable Object SQLite | 30 days, then opportunistically purged |
 | Health import aggregates/monitor snapshot | KV | bounded endpoint-specific TTL; operational snapshot 30 days |
 | Notion records | owner's Notion workspace | controlled by Notion workspace retention; app deletion does not silently destroy them |
+| Off-workspace Notion export | R2 (`BACKUP_BUCKET`) | one JSON object per day (page properties + ids only, no attachments), 30-day rolling retention |
 | Local RUM | browser localStorage | latest 20 samples; removed by local-data deletion |
 | Worker logs/traces | Cloudflare account | set account retention to the shortest operationally useful period |
 

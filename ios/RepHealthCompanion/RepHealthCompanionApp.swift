@@ -16,10 +16,15 @@ struct RepHealthCompanionApp: App {
                             get: { KeychainStore.read("repVitalsImportKey") ?? "" },
                             set: { try? KeychainStore.write($0, account: "repVitalsImportKey") }
                         ))
+                        Button("Test connection") { Task { await sync.testConnection() } }
+                        if let result = sync.connectionTestResult {
+                            LabeledContent("Test result", value: result)
+                        }
                     }
                     Section("Apple Health") {
                         LabeledContent("Status", value: sync.status)
                         if let date = sync.lastSync { LabeledContent("Last sync", value: date.formatted()) }
+                        if let error = sync.lastError { Text(error).foregroundStyle(.red) }
                         Button("Authorize Apple Health") { Task { try? await sync.requestAuthorization() } }
                         Button("Sync last 7 days") { Task { try? await sync.syncRecentDays() } }
                     }

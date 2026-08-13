@@ -29,10 +29,13 @@
     { "tag": "v2-device-coordination", "new_sqlite_classes": ["DeviceCoordinator", "DeviceRegistry"] }
   ],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["*/5 * * * *", "17 3 * * *"]
   },
   "kv_namespaces": [
     { "binding": "PUSH_KV", "id": "3bea037a1d7b43de9b9994f43a48d843" }
+  ],
+  "r2_buckets": [
+    { "binding": "BACKUP_BUCKET", "bucket_name": "rep-gym-companion-backups" }
   ],
   "ratelimits": [
     {
@@ -68,13 +71,16 @@
         ]
       },
       "kv_namespaces": [
-        { "binding": "PUSH_KV" }
+        { "binding": "PUSH_KV", "id": "REPLACE_WITH_STAGING_PUSH_KV_ID" }
+      ],
+      "r2_buckets": [
+        { "binding": "BACKUP_BUCKET", "bucket_name": "rep-gym-companion-backups-staging" }
       ],
       "ratelimits": [
         { "name": "AI_RATE_LIMITER", "namespace_id": "42001", "simple": { "limit": 12, "period": 60 } },
         { "name": "PAIR_RATE_LIMITER", "namespace_id": "42002", "simple": { "limit": 20, "period": 60 } }
       ],
-      "triggers": { "crons": ["*/5 * * * *"] }
+      "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] }
     }
   }
 }

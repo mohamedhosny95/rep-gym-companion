@@ -440,6 +440,10 @@ var FOOD_REQUIRED_PROPERTIES = {
 };
 var SYSTEM_HEALTH_KEY = "system:health:latest";
 var SYSTEM_ALERT_KEY = "system:health:alert";
+var BACKUP_STATUS_KEY = "system:backup:latest";
+var BACKUP_PREFIX = "notion-backup/";
+var BACKUP_RETENTION_COUNT = 30;
+var BACKUP_CRON = "17 3 * * *";
 var OUTBOUND_TIMEOUT_MS = 15e3;
 var FOOD_SCHEMA = `Return only a JSON object with: food_name (string), portion_size (string), estimated_weight_g (number), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), sugar_g (number), sodium_mg (number), confidence (High, Medium, or Low), confidence_pct (0-100 integer), notes (string), recognizable (boolean). All nutrition values are estimates. Use 0 instead of null. Sum multiple foods. If the input is Arabic, understand it natively and include the Arabic name after the English name.`;
 var VITALS_SCHEMA = `Return only a JSON object with: sleep_hours (number or null), bedtime (string "HH:MM" 24-hour or null), wake_time (string "HH:MM" 24-hour or null), hrv_ms (number or null), resting_hr_bpm (number or null), respiratory_rate_bpm (number or null), active_energy_kcal (number or null), confidence (High, Medium, or Low), notes (string), recognizable (boolean). active_energy_kcal is the total active/move calories for the day, e.g. from Activity rings or the Health app's Active Energy stat - not a single workout's calories. Extract only values that are clearly visible in the screenshot; use null for anything not shown or ambiguous. Never guess or estimate a value that isn't legible.`;
@@ -627,7 +631,15 @@ async function analyzeFood(request, env) {
   if (await rateLimited(request, "food-analyze", 30, 60, env)) return rateLimitResponse();
   if (!await paired(request, env)) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   if (requestTooLarge(request, 135e5)) return json({ ok: false, error: "The image is too large. Choose a smaller photo." }, 413);
-  const body = await request.json().catch(() => null), mode = safeText(body?.mode, 30), description = safeText(body?.description, 1200);
+  const rawBody = await request.text().catch(() => "");
+  if (new TextEncoder().encode(rawBody).byteLength > 135e5) return json({ ok: false, error: "The image is too large. Choose a smaller photo." }, 413);
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    body = null;
+  }
+  const mode = safeText(body?.mode, 30), description = safeText(body?.description, 1200);
   if (!body || !["text", "restaurant", "photo", "barcode-image", "barcode"].includes(mode)) return json({ ok: false, error: "Unsupported food input." }, 400);
   try {
     if (mode === "barcode") return json({ ok: true, nutrition: await lookupBarcode(body.barcode), logMethod: "Barcode" });
@@ -653,7 +665,14 @@ async function analyzeVitalsScreenshot(request, env) {
   if (await rateLimited(request, "vitals-analyze", 20, 60, env)) return rateLimitResponse();
   if (!await paired(request, env)) return json({ ok: false, error: "Pairing key is incorrect or missing." }, 401);
   if (requestTooLarge(request, 135e5)) return json({ ok: false, error: "The screenshot is too large." }, 413);
-  const body = await request.json().catch(() => null);
+  const rawBody = await request.text().catch(() => "");
+  if (new TextEncoder().encode(rawBody).byteLength > 135e5) return json({ ok: false, error: "The screenshot is too large." }, 413);
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    body = null;
+  }
   const image = safeText(body?.image, 12e6), mimeType = /^image\/(jpeg|png|webp|heic|heif)$/i.test(body?.mimeType || "") ? body.mimeType : "image/jpeg";
   if (!image) return json({ ok: false, error: "Image data is missing." }, 400);
   try {
@@ -1002,15 +1021,16 @@ function recoveryProperties(payload) {
     "Sleep Hours": { number: Number(payload.sleep) || 0 },
     "Pain": { checkbox: Boolean(payload.pain) },
     "Red Flags": { number: Number(payload.flags) || 0 },
-    "Recommendation": { select: { name: safeText(payload.recommendation || "Hold", 40) } },
+    "Recommendation": { select: { name: ["Stop and assess", "Extra light day", "Hold", "Progress"].includes(payload.recommendation) ? payload.recommendation : "Hold" } },
     "Notes": { rich_text: richText(payload.notes) }
   };
 }
 function nutritionProperties(payload) {
+  const plan = ["Gym Day", "Active Day", "Flex Day"].includes(payload.plan) ? payload.plan : "Gym Day";
   const properties = {
-    "Day": { title: richText(`${payload.plan} \xB7 ${payload.date}`) },
+    "Day": { title: richText(`${plan} \xB7 ${payload.date}`) },
     "Date": { date: { start: safeText(payload.date, 10) } },
-    "Plan": { select: { name: safeText(payload.plan, 20) } },
+    "Plan": { select: { name: plan } },
     "Calories Target": { number: Number(payload.caloriesTarget) || 0 },
     "Protein Target": { number: Number(payload.proteinTarget) || 0 },
     "Water Target L": { number: Number(payload.waterTarget) || 0 },
@@ -1085,11 +1105,12 @@ function foodProperties(payload) {
     "Notes": { rich_text: richText(`${marker} ${safeText(payload.rawNote, 900)}${payload.notes ? ` \xB7 ${safeText(payload.notes, 600)}` : ""}`) }
   };
 }
+var FOOD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,98}[A-Za-z0-9]$/;
 async function syncFood(env, payload, source) {
-  if (!payload?.id || !payload?.date) return json({ ok: false, error: "Invalid food entry." }, 400);
+  if (!payload?.id || !payload?.date || !FOOD_ID_PATTERN.test(String(payload.id))) return json({ ok: false, error: "Invalid food entry." }, 400);
   const guard = await ensureFoodDestination(env);
   if (!guard.healthy) throw Error(guard.error || "The Notion food destination is not ready.");
-  const marker = `[REP:${safeText(payload.id, 100)}]`, result = await notionRequest(env, `/data_sources/${source}/query`, { method: "POST", body: JSON.stringify({ page_size: 1, filter: { property: "Notes", rich_text: { contains: marker } } }) });
+  const marker = `[REP:${safeText(payload.id, 100)}]`, result = await notionRequest(env, `/data_sources/${source}/query`, { method: "POST", body: JSON.stringify({ page_size: 1, filter: { property: "Notes", rich_text: { starts_with: marker } } }) });
   if (result.results?.length) {
     const pageId = result.results[0].id;
     await notionRequest(env, `/pages/${pageId}`, { method: "PATCH", body: JSON.stringify({ properties: foodProperties(payload) }) });
@@ -1361,6 +1382,9 @@ function infrastructureHealth(env) {
   return {
     push: { configured: Boolean((env.DEVICE_COORDINATOR || env.PUSH_KV) && publicKeyValid && privateKeyValid), scheduler: env.DEVICE_COORDINATOR ? "durable-object-alarm" : "legacy-kv", publicKeyValid, privateKeyValid, subjectConfigured: /^mailto:|^https:\/\//.test(env.VAPID_SUBJECT || "") },
     backups: { configured: true, mode: "client-aes-256-gcm" },
+    // Distinct from `backups` above: that's a device-local convenience snapshot, this is
+    // the only copy of synced history that lives outside the Notion workspace itself.
+    notionBackup: { configured: Boolean(env.NOTION_TOKEN && env.BACKUP_BUCKET), schedule: BACKUP_CRON },
     healthkit: { configured: Boolean(env.PUSH_KV && (env.VITALS_IMPORT_KEY || env.REP_SYNC_KEY)), endpoint: "/api/vitals/import" }
   };
 }
@@ -1394,6 +1418,75 @@ async function sendSystemHealthAlert(env, record) {
     }
   }
   return { sent };
+}
+async function fetchAllPages(env, dataSourceId, maxPages = 40) {
+  const pages = [];
+  let cursor, fetched = 0, truncated = false;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const result = await notionRequest(env, `/data_sources/${dataSourceId}/query`, { method: "POST", body: JSON.stringify(body) });
+    for (const page of result.results || []) {
+      pages.push({ id: page.id, url: page.url, created_time: page.created_time, last_edited_time: page.last_edited_time, archived: Boolean(page.archived), in_trash: Boolean(page.in_trash), properties: page.properties });
+    }
+    cursor = result.has_more ? result.next_cursor : null;
+    fetched++;
+    if (cursor && fetched >= maxPages) {
+      truncated = true;
+      cursor = null;
+    }
+  } while (cursor);
+  return { pages, truncated };
+}
+async function exportAllNotionData(env) {
+  const sources = {
+    workout: env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE,
+    recovery: healthSource(env, "recovery"),
+    nutrition: healthSource(env, "nutrition"),
+    hygiene: healthSource(env, "hygiene"),
+    habit: healthSource(env, "habit"),
+    food: healthSource(env, "food")
+  };
+  const bundle = { exportedAt: (/* @__PURE__ */ new Date()).toISOString(), sources: {} };
+  for (const [kind, dataSourceId] of Object.entries(sources)) {
+    if (!dataSourceId) continue;
+    try {
+      const { pages, truncated } = await fetchAllPages(env, dataSourceId);
+      bundle.sources[kind] = { dataSourceId, count: pages.length, truncated, pages };
+    } catch (error) {
+      bundle.sources[kind] = { dataSourceId, error: safeText(error?.message || "Export failed.", 300) };
+    }
+  }
+  return bundle;
+}
+async function pruneOldBackups(env) {
+  const listed = await env.BACKUP_BUCKET.list({ prefix: BACKUP_PREFIX });
+  const objects = (listed.objects || []).map((object) => object.key).sort();
+  if (objects.length <= BACKUP_RETENTION_COUNT) return;
+  const stale = objects.slice(0, objects.length - BACKUP_RETENTION_COUNT);
+  await Promise.all(stale.map((key) => env.BACKUP_BUCKET.delete(key)));
+}
+async function runScheduledBackup(env) {
+  if (!env.NOTION_TOKEN || !env.BACKUP_BUCKET) return { skipped: true };
+  const startedAt = Date.now();
+  try {
+    const bundle = await exportAllNotionData(env);
+    const key = `${BACKUP_PREFIX}${bundle.exportedAt.slice(0, 10)}.json`;
+    await env.BACKUP_BUCKET.put(key, JSON.stringify(bundle), { httpMetadata: { contentType: "application/json" } });
+    await pruneOldBackups(env);
+    const sources = Object.values(bundle.sources);
+    const recordCount = sources.reduce((total, source) => total + (source.count || 0), 0);
+    const failed = sources.some((source) => source.error);
+    const summary = { lastBackupAt: bundle.exportedAt, key, recordCount, truncated: sources.some((source) => source.truncated), partialFailure: failed, durationMs: Date.now() - startedAt };
+    if (env.PUSH_KV) await env.PUSH_KV.put(BACKUP_STATUS_KEY, JSON.stringify(summary), { expirationTtl: 60 * 60 * 24 * 45 });
+    logEvent(failed ? "warn" : "info", "notion_backup_completed", { key, recordCount, truncated: summary.truncated, partialFailure: failed, durationMs: summary.durationMs });
+    return summary;
+  } catch (error) {
+    const failure = { failedAt: (/* @__PURE__ */ new Date()).toISOString(), error: safeText(error?.message || "Backup failed.", 300), durationMs: Date.now() - startedAt };
+    if (env.PUSH_KV) await env.PUSH_KV.put(BACKUP_STATUS_KEY, JSON.stringify(failure), { expirationTtl: 60 * 60 * 24 * 45 });
+    logEvent("error", "notion_backup_failed", failure);
+    return failure;
+  }
 }
 async function monitorSystemHealth(env) {
   const previous = await env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json");
@@ -1558,15 +1651,16 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/automation-health") {
     if (request.method !== "GET") return json({ ok: false, error: "Method not allowed." }, 405);
+    if (await rateLimited(request, "automation-health", 60, 60, env)) return rateLimitResponse();
     if (!await automationPaired(request, env)) return json({ ok: false, error: "Automation key is incorrect or missing." }, 401);
     return json({ ok: true, checkedAt: (/* @__PURE__ */ new Date()).toISOString(), healthkit: infrastructureHealth(env).healthkit, notionDestination: foodDestination(env) });
   }
   if (url.pathname === "/api/system-health") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null, { status: 204 }) : json({ ok: false, error: "Method not allowed." }, 405);
     if (!await paired(request, env)) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
-    const [notion, monitor] = await Promise.all([notionHealth(env), env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json")]);
+    const [notion, monitor, backup] = await Promise.all([notionHealth(env), env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json"), env.PUSH_KV?.get(BACKUP_STATUS_KEY, "json")]);
     const infrastructure = infrastructureHealth(env);
-    return json({ ok: true, version: "69", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
+    return json({ ok: true, version: "69", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, backup, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
   }
   if (url.pathname === "/api/telemetry") {
     if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
@@ -1585,7 +1679,9 @@ async function route(request, env, ctx) {
       const deviceAuth = await authInfo(request, env);
       if (!deviceAuth) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
       try {
-        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), raw = await request.text(), body = validateSyncBody(JSON.parse(raw));
+        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), raw = await request.text();
+        if (new TextEncoder().encode(raw).byteLength > 2e6) return json({ ok: false, error: "Sync payload is too large." }, 413);
+        const body = validateSyncBody(JSON.parse(raw));
         if (!body) return json({ ok: false, error: "Invalid sync payload." }, 400);
         const digest = idempotency ? b64urlEncode2(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(`${idempotency}
 ${raw}`)))) : "";
@@ -1662,6 +1758,10 @@ var index_default = {
     }
   },
   async scheduled(event, env, ctx) {
+    if (event.cron === BACKUP_CRON) {
+      ctx.waitUntil(runScheduledBackup(env));
+      return;
+    }
     ctx.waitUntil(monitorSystemHealth(env));
   }
 };

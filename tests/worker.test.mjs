@@ -279,6 +279,85 @@ test("scheduled monitoring stores current Notion and outbox health",async()=>{
   try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.deepEqual(monitor.sync,{mode:"verified-outbox",queued:true});assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
 });
 
+test("exceeding a rate limit returns 429 instead of proceeding",async()=>{
+  // Every other rate-limit test only checks bucket *keying* — this is the one that
+  // actually exercises the blocking path (rateLimited() -> rateLimitResponse()).
+  const environment={...env(),PAIR_RATE_LIMITER:{limit:async()=>({success:false})}};
+  const result=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
+  assert.equal(result.status,429);assert.equal(result.body.ok,false);assert.equal(result.body.error,"Too many requests. Try again shortly.");
+});
+
+test("device management is rejected without any authentication",async()=>{
+  const environment=env();
+  const listed=await read(await call(environment,"/api/pair/devices"));
+  assert.equal(listed.status,401);
+  const revoked=await read(await call(environment,"/api/pair/devices",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({deviceId:"11111111-1111-4111-8111-111111111111"})}));
+  assert.equal(revoked.status,401);
+});
+
+test("revoking one paired device does not affect a second device's own session",async()=>{
+  // This app is single-owner, so any paired device may manage any other paired
+  // device by design (there is no separate-account boundary to enforce) — but
+  // revoke must still target only the requested device, not the caller's own
+  // session, and the revoked device's session must actually stop working.
+  const environment=env();
+  const deviceA=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY,"user-agent":"Device A"}}));
+  const deviceB=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY,"user-agent":"Device B"}}));
+  const cookieA=deviceA.cookie.split(";",1)[0],cookieB=deviceB.cookie.split(";",1)[0];
+  const listed=await read(await call(environment,"/api/pair/devices",{headers:{cookie:cookieA}}));
+  assert.equal(listed.body.devices.length,2);
+  const other=listed.body.devices.find(device=>!device.current);
+  assert.ok(other,"device B must be visible as a non-current device from device A's session");
+  const revoked=await read(await call(environment,"/api/pair/devices",{method:"DELETE",headers:{cookie:cookieA,"content-type":"application/json"},body:JSON.stringify({deviceId:other.id})}));
+  assert.equal(revoked.status,200);assert.equal(revoked.cookie,null,"revoking a different device must not clear the caller's own session cookie");
+  const stillValidA=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{cookie:cookieA}}));
+  assert.equal(stillValidA.status,200);
+  const nowInvalidB=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{cookie:cookieB}}));
+  assert.equal(nowInvalidB.status,401);
+});
+
+class MemoryR2Bucket {
+  constructor(){ this.objects=new Map(); }
+  async put(key,value){ this.objects.set(key,String(value)); }
+  async get(key){ const value=this.objects.get(key); return value===undefined?null:{text:async()=>value}; }
+  async delete(key){ this.objects.delete(key); }
+  async list({prefix=""}={}){ return {objects:[...this.objects.keys()].filter(key=>key.startsWith(prefix)).sort().map(key=>({key}))}; }
+}
+
+test("the daily backup cron exports every Notion source to R2 and prunes old backups",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",BACKUP_BUCKET:new MemoryR2Bucket()},context={promises:[],waitUntil(promise){this.promises.push(promise);}},originalFetch=globalThis.fetch;
+  // Pre-seed 31 stale backups so retention pruning has something to trim.
+  for(let day=1;day<=31;day++)await environment.BACKUP_BUCKET.put(`notion-backup/2026-06-${String(day).padStart(2,"0")}.json`,"{}");
+  globalThis.fetch=async(input)=>{
+    const url=String(input);
+    if(url.endsWith("/query"))return new Response(JSON.stringify({results:[{id:"page-1",url:"https://www.notion.so/page1",created_time:"2026-08-01T00:00:00.000Z",last_edited_time:"2026-08-01T00:00:00.000Z",archived:false,in_trash:false,properties:{}}],has_more:false,next_cursor:null}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    await worker.scheduled({cron:"17 3 * * *",scheduledTime:Date.now()},environment,context);
+    await Promise.all(context.promises);
+    const status=await environment.PUSH_KV.get("system:backup:latest","json");
+    assert.ok(status.lastBackupAt);assert.equal(status.partialFailure,false);
+    assert.equal(status.recordCount,6,"one page from each of the six Notion sources");
+    const listed=await environment.BACKUP_BUCKET.list({prefix:"notion-backup/"});
+    assert.equal(listed.objects.length,30,"retention keeps at most 30 backups");
+    const stored=await environment.BACKUP_BUCKET.get(status.key),bundle=JSON.parse(await stored.text());
+    assert.deepEqual(Object.keys(bundle.sources).sort(),["food","habit","hygiene","nutrition","recovery","workout"]);
+    assert.equal(bundle.sources.food.pages[0].id,"page-1");
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test("the 5-minute cron still runs the existing health monitor, not the backup job",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret",BACKUP_BUCKET:new MemoryR2Bucket()},context={promises:[],waitUntil(promise){this.promises.push(promise);}},originalFetch=globalThis.fetch;
+  globalThis.fetch=async()=>new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
+  try{
+    await worker.scheduled({cron:"*/5 * * * *",scheduledTime:Date.now()},environment,context);
+    await Promise.all(context.promises);
+    assert.equal(await environment.PUSH_KV.get("system:backup:latest","json"),null);
+    assert.ok(await environment.PUSH_KV.get("system:health:latest","json"));
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test("client telemetry accepts only paired, bounded web-vital samples",async()=>{
   const environment=env(),sample={build:"abc123",lcpMs:1200,cls:0.01,interactionMs:80,longTaskMs:60,loadMs:900};
   const accepted=await read(await call(environment,"/api/telemetry",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify(sample)}));

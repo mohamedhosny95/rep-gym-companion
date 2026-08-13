@@ -33,6 +33,8 @@ final class HealthKitSyncCoordinator: ObservableObject {
     private let store = HKHealthStore()
     @Published private(set) var lastSync: Date?
     @Published private(set) var status = "Not connected"
+    @Published private(set) var lastError: String?
+    @Published private(set) var connectionTestResult: String?
 
     private var readTypes: Set<HKObjectType> {
         let quantities: [HKQuantityTypeIdentifier] = [
@@ -54,27 +56,67 @@ final class HealthKitSyncCoordinator: ObservableObject {
     }
 
     func bootstrap() async throws {
-        for type in readTypes {
-            try await store.enableBackgroundDelivery(for: type, frequency: .hourly)
-            let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, error in
-                defer { completion() }
-                guard error == nil else { return }
-                Task { try? await self?.syncRecentDays() }
+        do {
+            for type in readTypes {
+                try await store.enableBackgroundDelivery(for: type, frequency: .hourly)
+                let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, error in
+                    defer { completion() }
+                    if let error {
+                        Task { await self?.recordFailure(status: "Observer error", error: error) }
+                        return
+                    }
+                    // Errors here previously vanished into `try?` with no visible signal beyond a
+                    // status string that just stopped updating. recordFailure keeps that visible.
+                    Task { [weak self] in
+                        do {
+                            try await self?.syncRecentDays()
+                        } catch {
+                            await self?.recordFailure(status: "Sync failed", error: error)
+                        }
+                    }
+                }
+                store.execute(query)
             }
-            store.execute(query)
+            try await syncRecentDays()
+        } catch {
+            recordFailure(status: "Setup failed", error: error)
+            throw error
         }
-        try await syncRecentDays()
     }
 
     func syncRecentDays() async throws {
         status = "Syncing"
-        for offset in stride(from: -7, through: 0, by: 1) {
-            let day = Calendar.current.date(byAdding: .day, value: offset, to: Date())!
-            let summary = try await summarize(day)
-            try await RepVitalsUploader.shared.upload(summary)
+        do {
+            for offset in stride(from: -7, through: 0, by: 1) {
+                let day = Calendar.current.date(byAdding: .day, value: offset, to: Date())!
+                let summary = try await summarize(day)
+                try await RepVitalsUploader.shared.upload(summary)
+            }
+            lastSync = Date()
+            status = "Current"
+            lastError = nil
+        } catch {
+            recordFailure(status: "Sync failed", error: error)
+            throw error
         }
-        lastSync = Date()
-        status = "Current"
+    }
+
+    private func recordFailure(status: String, error: Error) {
+        self.status = status
+        self.lastError = error.localizedDescription
+    }
+
+    // Pings the server without requiring HealthKit authorization first, so a user can verify
+    // the origin and vitals import key are correct before granting Health access.
+    func testConnection() async {
+        do {
+            _ = try await RepVitalsUploader.shared.testConnection()
+            connectionTestResult = "Connected"
+            lastError = nil
+        } catch {
+            connectionTestResult = "Failed"
+            lastError = error.localizedDescription
+        }
     }
 
     private func summarize(_ day: Date) async throws -> RepDailyVitals {
@@ -185,7 +227,18 @@ final class HealthKitSyncCoordinator: ObservableObject {
     }
 }
 
-enum SyncError: Error { case healthUnavailable, configurationMissing, serverRejected }
+enum SyncError: Error, LocalizedError {
+    case healthUnavailable, configurationMissing, serverRejected, unauthorized
+
+    var errorDescription: String? {
+        switch self {
+        case .healthUnavailable: return "Health data is not available on this device."
+        case .configurationMissing: return "Set the Rep origin and vitals import key above first."
+        case .serverRejected: return "Rep rejected the request."
+        case .unauthorized: return "The vitals import key was rejected. Check it matches the server's VITALS_IMPORT_KEY."
+        }
+    }
+}
 
 final class RepVitalsUploader {
     static let shared = RepVitalsUploader()
@@ -199,6 +252,23 @@ final class RepVitalsUploader {
         request.httpBody = try JSONEncoder().encode(vitals)
         let (_, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.serverRejected }
+    }
+
+    // GET /api/automation-health only checks the shared automation key, so this confirms
+    // the origin and key are both correct without requesting HealthKit authorization.
+    func testConnection() async throws -> String {
+        guard let origin = UserDefaults.standard.string(forKey: "repOrigin"), !origin.isEmpty,
+              let key = KeychainStore.read("repVitalsImportKey"), !key.isEmpty,
+              let url = URL(string: "/api/automation-health", relativeTo: URL(string: origin))?.absoluteURL else {
+            throw SyncError.configurationMissing
+        }
+        var request = URLRequest(url: url)
+        request.setValue(key, forHTTPHeaderField: "x-rep-sync-key")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw SyncError.serverRejected }
+        if http.statusCode == 401 { throw SyncError.unauthorized }
+        guard http.statusCode == 200 else { throw SyncError.serverRejected }
+        return "Connected"
     }
 }
 
