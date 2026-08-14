@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-await import("../dist/client/health-coverage.js");
+await import("../src/client/health-coverage.js");
 const coverage=globalThis.REP_HEALTH_COVERAGE;
 
 function state(days=28){

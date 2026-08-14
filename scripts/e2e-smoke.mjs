@@ -259,6 +259,26 @@ try {
   assertTrue(vitals.lcp>0&&vitals.lcp<=2500,`LCP stays within the 2.5s mobile budget (${Math.round(vitals.lcp)}ms)`);
   assertTrue(vitals.cls<=0.1,`CLS stays within the 0.1 budget (${vitals.cls.toFixed(3)})`);
   assertTrue(vitals.longTask<=200,`Longest main-thread task stays within 200ms (${Math.round(vitals.longTask)}ms)`);
+
+  // These screens are reached through nested UI (Training -> Tools & safety disclosure, or
+  // the Settings icon) rather than a top-level tab, and were previously outside every
+  // accessibility assertion in this suite - axe only ever saw Today/Training/Nutrition/Health.
+  // Real clicks through the actual disclosure/nav, not direct function calls, so any DOM the
+  // normal navigation path leaves behind is exactly what gets audited.
+  async function openTrainingTool(selector){
+    await page.click('[data-app-tab="train"]');await page.waitForTimeout(200);
+    await page.click('.training-advanced summary');await page.waitForTimeout(100);
+    await page.click(selector);await page.waitForTimeout(200);
+  }
+  await openTrainingTool('[data-recovery]');await assertAxe(page,"Recovery");
+  await openTrainingTool('[data-history]');await assertAxe(page,"History");
+  await openTrainingTool('[data-review]');await assertAxe(page,"Review & field test");
+  await page.click("#settingsButton");await page.waitForTimeout(200);await assertAxe(page,"Settings · general");
+  for(const section of ["schedule","targets","coach","sync","security"]){
+    await page.click(`[data-settings-tab="${section}"]`);await page.waitForTimeout(200);await assertAxe(page,`Settings · ${section}`);
+  }
+  await page.click('[data-app-tab="train"]');await page.waitForTimeout(200);
+
   await page.emulateMedia({reducedMotion:"reduce"});
   await page.click('[data-app-tab="train"]');await page.waitForTimeout(50);
   const reducedMotion=await page.evaluate(()=>{const node=document.querySelector(".view-enter")||document.querySelector("main");const style=getComputedStyle(node);return {matches:matchMedia("(prefers-reduced-motion: reduce)").matches,animation:parseFloat(style.animationDuration)||0,transition:parseFloat(style.transitionDuration)||0};});

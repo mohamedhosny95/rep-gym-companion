@@ -293,6 +293,14 @@ var DeviceCoordinator = class extends DurableObject {
     const remaining = this.ctx.storage.sql.exec("SELECT COUNT(*) AS count FROM push_subscription").one().count;
     if (!remaining) await this.ctx.storage.deleteAlarm();
   }
+  // Deliberately excludes endpoint/keys - only what /api/system-health needs to surface a
+  // persistently broken reminder instead of it staying silently invisible (device-coordinator.ts
+  // already tracked last_status/last_error, nothing read them back out until now).
+  async pushStatus() {
+    const row = this.pushRow();
+    if (!row) return null;
+    return { subscribed: true, lastSentDate: row.last_sent_date, lastStatus: row.last_status, lastError: row.last_error };
+  }
   pushRow() {
     return this.ctx.storage.sql.exec(
       "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"
@@ -887,14 +895,52 @@ async function notionRequest(env, path, init = {}) {
 function foodDestination(env) {
   return { ...FOOD_DESTINATION, url: safeText(env.NOTION_FOOD_VIEW_URL || FOOD_DESTINATION.url, 700), sourceId: healthSource(env, "food") };
 }
-function validateFoodSchema(data) {
+function validateSchema(data, required) {
   const properties = data?.properties || {}, missing = [], incompatible = [];
-  for (const [name, expected] of Object.entries(FOOD_REQUIRED_PROPERTIES)) {
+  for (const [name, expected] of Object.entries(required)) {
     const actual = properties[name]?.type;
     if (!actual) missing.push(name);
     else if (actual !== expected) incompatible.push({ name, expected, actual });
   }
   return { valid: missing.length === 0 && incompatible.length === 0, missing, incompatible };
+}
+function validateFoodSchema(data) {
+  return validateSchema(data, FOOD_REQUIRED_PROPERTIES);
+}
+var HEALTH_REQUIRED_PROPERTIES = {
+  recovery: { "Check-in": "title", "Date": "date", "Soreness": "number", "Energy": "number", "Sleep Hours": "number", "Pain": "checkbox", "Red Flags": "number", "Recommendation": "select", "Notes": "rich_text" },
+  nutrition: { "Day": "title", "Date": "date", "Plan": "select", "Calories Target": "number", "Protein Target": "number", "Water Target L": "number", "Meals Complete": "number", "Meals Total": "number", "Hydration Complete": "checkbox", "Supplements Complete": "checkbox", "Completion Percent": "number", "Notes": "rich_text" },
+  hygiene: { "Day": "title", "Date": "date", "Morning Complete": "checkbox", "Evening Complete": "checkbox", "Post-workout Complete": "checkbox", "Hair Routine Complete": "checkbox", "SPF": "checkbox", "Floss": "checkbox", "Beard Oil": "checkbox", "Shower Within 30m": "checkbox", "Completion Percent": "number", "Notes": "rich_text" },
+  habit: { "Entry": "title", "Date": "date", "Habit": "select", "Habit ID": "rich_text", "Completed": "checkbox", "Streak": "number", "Source": "select", "Updated At": "date", "Notes": "rich_text" }
+};
+var HEALTH_SCHEMA_CACHE_PREFIX = "system:health-schema:";
+function actionableHealthError(error, kind) {
+  const detail = safeText(error?.message || error, 180);
+  if (error?.status === 404 || /could not find|not found/i.test(detail)) return `The Notion ${kind} source is unavailable to Rep Gym Sync. Restore it if it's in Notion Trash, then reconnect the integration.`;
+  if (error?.status === 401 || error?.status === 403 || /unauthorized|restricted|permission/i.test(detail)) return `Rep Gym Sync cannot access the Notion ${kind} source. Reconnect the integration to it.`;
+  return detail || "Notion destination validation failed.";
+}
+async function ensureHealthDestination(env, kind, source) {
+  const required = HEALTH_REQUIRED_PROPERTIES[kind === "sleep" ? "recovery" : kind];
+  if (!required) return { healthy: true };
+  const cacheKey = `${HEALTH_SCHEMA_CACHE_PREFIX}${source}`;
+  const cached = env.PUSH_KV ? await env.PUSH_KV.get(cacheKey, "json").catch(() => null) : null;
+  if (cached?.checkedAt && Date.now() - Date.parse(cached.checkedAt) < 12e4) return cached;
+  try {
+    const data = await notionRequest(env, `/data_sources/${source}`);
+    const schema = validateSchema(data, required), trashed = Boolean(data?.in_trash || data?.archived);
+    const result = {
+      healthy: Boolean(data?.id) && !trashed && schema.valid,
+      schema,
+      trashed,
+      checkedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      error: trashed ? `The Notion ${kind} source is in Trash. Restore it to resume syncing.` : !schema.valid ? `Notion ${kind} schema needs attention. Missing: ${schema.missing.join(", ") || "none"}; incompatible: ${schema.incompatible.map((item) => `${item.name} (${item.actual} \u2192 ${item.expected})`).join(", ") || "none"}.` : null
+    };
+    if (env.PUSH_KV) await env.PUSH_KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 600 });
+    return result;
+  } catch (error) {
+    return { healthy: false, error: actionableHealthError(error, kind) };
+  }
 }
 function actionableNotionError(error, destination) {
   const detail = safeText(error?.message || error, 180);
@@ -1128,6 +1174,8 @@ async function syncHealthBody(env, body) {
   if (kind === "food") return syncFood(env, payload, source);
   const builders = { recovery: recoveryProperties, sleep: sleepProperties, nutrition: nutritionProperties, hygiene: hygieneProperties, habit: habitProperties }, properties = builders[kind]?.(payload);
   if (!properties) return json({ ok: false, error: "Unsupported health log type." }, 400);
+  const guard = await ensureHealthDestination(env, kind, source);
+  if (!guard.healthy) throw Error(guard.error || `The Notion ${kind} destination is not ready.`);
   const pageId = kind === "habit" ? await existingHabitPage(env, source, payload) : await existingHealthPage(env, source, payload.date);
   const savedPage = pageId ? await notionRequest(env, `/pages/${pageId}`, { method: "PATCH", body: JSON.stringify({ properties }) }) : await notionRequest(env, "/pages", { method: "POST", body: JSON.stringify({ parent: { type: "data_source_id", data_source_id: source }, properties }) });
   const receipt = await verifyNotionPage(env, savedPage.id || pageId, source);
@@ -1657,10 +1705,11 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/system-health") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null, { status: 204 }) : json({ ok: false, error: "Method not allowed." }, 405);
-    if (!await paired(request, env)) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
-    const [notion, monitor, backup] = await Promise.all([notionHealth(env), env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json"), env.PUSH_KV?.get(BACKUP_STATUS_KEY, "json")]);
+    const deviceAuth = await authInfo(request, env);
+    if (!deviceAuth) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
+    const [notion, monitor, backup, push] = await Promise.all([notionHealth(env), env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json"), env.PUSH_KV?.get(BACKUP_STATUS_KEY, "json"), deviceCoordinator(env, deviceAuth.payload?.jti)?.pushStatus()]);
     const infrastructure = infrastructureHealth(env);
-    return json({ ok: true, version: "69", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, backup, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
+    return json({ ok: true, version: "69", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, backup, push, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
   }
   if (url.pathname === "/api/telemetry") {
     if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);

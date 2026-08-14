@@ -35,4 +35,37 @@ describe("DeviceCoordinator", () => {
     await stub.clearPush();
     expect(await runDurableObjectAlarm(stub)).toBe(false);
   });
+
+  it("returns no push status for a device with no subscription", async () => {
+    const stub = env.DEVICE_COORDINATOR.getByName(`device:nopush-${crypto.randomUUID()}`);
+    await stub.register({ ...record, id: crypto.randomUUID() });
+    expect(await stub.pushStatus()).toBeNull();
+  });
+
+  it("falls back to a 30-minute retry after 5 consecutive alarm failures instead of retrying immediately forever", async () => {
+    const stub = env.DEVICE_COORDINATOR.getByName(`device:retry-${crypto.randomUUID()}`);
+    await stub.register({ ...record, id: crypto.randomUUID() });
+    await stub.setPush({ subscription: { endpoint: "https://push.example/unreachable-subscription", expirationTime: null, keys: { p256dh: "not-used-by-this-test", auth: "not-used" } }, time: "00:00", timezoneOffsetMinutes: 0, timezone: "UTC", lang: "en" });
+    const before = Date.now();
+    await runInDurableObject(stub, async (instance: DeviceCoordinator, state) => {
+      // Directly calling alarm() with a synthetic retryCount, rather than escalating through
+      // five real failures, is what actually exercises the >=5 branch in a runnable test.
+      await expect(instance.alarm({ retryCount: 5 })).resolves.toBeUndefined();
+      const alarmTime = await state.storage.getAlarm();
+      expect(alarmTime).not.toBeNull();
+      expect(alarmTime as number).toBeGreaterThanOrEqual(before + 29 * 60_000);
+    });
+  });
+
+  it("records a failed alarm delivery in pushStatus() instead of only logging it", async () => {
+    // Previously last_error/last_status were written to SQLite by alarm() but nothing ever
+    // read them back out — a persistently broken reminder had no way to surface anywhere.
+    const stub = env.DEVICE_COORDINATOR.getByName(`device:pushfail-${crypto.randomUUID()}`);
+    await stub.register({ ...record, id: crypto.randomUUID() });
+    await stub.setPush({ subscription: { endpoint: "https://push.example/unreachable-subscription", expirationTime: null, keys: { p256dh: "not-used-by-this-test", auth: "not-used" } }, time: "00:00", timezoneOffsetMinutes: 0, timezone: "UTC", lang: "en" });
+    await runDurableObjectAlarm(stub).catch(() => {});
+    const status = await stub.pushStatus();
+    expect(status?.subscribed).toBe(true);
+    expect(status?.lastError).toBeTruthy();
+  });
 });

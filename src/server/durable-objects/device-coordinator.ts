@@ -125,6 +125,15 @@ export class DeviceCoordinator extends DurableObject<Env> {
     if (!remaining) await this.ctx.storage.deleteAlarm();
   }
 
+  // Deliberately excludes endpoint/keys - only what /api/system-health needs to surface a
+  // persistently broken reminder instead of it staying silently invisible (device-coordinator.ts
+  // already tracked last_status/last_error, nothing read them back out until now).
+  async pushStatus(): Promise<{ subscribed: boolean; lastSentDate: string | null; lastStatus: number | null; lastError: string | null } | null> {
+    const row = this.pushRow();
+    if (!row) return null;
+    return { subscribed: true, lastSentDate: row.last_sent_date, lastStatus: row.last_status, lastError: row.last_error };
+  }
+
   private pushRow(): PushRow | null {
     return this.ctx.storage.sql.exec<PushRow>(
       "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"

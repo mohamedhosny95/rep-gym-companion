@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.window={};
-await import("../dist/client/sync-outbox.js");
+await import("../src/client/sync-outbox.js");
 const outbox=window.REP_SYNC_OUTBOX;
 
 test("durable outbox preserves intent through retry and verified removal",()=>{

@@ -182,13 +182,45 @@ test("food sync ignores legacy optimistic markers and returns a verified Notion 
   }finally{globalThis.fetch=originalFetch;}
 });
 
+test("two truly simultaneous requests with the same idempotency key can each create a Notion page (documents a real gap, not a fixed guarantee)",async()=>{
+  // The earlier "ignores legacy optimistic markers" test above only proves *sequential*
+  // duplicate retries are deduped (the receipt from request 1 exists before request 2 starts).
+  // Content-aware idempotency receipts are written only after a response completes, so they
+  // cannot prevent two requests genuinely in flight at the same time - unlike the QR-claim
+  // race, which IS closed by PairingCoordinator's storage.transaction(). This test exists so
+  // that gap is a concrete, falsifiable check instead of an unverified assumption either way.
+  const environment={...env(),NOTION_TOKEN:"secret"},entryId="race-entry-1",idempotency=`food-${entryId}`;
+  let createCount=0;const pages={};
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init={})=>{
+    const url=String(input);
+    // Without a real delay here, Node's single-threaded scheduler runs one request's whole
+    // chain to completion before the other's /query even fires (the same lesson the QR-claim
+    // race test above already learned) - this would pass by accident even if the race is real.
+    if(url.endsWith("/query")){await new Promise(resolve=>setTimeout(resolve,5));return new Response(JSON.stringify({results:[]}),{status:200,headers:{"content-type":"application/json"}});}
+    if(url.endsWith("/data_sources/97671c61-586a-4443-aea6-00b1d9f835a7"))return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});
+    if(url.endsWith("/pages")&&init.method==="POST"){createCount++;const id=`race-page-${createCount}`;pages[id]={id,url:`https://www.notion.so/${id}`,parent:{type:"data_source_id",data_source_id:"97671c61-586a-4443-aea6-00b1d9f835a7"},archived:false,in_trash:false};return new Response(JSON.stringify(pages[id]),{status:200,headers:{"content-type":"application/json"}});}
+    const match=Object.values(pages).find(page=>url.includes(`/pages/${page.id}`));if(match)return new Response(JSON.stringify(match),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const payload={id:entryId,date:"2026-08-13T10:00:00.000Z",food_name:"Oatmeal",mealType:"Breakfast",logMethod:"Ingredients",calories:300,protein_g:10,carbs_g:50,fat_g:5};
+    const request=()=>call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":idempotency},body:JSON.stringify({kind:"food",payload})}).then(read);
+    const [a,b]=await Promise.all([request(),request()]);
+    assert.equal(a.status,200);assert.equal(b.status,200);
+    assert.equal(createCount,2,"a genuine concurrent race currently creates two Notion pages for one entry id - not yet closed the way the QR-claim race is");
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test("habit check-ins create once and then update the same verified Notion row",async()=>{
   const environment={...env(),NOTION_TOKEN:"secret"},source="e4ed7261-0722-43be-84b7-a0fffc414a11",pageId="44444444-4444-4444-8444-444444444444",calls=[];
   let stored=false;
   const originalFetch=globalThis.fetch;
+  const habitProperties=Object.fromEntries(Object.entries({Entry:"title",Date:"date",Habit:"select","Habit ID":"rich_text",Completed:"checkbox",Streak:"number",Source:"select","Updated At":"date",Notes:"rich_text"}).map(([name,type])=>[name,{id:name,type}]));
   globalThis.fetch=async(input,init={})=>{
     const url=String(input),body=init.body?JSON.parse(init.body):null;calls.push({url,method:init.method||"GET",body});
     if(url.endsWith(`/data_sources/${source}/query`)){const results=stored?[{id:pageId}]:[];return new Response(JSON.stringify({results}),{status:200,headers:{"content-type":"application/json"}});}
+    if(url.endsWith(`/data_sources/${source}`))return new Response(JSON.stringify({id:source,object:"data_source",properties:habitProperties,in_trash:false,archived:false}),{status:200,headers:{"content-type":"application/json"}});
     if(url.endsWith("/pages")&&init.method==="POST"){stored=true;return new Response(JSON.stringify({id:pageId}),{status:200,headers:{"content-type":"application/json"}});}
     if(url.endsWith(`/pages/${pageId}`)&&init.method==="PATCH")return new Response(JSON.stringify({id:pageId}),{status:200,headers:{"content-type":"application/json"}});
     if(url.endsWith(`/pages/${pageId}`))return new Response(JSON.stringify({id:pageId,url:`https://www.notion.so/${pageId.replace(/-/g,"")}`,parent:{type:"data_source_id",data_source_id:source},archived:false,in_trash:false}),{status:200,headers:{"content-type":"application/json"}});
@@ -279,6 +311,20 @@ test("scheduled monitoring stores current Notion and outbox health",async()=>{
   try{await worker.scheduled({scheduledTime:Date.now()},environment,context);await Promise.all(context.promises);const monitor=await environment.PUSH_KV.get("system:health:latest","json");assert.equal(monitor.notion.healthy,true);assert.deepEqual(monitor.sync,{mode:"verified-outbox",queued:true});assert.equal(monitor.issue,false);assert.ok(monitor.checkedAt);}finally{globalThis.fetch=originalFetch;}
 });
 
+test("non-food health syncs are pre-flighted against Notion schema drift the same way food is",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},source="94f3f3a9-ca95-4f34-90dc-36090a9ec00c",originalFetch=globalThis.fetch;
+  const missingSoreness=Object.fromEntries(Object.entries({"Check-in":"title",Date:"date",Energy:"number","Sleep Hours":"number",Pain:"checkbox","Red Flags":"number",Recommendation:"select",Notes:"rich_text"}).map(([name,type])=>[name,{id:name,type}]));
+  globalThis.fetch=async(input)=>{
+    const url=String(input);
+    if(url.endsWith(`/data_sources/${source}`))return new Response(JSON.stringify({id:source,object:"data_source",properties:missingSoreness,in_trash:false,archived:false}),{status:200,headers:{"content-type":"application/json"}});
+    throw new Error(`Unexpected fetch ${url}`);
+  };
+  try{
+    const result=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({kind:"recovery",payload:{date:"2026-08-13",soreness:2,energy:3,sleep:7,pain:false,flags:0,recommendation:"Progress",notes:""}})}));
+    assert.equal(result.status,502);assert.match(result.body.error,/Missing: Soreness/);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test("exceeding a rate limit returns 429 instead of proceeding",async()=>{
   // Every other rate-limit test only checks bucket *keying* — this is the one that
   // actually exercises the blocking path (rateLimited() -> rateLimitResponse()).
@@ -356,6 +402,24 @@ test("the 5-minute cron still runs the existing health monitor, not the backup j
     assert.equal(await environment.PUSH_KV.get("system:backup:latest","json"),null);
     assert.ok(await environment.PUSH_KV.get("system:health:latest","json"));
   }finally{globalThis.fetch=originalFetch;}
+});
+
+test("oversized sync and food-analyze payloads are rejected before processing",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"};
+  const syncResult=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({kind:"food",payload:{id:"big-1",date:"2026-08-13",food_name:"x".repeat(2_100_000)}})}));
+  assert.equal(syncResult.status,413);
+  const analyzeResult=await read(await call(environment,"/api/food/analyze",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({mode:"photo",image:"x".repeat(13_600_000),mimeType:"image/jpeg"})}));
+  assert.equal(analyzeResult.status,413);
+});
+
+test("malformed JSON and a dedupe-marker-breaking food id are rejected cleanly, not silently accepted",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"};
+  const malformed=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:"{not valid json"}));
+  assert.equal(malformed.status,502);
+  // Would have collided with a different entry's marker under the old `contains` lookup
+  // (Finding #22); FOOD_ID_PATTERN now rejects it outright before any Notion call.
+  const craftedId=await read(await call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({kind:"food",payload:{id:"food-1][REP:other-entry",date:"2026-08-13",food_name:"Snack"}})}));
+  assert.equal(craftedId.status,400);assert.match(craftedId.body.error,/Invalid food entry/);
 });
 
 test("client telemetry accepts only paired, bounded web-vital samples",async()=>{

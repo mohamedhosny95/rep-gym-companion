@@ -21,6 +21,12 @@ The per-device alarm removes the global subscription scan. It stores the browser
 2. Cloudflare Queues were not added. The browser already provides a durable user-visible outbox, and the Notion write must return a verified receipt to that user-owned queue.
 3. Staging is a separate Worker environment with distinct KV, rate-limit namespaces, Durable Object namespace, secrets, and a dedicated Notion test source.
 4. No medical conclusion is computed by the server. Raw samples stay in Apple Health; only daily aggregates and coverage metadata enter Rep.
+5. This is a deliberately single-tenant architecture, not a scaling constraint that snuck in
+   unnoticed: Notion data-source ids are module-level constants with single-workspace env-var
+   overrides, `DEVICE_REGISTRY` is one global Durable Object addressed by a fixed name, and
+   `REP_SYNC_KEY`/`VITALS_IMPORT_KEY` are single shared secrets. `DeviceCoordinator`'s one-DO-
+   per-device design already generalizes to multi-user without changes; the pieces above would
+   need an owner/account dimension added before this could safely serve more than one person.
 
 ## Performance analytics boundary
 
