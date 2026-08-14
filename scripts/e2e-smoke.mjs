@@ -92,6 +92,16 @@ try {
   await page.reload({waitUntil:"load"});
   await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
   assertTrue(await page.locator('[data-habit-card]').first().getAttribute('data-habit-card')===firstHabitAfter,"Custom habit order survives a reload");
+  await page.click('[data-habit-reorder]');
+  // Regression check: dragging a card exactly one position forward previously computed the
+  // drop index on the post-removal array, which put the dragged card right back where it
+  // started (indistinguishable from a cancel) - fixed to use the target's pre-removal index.
+  assertTrue(await page.locator('[data-habit-card]').first().getAttribute('draggable')==='true',"Drag handle is enabled on a fine-pointer (desktop) context");
+  const dragTarget=await page.locator('[data-habit-card]').nth(1).getAttribute('data-habit-card');
+  await page.locator('[data-habit-card]').nth(0).dragTo(page.locator('[data-habit-card]').nth(1));
+  await page.waitForTimeout(200);
+  assertTrue(await page.locator('[data-habit-card]').first().getAttribute('data-habit-card')===dragTarget,"Dragging a habit card exactly one position forward reorders it");
+  await page.click('[data-habit-reorder]');
 
   await page.click('[data-app-tab="train"]');
   await page.waitForTimeout(300);

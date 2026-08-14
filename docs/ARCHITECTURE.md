@@ -6,6 +6,12 @@
 
 `src/server/index.js` is the HTTP adapter. New domain boundaries under `src/server/**/*.ts` are strict TypeScript and own request contracts, structured observability, Web Push, device authorization state, reminders, and sync receipts. `npm run typecheck` and the type-aware ESLint rules reject unsafe boundary changes and floating promises. `scripts/sync-static.mjs` bundles the Worker with esbuild, so `dist/server` is generated rather than a second source tree.
 
+### Client override registry
+
+`bootstrap.js` loads `app.js`, then `enhancements.js`, `habits.js`, `health-ui.js`, and `performance-ui.js` as plain sequential `<script>` tags with no bundler or module boundary; later files override earlier global functions (sometimes two or three layers deep, e.g. `renderHome` is reassigned by both `enhancements.js` and `health-ui.js`) by reassigning the same identifier. That load-order dependency is a real constraint of this codebase, not something addressed here by moving to ES modules - doing so would mean rewriting `index.html`'s script tags, `sw.js`'s precache list, and every cross-file global reference in one pass, which is a materially larger and riskier change than the reliability and correctness work this refactor pass otherwise covers.
+
+Instead, every override site is now a call to `REP_OVERRIDE(name, implementation)` (defined at the top of `app.js`, so it is available before any override file loads). It is a pure pass-through: it returns `implementation` unchanged, so it does not alter behavior. What it adds is `window.REP_OVERRIDES`, an ordered log of every `{name, hadPrevious, source}` reassignment, and `window.REP_OVERRIDE_CHAIN(name)` to inspect which files touched a given global and in what order - inspectable from a live console instead of requiring a reader to trace `bootstrap.js`'s load order across four files by hand. `hadPrevious: false` combined with a `console.warn` at load time flags a reassignment with no prior function to override, the signature of a load-order mistake (e.g. a new file inserted before its dependency). All 42 override sites across `enhancements.js`, `habits.js`, `health-ui.js`, and `performance-ui.js` were converted mechanically with an AST-based codemod (matching `Identifier = FunctionExpression` assignment statements via the `typescript` package's parser), not by hand-editing, to avoid transcription errors across files with very dense, long lines.
+
 ## Stateful runtime
 
 - `PairingCoordinator`: atomic five-minute QR handoff claims.

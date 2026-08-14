@@ -43,9 +43,16 @@
   }
   function placeHabit(id,beforeId){
     if(!id||id===beforeId)return;
-    const order=orderedHabits(),from=order.findIndex(habit=>habit.id===id);
-    if(from<0||!order.some(habit=>habit.id===beforeId))return;
-    const [habit]=order.splice(from,1),to=order.findIndex(item=>item.id===beforeId);order.splice(to,0,habit);saveOrder(order);
+    const order=orderedHabits(),from=order.findIndex(habit=>habit.id===id),targetIndex=order.findIndex(habit=>habit.id===beforeId);
+    if(from<0||targetIndex<0)return;
+    // Re-finding the target's index on the post-splice array (the old approach) always lands
+    // one slot short of the target when dragging forward, so dropping an item onto the very
+    // next card was silently a no-op - removing "from" shifts the target into that same slot.
+    // Using the target's pre-splice index instead lands the dragged item adjacent to the
+    // target on the side matching the drag direction, for both directions and any distance.
+    const [habit]=order.splice(from,1);
+    order.splice(targetIndex,0,habit);
+    saveOrder(order);
   }
 
   function dateKey(offset=0){const date=new Date();date.setHours(12,0,0,0);date.setDate(date.getDate()+offset);return localDay(date);}
@@ -106,10 +113,15 @@
   function detail(habit,ar){return ar?habit.detailAr:habit.detailEn;}
   function render(){
     const ar=state.lang==="ar",date=isoDay(),done=completed(date),ordered=orderedHabits(),percent=Math.round(done.length/HABITS.length*100),days=Array.from({length:7},(_,index)=>dateKey(index-6));
+    // HTML5 drag-and-drop does not respond to touch input at all on iOS Safari (verified: a
+    // real touch gesture never fires dragstart), so offering a draggable handle there is a
+    // dead affordance. The up/down buttons below work everywhere and stay the only reorder
+    // path on a coarse (touch-primary) pointer; a fine pointer (mouse/trackpad) keeps drag too.
+    const canDrag=typeof matchMedia==="function"&&matchMedia("(pointer: fine)").matches;
     const section=document.createElement("section");section.className="habit-tracker";section.setAttribute("aria-labelledby","habitTrackerTitle");
     section.innerHTML=`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتُحدَّث مباشرةً في سجل العادات داخل Notion.":"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح سجل العادات":"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${HABITS.length}</strong></div></div>
       ${totalStreak()?`<div class="habit-streak-banner"><span>🔥</span><strong>${totalStreak()} ${ar?"أيام مكتملة متتالية":"fully completed days"}</strong></div>`:""}
-      <div class="habit-grid ${reorderMode?"is-reordering":""}">${ordered.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit,ar),description=detail(habit,ar),action=isDone?(ar?"مكتمل":"completed"):(ar?"غير مكتمل":"not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${ar?"يوم متتالٍ":"day streak"}`:(ar?"ابدأ اليوم":"Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls"><span aria-hidden="true">↕</span><button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${ar?`نقل ${name} لأعلى`:`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===ordered.length-1?"disabled":""} aria-label="${ar?`نقل ${name} لأسفل`:`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
+      <div class="habit-grid ${reorderMode?"is-reordering":""}">${ordered.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit,ar),description=detail(habit,ar),action=isDone?(ar?"مكتمل":"completed"):(ar?"غير مكتمل":"not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode&&canDrag}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${ar?"يوم متتالٍ":"day streak"}`:(ar?"ابدأ اليوم":"Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls">${canDrag?`<span aria-hidden="true">↕</span>`:""}<button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${ar?`نقل ${name} لأعلى`:`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===ordered.length-1?"disabled":""} aria-label="${ar?`نقل ${name} لأسفل`:`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
       <details class="habit-history"><summary><span>${ar?"آخر 7 أيام":"Last 7 days"}</span><strong>${ar?"عرض التقدم":"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,p=Math.round(n/HABITS.length*100),today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString(ar?"ar-EG":"en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${HABITS.length}</strong></div>`;}).join("")}</div></details>`;
     section.querySelectorAll("[data-habit-id]").forEach(button=>button.addEventListener("click",()=>toggle(button.dataset.habitId)));
     section.querySelector("[data-habit-reorder]")?.addEventListener("click",()=>{reorderMode=!reorderMode;renderOverview();});
@@ -126,6 +138,6 @@
 
   window.REP_HABITS={definitions:HABITS,orderedHabits,bucket,completed,streak,payloadForDate,payloadForHabit,hasEntries,notionUrl:NOTION_HABITS_URL};
   const baseOverview=renderOverview;
-  renderOverview=function(){baseOverview();mount();};
+  renderOverview=REP_OVERRIDE("renderOverview", function(){baseOverview();mount();});
   if(state.view==="home-overview")renderOverview();
 })();

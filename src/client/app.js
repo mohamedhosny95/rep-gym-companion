@@ -1,3 +1,18 @@
+// enhancements.js/habits.js/health-ui.js/performance-ui.js each load after this file and
+// override several of its functions (sometimes 2-3 layers deep) by reassigning the same
+// global name - a real, load-order-dependent pattern this app is not moving off in one pass,
+// but every reassignment now routes through here so the chain is inspectable instead of
+// requiring a reader to trace bootstrap.js's load order across four files by hand.
+// REP_OVERRIDES: window.REP_OVERRIDE_CHAIN("renderHome") lists every layer that touched a name.
+window.REP_OVERRIDES=[];
+function REP_OVERRIDE(name,implementation){
+  const hadPrevious=typeof window[name]==="function";
+  window.REP_OVERRIDES.push({name,hadPrevious,source:(typeof document!=="undefined"&&document.currentScript&&document.currentScript.src)||"unknown"});
+  if(!hadPrevious)console.warn(`REP_OVERRIDE: "${name}" was assigned with no existing function to override - check bootstrap.js load order.`);
+  return implementation;
+}
+window.REP_OVERRIDE_CHAIN=name=>window.REP_OVERRIDES.filter(entry=>entry.name===name);
+
 const errorLogKey="rep-error-log-v1";
 function logClientError(source,message,stack){try{const log=JSON.parse(localStorage.getItem(errorLogKey)||"[]");log.push({time:new Date().toISOString(),source,message:String(message||"").slice(0,500),stack:String(stack||"").slice(0,1000)});localStorage.setItem(errorLogKey,JSON.stringify(log.slice(-25)));}catch{}}
 addEventListener("error",e=>logClientError("error",e.message,e.error?.stack));

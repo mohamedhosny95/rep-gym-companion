@@ -114,6 +114,6 @@
   }
 
   const baseInsights=renderInsights;
-  renderInsights=function(){baseInsights();renderPerformance();};
+  renderInsights=REP_OVERRIDE("renderInsights", function(){baseInsights();renderPerformance();});
   if(state.activeTab==="insights")renderInsights();
 })();

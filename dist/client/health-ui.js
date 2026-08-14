@@ -104,8 +104,8 @@
   }
 
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
-  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
-  renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
-  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
+  renderVitals=REP_OVERRIDE("renderVitals", function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();});
+  renderInsights=REP_OVERRIDE("renderInsights", function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();});
+  renderHome=REP_OVERRIDE("renderHome", function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();});
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();else if(state.activeTab==="train")renderHome();
 })();
