@@ -3,7 +3,7 @@ window.REP_I18N = {
     dir: "ltr",
     ui: {
       companion:"Your live workout companion", hero1:"Move well.", hero2:"Keep going.", heroSub:"Pick the block in front of you. Everything else can wait.",
-      reference:"Reference", recovery:"Recovery", recoveryDesc:"Daily basics, Friday check-in, red flags, and Saturday spa protocol.", openGuide:"Open guide →",
+      reference:"Reference", recovery:"Recovery", recoveryDesc:"Daily basics, red flags, Friday full rest, and Saturday active recovery + spa protocol.", openGuide:"Open guide →",
       weekly:"Weekly rhythm", choose:"Choose a session", resume:"Resume", continue:"Continue →", steps:"steps →", of:"of", active:"ACTIVE",
       startFinish:"START → FINISH", anatomyLoop:"ANATOMY VIEW · GUIDED LOOP", technique:"Technique & cues", setup:"Setup", move:"Move", cue:"Cue", avoid:"Avoid",
       previous:"Previous", next:"Next exercise →", finish:"Finish session", markDone:"Mark done", set:"Set", done:"Done", rest:"rest",
@@ -24,7 +24,7 @@ window.REP_I18N = {
     dir: "rtl",
     ui: {
       companion:"رفيقك أثناء التمرين", hero1:"تحرّك بإتقان.", hero2:"واستمر.", heroSub:"اختر تمرينك الحالي. كل شيء آخر يمكنه الانتظار.",
-      reference:"مرجع", recovery:"الاستشفاء", recoveryDesc:"الأساسيات اليومية، مراجعة الجمعة، علامات الخطر وبروتوكول السبت.", openGuide:"افتح الدليل ←",
+      reference:"مرجع", recovery:"الاستشفاء", recoveryDesc:"الأساسيات اليومية، علامات الخطر، راحة الجمعة التامة، واستشفاء السبت النشط مع بروتوكول السبا.", openGuide:"افتح الدليل ←",
       weekly:"نظام الأسبوع", choose:"اختر الحصة", resume:"متابعة", continue:"أكمل ←", steps:"خطوات ←", of:"من", active:"العضلات النشطة",
       startFinish:"البداية ← النهاية", anatomyLoop:"عرض تشريحي · حركة موجهة", technique:"الطريقة والتعليمات", setup:"الوضعية", move:"الحركة", cue:"ركّز على", avoid:"تجنّب",
       previous:"السابق", next:"التمرين التالي ←", finish:"إنهاء الحصة", markDone:"تم", set:"مجموعة", done:"تمت", rest:"راحة",
