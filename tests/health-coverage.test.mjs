@@ -22,14 +22,24 @@ test("complete Apple Watch days earn high data confidence",()=>{
   assert.deepEqual(result.missing,[]);
 });
 
-test("coverage remains separate from readiness and names missing measurements",()=>{
+test("Watch coverage and workout heart rate never appear or count against the score, since neither import path can ever supply them",()=>{
   const value=state();
   delete value.healthMetrics["2026-08-12"].coverage_minutes;
+  delete value.healthMetrics["2026-08-12"].workout_hr_samples;
+  const result=coverage.coverage(value,"2026-08-12");
+  assert.equal(result.score,100);
+  assert.equal(result.confidence,"high");
+  assert.deepEqual(result.missing,[]);
+  assert.ok(!result.items.some(item=>item.id==="wear"||item.id==="workout"));
+});
+
+test("coverage remains separate from readiness and names missing measurements",()=>{
+  const value=state();
   value.recoveryCheckins=[];
   const result=coverage.coverage(value,"2026-08-12");
-  assert.equal(result.score,75);
-  assert.equal(result.confidence,"medium");
-  assert.deepEqual(result.missing,["Watch coverage","Morning check-in"]);
+  assert.equal(result.score,88);
+  assert.equal(result.confidence,"high");
+  assert.deepEqual(result.missing,["Morning check-in"]);
 });
 
 test("long-term trends require a personal baseline and preserve 90-day windows",()=>{

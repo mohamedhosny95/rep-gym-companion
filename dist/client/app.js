@@ -1261,24 +1261,12 @@ function activeEnergyCard(ar){
     <p class="vitals-import-copy">${ar?"من حلقات النشاط في ساعتك أو «الطاقة النشطة» في تطبيق الصحة. يضيف حِمل اليوم كله — وليس التمارين المسجلة فقط — إلى نتيجة الإجهاد.":"From your Watch's Activity rings or the Health app's Active Energy total. Adds your whole day's load — not just logged workouts — to the Strain score."}</p>
     <form class="active-energy-form" data-active-energy-form><input type="number" min="0" max="10000" step="1" inputmode="numeric" value="${value||""}" placeholder="${ar?"مثال 620":"e.g. 620"}" data-active-energy-input aria-label="${ar?"الطاقة النشطة اليوم بالكيلوكالوري":"Today's active energy in kilocalories"}"><button type="submit">${ar?"حفظ":"Save"}</button></form></section>`;
 }
-function setWorkoutHrRecorded(recorded){
-  const date=isoDay(),prior=state.healthMetrics[date]||{};
-  state.healthMetrics[date]={...prior,date,workout_hr_samples:recorded?5:null};
-  persist();renderVitals();
-}
-function workoutHrCard(ar){
-  const recorded=Number(state.healthMetrics?.[isoDay()]?.workout_hr_samples)>=5;
-  return `<section class="workout-hr-card"><div class="supplement-head"><div><small>${ar?"معدل ضربات القلب أثناء التمرين":"WORKOUT HEART RATE"}</small><strong>${recorded?(ar?"تم التسجيل اليوم":"Recorded today"):(ar?"لم يُسجَّل بعد":"Not logged yet")}</strong></div></div>
-    <label class="workout-hr-toggle"><input type="checkbox" data-workout-hr-toggle ${recorded?"checked":""}> ${ar?"سجّلت تمريناً بمعدل ضربات القلب على الساعة اليوم":"I tracked a workout with heart rate on my Watch today"}</label>
-    <p class="vitals-import-copy">${ar?"إقرار يدوي فقط لتحسين مؤشر اكتمال البيانات — لا يتحقق من بيانات HealthKit الفعلية.":"A manual acknowledgement to improve the data-coverage score — it doesn't verify actual HealthKit data."}</p></section>`;
-}
 function bindVitalsTools(){
   document.querySelector("[data-vitals-screenshot]")?.addEventListener("change",e=>analyzeVitalsImage(e.target.files?.[0]));
   document.querySelector("[data-vitals-connect]")?.addEventListener("click",()=>setPrimaryTab("food"));
   document.querySelector("[data-vitals-save]")?.addEventListener("click",saveVitalsFromDraft);
   document.querySelector("[data-vitals-discard]")?.addEventListener("click",discardVitalsDraft);
   document.querySelector("[data-active-energy-form]")?.addEventListener("submit",e=>{e.preventDefault();saveActiveEnergy(document.querySelector("[data-active-energy-input]").value);});
-  document.querySelector("[data-workout-hr-toggle]")?.addEventListener("change",e=>setWorkoutHrRecorded(e.target.checked));
   document.querySelector("[data-vitals-check-now]")?.addEventListener("click",()=>fetchPendingVitals(true));
   document.querySelector("[data-sleep-form]")?.addEventListener("submit",e=>{e.preventDefault();const bedtime=document.querySelector("[data-sleep-bedtime]").value,wake=document.querySelector("[data-sleep-wake]").value,hrv=document.querySelector("[data-sleep-hrv]")?.value,rhr=document.querySelector("[data-sleep-rhr]")?.value,resp=document.querySelector("[data-sleep-resp]")?.value;if(saveSleepLog(bedtime,wake,hrv,rhr,resp)){if(navigator.vibrate)navigator.vibrate(30);renderVitals();}});
   document.querySelectorAll("[data-delete-sleep]").forEach(b=>b.onclick=()=>{deleteSleepLog(b.dataset.deleteSleep);renderVitals();});
@@ -1293,7 +1281,6 @@ function renderVitals(){
   ${sleepTrackerCard(ar)}
   ${journalCard(ar)}
   ${activeEnergyCard(ar)}
-  ${workoutHrCard(ar)}
   ${healthMetricsCard(ar)}
   ${importCard(ar)}`;
   bindVitalsTools();
