@@ -9,7 +9,9 @@
     {id:"workout",icon:"workout",en:"Workout",ar:"تمرين"},
     {id:"adhkar",icon:"list",en:"Morning & evening adhkar",ar:"أذكار الصباح والمساء"},
     {id:"read",icon:"book",en:"Reading",ar:"قراءة"},
-    {id:"water",icon:"water",en:"Water",ar:"الماء",detailEn:"3 L",detailAr:"3 لتر"}
+    {id:"water",icon:"water",en:"Water",ar:"الماء",detailEn:"3 L",detailAr:"3 لتر"},
+    {id:"kahf",icon:"quran",en:"Surat Al-Kahf",ar:"سورة الكهف",days:["Friday"]},
+    {id:"dua-baba",icon:"heart",en:"Dua for Baba",ar:"دعاء لبابا"}
   ];
   const ICONS={
     bed:'<svg viewBox="0 0 24 24"><path d="M3 5v15M3 15h18v5M6 15V9h5a3 3 0 0 1 3 3v3M14 11h4a3 3 0 0 1 3 3v1"/></svg>',
@@ -35,6 +37,10 @@
     state.habitOrder=order;
     return order.map(id=>habitMap.get(id));
   }
+  const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  function dayNameFor(date){return DAY_NAMES[new Date(`${date}T12:00:00`).getDay()];}
+  function appliesOn(habit,date){return !habit.days||habit.days.includes(dayNameFor(date));}
+  function habitsForDate(date){return orderedHabits().filter(habit=>appliesOn(habit,date));}
   function saveOrder(order){state.habitOrder=order.map(habit=>habit.id);persist();renderOverview();}
   function moveHabit(id,delta){
     const order=orderedHabits(),index=order.findIndex(habit=>habit.id===id),target=index+delta;
@@ -57,15 +63,22 @@
     return value&&typeof value==="object"?value:{checked:{}};
   }
   function checked(date,id){return Boolean(bucket(date).checked?.[id]);}
-  function completed(date){return orderedHabits().filter(habit=>checked(date,habit.id));}
+  function completed(date){return habitsForDate(date).filter(habit=>checked(date,habit.id));}
+  function applicableOffsets(habit,limit=370){
+    const offsets=[];
+    for(let offset=0;offset>-limit;offset--){if(appliesOn(habit,dateKey(offset)))offsets.push(offset);}
+    return offsets;
+  }
   function streak(id){
-    let count=0,offset=checked(dateKey(),id)?0:-1;
-    while(offset>-370&&checked(dateKey(offset),id)){count++;offset--;}
+    const habit=habitMap.get(id);if(!habit)return 0;
+    const offsets=applicableOffsets(habit);if(!offsets.length)return 0;
+    let count=0,start=checked(dateKey(offsets[0]),id)?0:1;
+    for(let i=start;i<offsets.length;i++){if(checked(dateKey(offsets[i]),id))count++;else break;}
     return count;
   }
   function totalStreak(){
-    let count=0,offset=completed(dateKey()).length===HABITS.length?0:-1;
-    while(offset>-370&&completed(dateKey(offset)).length===HABITS.length){count++;offset--;}
+    let count=0,offset=completed(dateKey()).length===habitsForDate(dateKey()).length?0:-1;
+    while(offset>-370&&completed(dateKey(offset)).length===habitsForDate(dateKey(offset)).length){count++;offset--;}
     return count;
   }
   function careFlags(date){
@@ -74,9 +87,9 @@
     return {care,values,keys,complete};
   }
   function payloadForDate(date){
-    const {care,values,keys,complete}=careFlags(date),done=completed(date),habitChecks=bucket(date).checked||{};
-    const careDone=keys.filter(key=>values[key]).length,total=keys.length+HABITS.length,doneTotal=careDone+done.length;
-    const habitNote=`Habit tracker: ${done.length}/${HABITS.length}${done.length?` — ${done.map(habit=>habit.en).join(", ")}`:""}`;
+    const {care,values,keys,complete}=careFlags(date),done=completed(date),todays=habitsForDate(date),habitChecks=bucket(date).checked||{};
+    const careDone=keys.filter(key=>values[key]).length,total=keys.length+todays.length,doneTotal=careDone+done.length;
+    const habitNote=`Habit tracker: ${done.length}/${todays.length}${done.length?` — ${done.map(habit=>habit.en).join(", ")}`:""}`;
     return {
       date,morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:complete("post"),hairRoutineComplete:complete("hair"),
       spf:Boolean(values["morning-0"]),floss:Boolean(values["evening-1"]),beardOil:Boolean(values["morning-3"]&&values["evening-3"]),showerWithin30m:Boolean(values["post-0"]),
@@ -105,12 +118,12 @@
   function label(habit,ar){return ar?habit.ar:habit.en;}
   function detail(habit,ar){return ar?habit.detailAr:habit.detailEn;}
   function render(){
-    const ar=state.lang==="ar",date=isoDay(),done=completed(date),ordered=orderedHabits(),percent=Math.round(done.length/HABITS.length*100),days=Array.from({length:7},(_,index)=>dateKey(index-6));
+    const ar=state.lang==="ar",date=isoDay(),ordered=habitsForDate(date),done=completed(date),percent=ordered.length?Math.round(done.length/ordered.length*100):0,days=Array.from({length:7},(_,index)=>dateKey(index-6));
     const section=document.createElement("section");section.className="habit-tracker";section.setAttribute("aria-labelledby","habitTrackerTitle");
-    section.innerHTML=`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتُحدَّث مباشرةً في سجل العادات داخل Notion.":"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح سجل العادات":"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${HABITS.length}</strong></div></div>
+    section.innerHTML=`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتُحدَّث مباشرةً في سجل العادات داخل Notion.":"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح سجل العادات":"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${ordered.length}</strong></div></div>
       ${totalStreak()?`<div class="habit-streak-banner"><span>🔥</span><strong>${totalStreak()} ${ar?"أيام مكتملة متتالية":"fully completed days"}</strong></div>`:""}
       <div class="habit-grid ${reorderMode?"is-reordering":""}">${ordered.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit,ar),description=detail(habit,ar),action=isDone?(ar?"مكتمل":"completed"):(ar?"غير مكتمل":"not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${ar?"يوم متتالٍ":"day streak"}`:(ar?"ابدأ اليوم":"Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls"><span aria-hidden="true">↕</span><button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${ar?`نقل ${name} لأعلى`:`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===ordered.length-1?"disabled":""} aria-label="${ar?`نقل ${name} لأسفل`:`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
-      <details class="habit-history"><summary><span>${ar?"آخر 7 أيام":"Last 7 days"}</span><strong>${ar?"عرض التقدم":"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,p=Math.round(n/HABITS.length*100),today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString(ar?"ar-EG":"en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${HABITS.length}</strong></div>`;}).join("")}</div></details>`;
+      <details class="habit-history"><summary><span>${ar?"آخر 7 أيام":"Last 7 days"}</span><strong>${ar?"عرض التقدم":"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,dayTotal=habitsForDate(day).length,p=dayTotal?Math.round(n/dayTotal*100):0,today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString(ar?"ar-EG":"en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${dayTotal}</strong></div>`;}).join("")}</div></details>`;
     section.querySelectorAll("[data-habit-id]").forEach(button=>button.addEventListener("click",()=>toggle(button.dataset.habitId)));
     section.querySelector("[data-habit-reorder]")?.addEventListener("click",()=>{reorderMode=!reorderMode;renderOverview();});
     section.querySelectorAll("[data-habit-move]").forEach(button=>button.addEventListener("click",()=>moveHabit(button.dataset.habitOrderId,button.dataset.habitMove==="up"?-1:1)));
