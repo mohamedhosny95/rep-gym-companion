@@ -448,17 +448,31 @@ function sessionCard(id, s, resume) {
     <span><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
     <span class="session-icon">${ICONS[s.icon]||s.icon}</span><p>${ls.meta}<br>${ls.description}</p><small>${resume?u.continue:`${s.exercises.length} ${u.steps}`}</small></button>`;
 }
-function showSessionPreview(id){
+// Read-only walkthrough: shows the exact same animated form demonstration
+// and technique cues as the real player, but never touches state.session,
+// state.index, state.sessionStartedAt, state.completed, or history - opening
+// or expanding rows here has zero effect on what counts as an active session.
+function showSessionPreview(id,openIndices=new Set()){
   const s=sessions[id],ar=state.lang==="ar",ls=sessionText(id,s),u=U();
   state.previewSession=id;state.view="preview";state.activeTab="train";document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
-  const rows=s.exercises.map((base,i)=>{const item=localizedItem(base);return `<div class="preview-row"><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></div>`}).join("");
-  app.innerHTML=`${moduleHeader(ls.name,ar?"استعرض الخطة قبل البدء.":"Preview the plan before you start.",ls.description)}
+  const rows=s.exercises.map((base,i)=>{
+    const item=currentItem(base);
+    return `<details class="preview-row" ${openIndices.has(i)?"open":""}><summary><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></summary>
+      <div class="preview-row-body">
+        <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${anatomyVisual(item.motion)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
+        ${motionControls()}
+        <div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div>
+      </div>
+    </details>`;
+  }).join("");
+  app.innerHTML=`${moduleHeader(ls.name,ar?"استعرض الخطة وتقنية كل حركة قبل البدء.":"Preview the plan and each move's technique before you start.",ls.description)}
     <section class="preview-meta"><span>${ls.meta}</span><span>${s.exercises.length} ${u.steps}</span></section>
     <section class="preview-list">${rows}</section>
     <button class="nav-button primary" data-start-session>${ar?"ابدأ التمرين ←":"Start workout →"}</button>
     <button class="nav-button" data-cancel-preview>${ar?"رجوع":"Back"}</button>`;
   document.querySelector("[data-start-session]").onclick=()=>startSession(id);
   document.querySelector("[data-cancel-preview]").onclick=renderHome;
+  document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
 }
 function startSession(id) {
   state.activeTab="train";updatePrimaryTabs();
@@ -562,7 +576,11 @@ function motionAction(action){
   if(action==="speed")state.speed=state.speed===1?.5:1;
   if(action==="view")state.viewMode=state.viewMode==="side"?"front":"side";
   if(action==="muscles")state.muscles=!state.muscles;
-  persist();renderExercise();
+  persist();
+  if(state.view==="preview"){
+    const open=new Set([...document.querySelectorAll(".preview-row")].map((el,i)=>el.open?i:-1).filter(i=>i>=0));
+    showSessionPreview(state.previewSession,open);
+  }else renderExercise();
 }
 function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60).padStart(2,"0");return `${m}:${s}`;}
 function toggleExerciseTimer(motion){
