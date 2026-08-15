@@ -20,9 +20,11 @@ Version 68 added a verified, durable synchronization and device-coordination arc
 
 The Today screen also includes a bilingual daily habit tracker for sleep,
 night prayer, Fajr prayer, Sadqa, Quran wird (reading Quran pages), Quran
-memorization, training, morning/evening adhkar, reading, and hydration. Check-ins are available offline,
-included in encrypted backups, show seven-day progress and per-habit streaks,
-and merge into the verified Notion Daily Care record during synchronization.
+memorization, training, morning/evening adhkar, reading, hydration, and a daily
+dua for Baba. Surat Al-Kahf only appears as a habit card on Fridays. Check-ins
+are available offline, included in encrypted backups, show seven-day progress
+and per-habit streaks, and merge into the verified Notion Daily Care record
+during synchronization.
 
 Version 66 added a coverage-aware Apple Watch health system:
 
