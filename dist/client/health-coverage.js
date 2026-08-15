@@ -15,6 +15,12 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
     const aliases={sleep:sleep.hours,hrv:sleep.hrv,rhr:sleep.rhr,resp:sleep.resp,steps:metrics.steps,activeEnergy:metrics.active_energy_kcal??state.activeEnergy?.[key],temperature:metrics.wrist_temperature_c,spo2:metrics.oxygen_saturation_pct,vo2:metrics.vo2_max,coverage:metrics.coverage_minutes,battery:metrics.watch_battery_pct};
     return aliases[name];
   };
+  // Watch coverage and Workout heart rate are deliberately excluded from
+  // scoring: neither the DIY Shortcut nor Health Auto Export import path can
+  // ever populate coverage_minutes or workout_hr_samples (both require the
+  // unbuilt native HealthKit bridge), so counting them would permanently cap
+  // confidence for every non-native-bridge user rather than reflecting what
+  // their actual pipeline can deliver.
   const coverage=(state,key=dayKey())=>{
     const sleep=sleepFor(state,key),metrics=metricsFor(state,key),checkin=checkinFor(state,key);
     const definitions=[
@@ -23,12 +29,12 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
       ["rhr","Resting heart rate",15,finite(sleep.rhr)],
       ["resp","Respiratory rate",10,finite(sleep.resp)],
       ["activity","Activity",10,finite(metrics.steps)||finite(metrics.active_energy_kcal)||finite(state.activeEnergy?.[key])],
-      ["wear","Watch coverage",15,finite(metrics.coverage_minutes)&&Number(metrics.coverage_minutes)>=1080],
-      ["workout","Workout heart rate",5,finite(metrics.workout_hr_samples)&&Number(metrics.workout_hr_samples)>=5],
       ["checkin","Morning check-in",10,Boolean(checkin)]
     ];
     const items=definitions.map(([id,label,weight,available])=>({id,label,weight,available}));
-    const score=items.reduce((sum,item)=>sum+(item.available?item.weight:0),0);
+    const maxScore=items.reduce((sum,item)=>sum+item.weight,0);
+    const earned=items.reduce((sum,item)=>sum+(item.available?item.weight:0),0);
+    const score=maxScore?Math.round(earned/maxScore*100):0;
     const missing=items.filter(item=>!item.available).map(item=>item.label);
     const lastImport=state.lastVitalsImportAt||state.lastSyncedAt||null;
     const staleHours=lastImport?Math.max(0,(Date.now()-Date.parse(lastImport))/3600000):null;
@@ -55,9 +61,8 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
     return {date:key,metrics,weight:{current:weightValues.at(-1)?.value??null,average7:average(weightValues.slice(-7)),average28:average(weightValues.slice(-28)),count:weightValues.length},waistCm:waist?Number(waist.waist_cm):null};
   };
   const chargingAdvice=(state,key=dayKey())=>{
-    const data=coverage(state,key),battery=metricValue(state,key,"battery"),missingWear=data.items.find(item=>item.id==="wear"&&!item.available);
+    const battery=metricValue(state,key,"battery");
     if(finite(battery)&&Number(battery)<30)return {tone:"warning",title:"Charge before sleep",detail:`Watch battery was ${Math.round(Number(battery))}%. Charge during a shower or desk block, then wear it overnight.`};
-    if(missingWear)return {tone:"warning",title:"Close the coverage gap",detail:"Less than 18 hours of Watch coverage was received. Pick a repeatable daytime charging window."};
     return {tone:"good",title:"Coverage routine is working",detail:"Keep charging during a low-value daytime window so overnight measurements remain complete."};
   };
   const workoutGuard=(state,key=dayKey())=>{
