@@ -24,7 +24,7 @@
     "generate:vapid": "node scripts/generate-vapid.mjs"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.21.2",
+    "@cloudflare/vitest-pool-workers": "^0.21.3",
     "@types/node": "^26.2.0",
     "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
