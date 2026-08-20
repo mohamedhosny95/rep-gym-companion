@@ -632,7 +632,7 @@ function loadPanel(base,item){
   const prev=log.previousSets?.map((s,i)=>`${i+1}: ${s.weight||"—"} kg × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
   const advice=window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id,state);
   const curWeight=Number(log.sets[0]?.weight||60)||60;
-  return `<section class="load-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل كل مجموعة":"Log every set"}</strong><div style="display:flex;gap:6px;"><button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${state.lang==="ar"?"حساب الأوزان":"Plate Math"}</button><button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${state.lang==="ar"?"إملاء صوتي":"Voice Log"}</button></div></div><div class="set-log-grid">
+  return `<section class="load-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل كل مجموعة":"Log every set"}</strong><div style="display:flex;gap:6px;"><button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${state.lang==="ar"?"الإيقاع":"Tempo"}</button><button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${state.lang==="ar"?"حساب الأوزان":"Plate Math"}</button><button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${state.lang==="ar"?"إملاء صوتي":"Voice Log"}</button></div></div><div class="set-log-grid">
     ${Array.from({length:item.sets},(_,i)=>{const s=log.sets[i]||{};return `<div class="set-log-row"><b>${i+1}</b><label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label><label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label><label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label><label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label></div>`}).join("")}
   </div><p>${u.previousLog}: <strong>${prev}</strong></p><div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div></section>`;
 }
@@ -652,6 +652,54 @@ function showSwapModal(exerciseName){
   document.body.appendChild(overlay);
   overlay.querySelector("[data-swap-close]").onclick=()=>overlay.remove();
   overlay.querySelectorAll("[data-select-swap]").forEach(btn=>{btn.onclick=()=>{const chosen=btn.dataset.selectSwap,session=sessions[state.session];if(session&&session.exercises[state.index]){session.exercises[state.index]={...session.exercises[state.index],name:chosen};persist();overlay.remove();renderExercise();showToast(ar?`تم التبديل إلى ${chosen}`:`Swapped to ${chosen}`);}};});
+}
+
+function startTempoCoach(base, item){
+  const ar=state.lang==="ar";
+  let currentRep=1, phaseIdx=0, secondsInPhase=0, paused=false;
+  const targetReps=10;
+  const phases = [
+    { name: ar ? "نزول بتحكم" : "ECCENTRIC (DOWN)", duration: 3, speak: ar ? "نزول" : "Down", color: "var(--blue)" },
+    { name: ar ? "ثبات في الأسفل" : "ISOMETRIC (HOLD)", duration: 1, speak: ar ? "ثبات" : "Hold", color: "var(--acid)" },
+    { name: ar ? "دفع انفجاري" : "CONCENTRIC (EXPLODE)", duration: 1, speak: ar ? "دفع" : "Up", color: "#f43f5e" },
+    { name: ar ? "إعادة تهيئة" : "RESET (TOP)", duration: 1, speak: "", color: "var(--muted)" }
+  ];
+  
+  const overlay=document.createElement("div");
+  overlay.className="timed-mode";
+  overlay.innerHTML=`<button class="timed-close" data-tempo-close aria-label="Close">×</button><p>${esc(item.name)}</p><div style="margin:16px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="tempo-ring" style="width:140px;height:140px;border-radius:50%;border:4px solid var(--acid);display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;transform:scale(1);"><strong data-tempo-rep style="font-size:36px;font-weight:900;">${currentRep}</strong></div><span data-tempo-phase style="margin-top:14px;font-weight:800;font-size:14px;letter-spacing:.06em;color:var(--acid);">${phases[0].name}</span></div><div class="timed-actions"><button data-tempo-pause>${U().pause}</button><button data-tempo-finish>${U().finish}</button></div>`;
+  document.body.appendChild(overlay);
+  
+  const close=()=>{clearInterval(tick);overlay.remove();window.speechSynthesis?.cancel();};
+  overlay.querySelector("[data-tempo-close]").onclick=close;
+  overlay.querySelector("[data-tempo-finish]").onclick=()=>{vibrateGym("pr");triggerConfetti();close();};
+  overlay.querySelector("[data-tempo-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};
+
+  const ring=overlay.querySelector(".tempo-ring"),repEl=overlay.querySelector("[data-tempo-rep]"),phaseEl=overlay.querySelector("[data-tempo-phase]");
+  speak(phases[0].speak);
+  const tick=setInterval(()=>{
+    if(paused)return;
+    secondsInPhase++;
+    const curPhase=phases[phaseIdx];
+    playChime();
+    if(navigator.vibrate)navigator.vibrate(20);
+    if(secondsInPhase>=curPhase.duration){
+      secondsInPhase=0;
+      phaseIdx=(phaseIdx+1)%phases.length;
+      const nextPhase=phases[phaseIdx];
+      phaseEl.textContent=nextPhase.name;
+      phaseEl.style.color=nextPhase.color;
+      ring.style.borderColor=nextPhase.color;
+      if(phaseIdx===0){
+        currentRep++;
+        if(currentRep>targetReps){vibrateGym("pr");triggerConfetti();speak(ar?"مجموعة مكتملة!":"Set Complete!");close();return;}
+        repEl.textContent=currentRep;
+        ring.style.transform="scale(1.2)";
+        setTimeout(()=>ring.style.transform="scale(1)",200);
+      }
+      if(nextPhase.speak)speak(nextPhase.speak);
+    }
+  },1000);
 }
 
 function startVoiceSetLogger(base,item){
@@ -717,6 +765,7 @@ function renderExercise() {
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
   document.querySelector("[data-swap]")?.addEventListener("click",()=>{state.swaps.backExtension=!state.swaps.backExtension;persist();renderExercise();});
   document.querySelectorAll("[data-swap-modal]").forEach(b=>b.addEventListener("click",()=>showSwapModal(b.dataset.swapModal)));
+  document.querySelector("[data-tempo-coach]")?.addEventListener("click",()=>startTempoCoach(base,item));
   document.querySelector("[data-plate-math]")?.addEventListener("click",e=>showPlateCalculator(Number(e.currentTarget.dataset.plateMath)||60));
   document.querySelector("[data-voice-set-log]")?.addEventListener("click",()=>startVoiceSetLogger(base,item));
   document.querySelector("[data-exercise-timer]")?.addEventListener("click",()=>toggleExerciseTimer(item.motion));
