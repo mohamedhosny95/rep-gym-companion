@@ -112,7 +112,15 @@
     if(!habitMap.has(id))return;
     const date=isoDay(),value=bucket(date,true);value.checked=value.checked&&typeof value.checked==="object"?value.checked:{};
     value.checked[id]=!Boolean(value.checked[id]);value.updatedAt=new Date().toISOString();
-    if(value.checked[id]&&navigator.vibrate)navigator.vibrate(30);
+    if(value.checked[id]){
+      if(window.vibrateGym)window.vibrateGym("habit");
+      else if(navigator.vibrate)navigator.vibrate(30);
+      const todays=habitsForDate(date);
+      if(completed(date).length===todays.length){
+        if(window.triggerConfetti)window.triggerConfetti();
+        if(window.vibrateGym)window.vibrateGym("pr");
+      }
+    }
     persist();scheduleSync(date,id);renderOverview();
   }
   function label(habit,ar){return ar?habit.ar:habit.en;}

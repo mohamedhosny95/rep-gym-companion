@@ -545,3 +545,9 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 
 @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.5}}
 @media(max-width:430px){.muscle-heatmap-grid{grid-template-columns:1fr}}
+
+.lift-metric-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lift-sparkline{width:70px;height:20px;overflow:visible}
+.quick-chip-btn:hover{background:rgba(201,255,61,.1)!important;border-color:var(--acid)!important;color:var(--acid)!important}
+.plate-visual-sleeve{transition:all .2s ease}
+
