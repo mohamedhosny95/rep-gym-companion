@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security & Privacy Policy
+    url: https://github.com/mohamedhosny95/rep-gym-companion/blob/main/docs/SECURITY_AND_PRIVACY.md
+    about: Read our privacy and security posture, encryption guarantees, and disclosure procedures.
+  - name: Architecture & Operations
+    url: https://github.com/mohamedhosny95/rep-gym-companion/blob/main/docs/OPERATIONS.md
+    about: Review runbooks for Notion drift, device syncing, and outage recovery.
