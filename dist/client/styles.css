@@ -683,4 +683,26 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
   }
 }
 
+/* Sandbox / Preview Mode Banner */
+.preview-mode-banner {
+  background: linear-gradient(90deg, #ff8b3d 0%, #d946ef 100%);
+  color: #080a09;
+  padding: 8px 14px;
+  box-shadow: 0 4px 16px rgba(255, 139, 61, 0.35);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  animation: slideDown .2s ease-out;
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+#previewModeButton.is-active {
+  background: rgba(255, 139, 61, 0.22);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+
 

@@ -18,6 +18,7 @@
       { id: "tool-pdf", title: ar ? "تصدير بطاقة الدورة التدريبية (PDF)" : "Export Mesocycle Report (PDF)", category: ar ? "أدوات" : "Tools", icon: "📄", action: () => window.REP_REPORT_CARD?.openPrintableReport(state) },
       { id: "tool-sync", title: ar ? "مزامنة كل شيء الآن" : "Sync Everything Now", category: ar ? "أدوات" : "Tools", icon: "🔄", action: () => window.REP_SYNC_RUNTIME?.syncEverything?.() },
       { id: "tool-import", title: ar ? "استيراد بيانات (Strong / Hevy / Apple Health)" : "Import Data (Strong / Hevy / Apple Health)", category: ar ? "أدوات" : "Tools", icon: "📥", action: () => { window.renderRepSettings?.("general"); document.querySelector(".data-migration-card")?.scrollIntoView({ behavior: "smooth" }); } },
+      { id: "tool-preview", title: ar ? "تبديل وضع المعاينة التجريبي (بدون حفظ)" : "Toggle Preview / Sandbox Mode (No Saving)", category: ar ? "أدوات" : "Tools", icon: "🔬", action: () => window.togglePreviewMode?.() },
       { id: "tool-lang", title: ar ? "Switch to English" : "التبديل إلى العربية", category: ar ? "تفضيلات" : "Preferences", icon: "🌐", action: () => document.querySelector("#langButton")?.click() },
 
       // Workouts

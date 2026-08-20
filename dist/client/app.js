@@ -153,6 +153,7 @@ const state = {
   pushTime:saved.pushTime||"20:00", pushEndpoint:saved.pushEndpoint||null,
   activeEnergy:saved.activeEnergy||{}, lastVitalsImportDate:saved.lastVitalsImportDate||null, lastVitalsImportAt:saved.lastVitalsImportAt||null,
   vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false, vitalsImportStatus:"", vitalsImportError:false,
+  previewMode: false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 const syncKeyStorage="rep-notion-pairing-key-v1";
@@ -161,15 +162,90 @@ const app = document.querySelector("#app");
 new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidth;app.classList.add("view-enter");}).observe(app,{childList:true});
 const timerDock = document.querySelector("#timerDock");
 
+let previewSnapshot = null;
+function togglePreviewMode(){
+  const ar = state.lang === "ar";
+  if(!state.previewMode){
+    previewSnapshot = JSON.parse(JSON.stringify({
+      completed: state.completed,
+      logs: state.logs,
+      history: state.history,
+      daily: state.daily,
+      foodEntries: state.foodEntries,
+      water: state.water,
+      bodyWeights: state.bodyWeights,
+      sleepLogs: state.sleepLogs,
+      recoveryCheckins: state.recoveryCheckins,
+      sessionStartedAt: state.sessionStartedAt,
+      session: state.session,
+      index: state.index,
+      view: state.view,
+      activeTab: state.activeTab,
+      swaps: state.swaps,
+      reviews: state.reviews,
+      fieldTest: state.fieldTest
+    }));
+    state.previewMode = true;
+    updatePreviewUI();
+    showToast(ar ? "🔬 تم تفعيل وضع المعاينة: لن يُحسب أو يُحفظ أي شيء تقوم به!" : "🔬 Preview Mode ON: Nothing you do will be saved or calculated.");
+  } else {
+    if(previewSnapshot){
+      Object.assign(state, JSON.parse(JSON.stringify(previewSnapshot)));
+    }
+    state.previewMode = false;
+    previewSnapshot = null;
+    updatePreviewUI();
+    showToast(ar ? "تم إنهاء وضع المعاينة واستعادة البيانات الأصلية." : "Exited Preview Mode: Original data restored.");
+    if(state.view === "player") renderExercise();
+    else if(state.view === "nutrition") renderNutrition();
+    else if(state.view === "vitals") renderVitals();
+    else if(state.view === "settings" && window.renderRepSettings) window.renderRepSettings();
+    else renderHome();
+  }
+}
+window.togglePreviewMode = togglePreviewMode;
+
+function updatePreviewUI(){
+  const btn = document.querySelector("#previewModeButton");
+  const existing = document.querySelector("#previewBanner");
+  const ar = state.lang === "ar";
+  if(state.previewMode){
+    btn?.classList.add("is-active");
+    btn?.setAttribute("aria-pressed", "true");
+    if(!existing){
+      const banner = document.createElement("div");
+      banner.className = "preview-mode-banner";
+      banner.id = "previewBanner";
+      banner.innerHTML = `
+        <div class="preview-banner-inner" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;">
+          <span style="font-size:11px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:14px;">🔬</span>
+            <span><strong>${ar?"وضع المعاينة (تجريبي)":"PREVIEW MODE"}</strong> · ${ar?"لن يُحفظ أي تمرين أو وجبة أو عادة":"No workouts, meals, or habits will be saved"}</span>
+          </span>
+          <button type="button" id="exitPreviewBannerBtn" style="background:#0b0d0c;color:var(--acid);border:1px solid var(--acid);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap;">${ar?"إنهاء المعاينة ✕":"Exit Preview ✕"}</button>
+        </div>
+      `;
+      document.querySelector(".topbar")?.insertAdjacentElement("afterend", banner);
+      document.querySelector("#exitPreviewBannerBtn")?.addEventListener("click", togglePreviewMode);
+    }
+  } else {
+    btn?.classList.remove("is-active");
+    btn?.setAttribute("aria-pressed", "false");
+    existing?.remove();
+  }
+}
+
 function persist() {
+  if (state.previewMode) return;
   window.REP_STORE?.persist(storageKey,{ version:6, guideVersion:REP_HEALTH_GUIDE.version, activeTab:state.activeTab, session: state.session, index: state.index, completed: state.completed, muted: state.muted, checkin: saved.checkin || {}, lang:state.lang, speed:state.speed, paused:state.paused, muscles:state.muscles, viewMode:state.viewMode, logs:state.logs, swaps:state.swaps, history:state.history, sessionStartedAt:state.sessionStartedAt, reviews:state.reviews, fieldTest:state.fieldTest, voice:state.voice, syncQueue:state.syncQueue, recoveryCheckins:state.recoveryCheckins, daily:state.daily, habitOrder:state.habitOrder, cardioDraft:state.cardioDraft, programStart:state.programStart, foodEntries:state.foodEntries, water:state.water, foodNote:state.foodNote, foodMealType:state.foodMealType, foodLogMethod:state.foodLogMethod, lastBackupAt:state.lastBackupAt, backupSnoozedUntil:state.backupSnoozedUntil, bodyWeights:state.bodyWeights, mealTemplates:state.mealTemplates, sleepLogs:state.sleepLogs, healthMetrics:state.healthMetrics, vitalsImportRuns:state.vitalsImportRuns, pushTime:state.pushTime, pushEndpoint:state.pushEndpoint, activeEnergy:state.activeEnergy, lastVitalsImportDate:state.lastVitalsImportDate, lastVitalsImportAt:state.lastVitalsImportAt });
 }
 let persistTimer=null;
 function persistDebounced(){
+  if (state.previewMode) return;
   if(persistTimer)clearTimeout(persistTimer);
   persistTimer=setTimeout(()=>{persistTimer=null;persist();},400);
 }
-function flushPersist(){if(persistTimer){clearTimeout(persistTimer);persistTimer=null;persist();}}
+function flushPersist(){if(state.previewMode)return;if(persistTimer){clearTimeout(persistTimer);persistTimer=null;persist();}}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushPersist();});
 addEventListener("beforeunload",flushPersist);
 function U(){return REP_I18N[state.lang].ui;}
@@ -1842,6 +1918,7 @@ document.querySelector("#timerSkip").addEventListener("click",finishTimer);
 document.querySelector("#timerPause").addEventListener("click",()=>{if(!state.timer)return;state.timer.paused=!state.timer.paused;document.querySelector("#timerPause").textContent=state.timer.paused?U().resume:U().pause;});
 document.querySelector("#timerAdd").addEventListener("click",()=>{if(!state.timer)return;state.timer.remaining+=15;state.timer.total+=15;updateTimer();});
 document.querySelector("#homeButton").addEventListener("click",renderHome);
+document.querySelector("#previewModeButton")?.addEventListener("click",togglePreviewMode);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
 document.querySelector("#soundButton").textContent=state.muted?"×":"◖";
