@@ -1,5 +1,5 @@
 (async function(){
-  const version=window.REP_BUILD_VERSION||"2ecea815d505";
+  const version=window.REP_BUILD_VERSION||"0b23cebfb619";
   const load=src=>new Promise((resolve,reject)=>{
     const script=document.createElement("script");
     script.src=`${src}?v=${version}`;
@@ -9,9 +9,11 @@
   });
   try{
     window.REP_HYDRATED_STATE=await window.REP_STORE?.hydrate("rep-gym-companion-v1");
+    await load("store.js");
     await load("offline-nutrition.js");
     await load("importer.js");
     await load("report-card.js");
+    await load("command-palette.js");
     await load("app.js");
     await load("sync-outbox.js");
     await load("telemetry.js");
@@ -20,6 +22,7 @@
     await load("habits.js");
     await load("health-ui.js");
     await load("performance-ui.js");
+    document.querySelector("#commandPaletteButton")?.addEventListener("click",()=>window.REP_COMMAND_PALETTE?.open());
     document.documentElement.dataset.appReady="true";
     delete window.REP_HYDRATED_STATE;
   }catch(error){
