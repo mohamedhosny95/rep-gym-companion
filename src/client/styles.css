@@ -168,9 +168,9 @@ h1, h2, h3, p { margin-top: 0; }
 .motion-walk .motion-path::after,.motion-inclinewalk .motion-path::after,.motion-march .motion-path::after { left:auto;right:-2px;bottom:-4px;transform:rotate(-45deg); }
 .range-warning { position:absolute;z-index:3;right:9%;top:28%;width:34px;height:34px;border:2px dashed rgba(255,94,61,.65);border-radius:50%;animation:warningPulse var(--loop-speed,4s) ease-in-out infinite; }
 @keyframes pathPulse { 0%,100%{opacity:.25} 50%{opacity:.9} } @keyframes warningPulse { 0%,55%,100%{opacity:.15;transform:scale(.85)} 72%{opacity:.8;transform:scale(1)} }
-@keyframes anatomyA { 0%,42%,100%{opacity:1;transform:scale(1)} 50%,92%{opacity:0;transform:scale(1.015)} }
-@keyframes anatomyB { 0%,42%,100%{opacity:0;transform:scale(1.015)} 50%,92%{opacity:1;transform:scale(1)} }
-@keyframes anatomyBFlip { 0%,42%,100%{opacity:0;transform:scaleX(-1) scale(1.015)} 50%,92%{opacity:1;transform:scaleX(-1) scale(1)} }
+@keyframes anatomyA { 0%,18%,100%{opacity:1;transform:scale(1)} 50%,68%{opacity:0;transform:scale(1.035)} }
+@keyframes anatomyB { 0%,18%,100%{opacity:0;transform:scale(1.035)} 50%,68%{opacity:1;transform:scale(1)} }
+@keyframes anatomyBFlip { 0%,18%,100%{opacity:0;transform:scaleX(-1) scale(1.035)} 50%,68%{opacity:1;transform:scaleX(-1) scale(1)} }
 @keyframes phaseDot { 0%,42%,100%{background:#9ca8a1} 50%,92%{background:#ef4f37} }
 
 .motion-controls { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:10px 0 4px; }

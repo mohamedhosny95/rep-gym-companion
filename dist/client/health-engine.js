@@ -67,7 +67,15 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
   function trainingRecommendation(state,date=dateKey(),profile={}){
     const result=readiness(state,date,profile),checkin=(state.recoveryCheckins||[]).find(row=>dateKey(row.date)===dateKey(date));
     if(checkin?.pain)return {mode:"pause",title:"Pause and assess",detail:"Pain was reported. Skip loaded work; use gentle movement only if comfortable, and seek professional advice for severe or persistent symptoms.",volumeFactor:0,intensityFactor:0};
-    if(result.score===null||result.confidence==="low")return {mode:"normal",title:"Use the planned session",detail:"There is not enough reliable data to adjust the plan. Use your warm-up and effort rating as the final check.",volumeFactor:1,intensityFactor:1};
+    if(result.score===null)return {mode:"normal",title:"Use the planned session",detail:"There is not enough reliable data to adjust the plan. Use your warm-up and effort rating as the final check.",volumeFactor:1,intensityFactor:1};
+    if(result.confidence==="low"){
+      // Wearable coverage alone can leave confidence "low", but a logged check-in still
+      // carries real signal (soreness, energy, sleep) and should not be silently dropped.
+      const checkinComponent=result.components.find(item=>item.id==="checkin"&&item.available);
+      if(checkinComponent&&checkinComponent.value<=40)return {mode:"recovery",title:"Recovery day recommended",detail:"Wearable data is limited, but today's check-in reports heavy fatigue or soreness. Choose walking, mobility, breathing, or the minimum session.",volumeFactor:.35,intensityFactor:.55};
+      if(checkinComponent&&checkinComponent.value<70)return {mode:"reduced",title:"Reduce today’s dose",detail:"Wearable data is limited, but today's check-in flags some fatigue or soreness. Keep technique work, but remove one set per exercise and stop with 3–4 reps in reserve.",volumeFactor:.7,intensityFactor:.85};
+      return {mode:"normal",title:"Use the planned session",detail:"There is not enough reliable data to adjust the plan. Use your warm-up and effort rating as the final check.",volumeFactor:1,intensityFactor:1};
+    }
     if(result.band==="red")return {mode:"recovery",title:"Recovery day recommended",detail:"Readiness is low. Choose walking, mobility, breathing, or the minimum session.",volumeFactor:.35,intensityFactor:.55};
     if(result.band==="yellow")return {mode:"reduced",title:"Reduce today’s dose",detail:"Keep technique work, but remove one set per exercise and stop with 3–4 reps in reserve.",volumeFactor:.7,intensityFactor:.85};
     return {mode:"normal",title:"Planned session is supported",detail:"Readiness supports the normal plan. Progress only if warm-up reps feel crisp and pain-free.",volumeFactor:1,intensityFactor:1};
