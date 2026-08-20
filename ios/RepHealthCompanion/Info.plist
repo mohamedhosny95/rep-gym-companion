@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>com.rep.health.companion</string>
+  <key>CFBundleName</key><string>RepHealthCompanion</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
   <key>NSHealthShareUsageDescription</key><string>Rep uses your authorized Apple Health measurements to calculate personal recovery trends and data confidence.</string>
   <key>NSHealthUpdateUsageDescription</key><string>Rep Health Companion does not write data to Apple Health.</string>
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <string>processing</string>
+  </array>
+  <key>BGTaskSchedulerPermittedIdentifiers</key>
+  <array>
+    <string>com.rep.health.sync</string>
+  </array>
 </dict></plist>

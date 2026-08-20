@@ -86,6 +86,53 @@
   async function retryFailed(id){
     state.syncQueue=(state.syncQueue||[]).map(entry=>(!id||entry.id===id)&&["retryable_failed","permanently_failed"].includes(entry.status)?{...entry,status:"pending",nextAttemptAt:null,lastError:"",updatedAt:new Date().toISOString()}:entry);persist();await processOutbox({all:true});
   }
+  async function pullFromNotion(){
+    if(!navigator.onLine){state.syncMessage=state.lang==="ar"?"أنت غير متصل بالإنترنت.":"You are offline.";persist();updateSyncPanel();return;}
+    if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage=state.lang==="ar"?"اقرن هذا الجهاز أولاً.":"Pair this device first.";updateSyncPanel();return;}
+    state.syncState="syncing";state.syncMessage=state.lang==="ar"?"جارٍ سحب التحديثات من Notion…":"Pulling updates from Notion…";updateSyncPanel();
+    try{
+      const response=await repAuth.fetch("/api/notion-pull",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({since:state.lastPulledAt||null})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ok)throw Error(data.error||"Failed to pull updates from Notion.");
+      let updatedCount=0;
+      if(Array.isArray(data.foodEntries)){
+        for(const remote of data.foodEntries){
+          const localIndex=(state.foodEntries||[]).findIndex(e=>e.id===remote.id||(e.notionPageId&&e.notionPageId===remote.notionPageId)||(e.date===remote.date&&e.food_name===remote.food_name));
+          if(localIndex>=0){
+            const local=state.foodEntries[localIndex];
+            if(!local.notionSyncedAt||new Date(remote.notionSyncedAt)>=new Date(local.notionSyncedAt)){
+              state.foodEntries[localIndex]={...local,...remote};updatedCount++;
+            }
+          }else{
+            state.foodEntries.unshift(remote);updatedCount++;
+          }
+        }
+        state.foodEntries=state.foodEntries.slice(0,400);
+      }
+      if(Array.isArray(data.habits)){
+        for(const h of data.habits){
+          if(h.date&&h.id){
+            const b=window.REP_HABITS?.bucket?.(h.date,true);
+            if(b&&b.checked){
+              if(b.checked[h.id]!==h.completed){b.checked[h.id]=h.completed;b.updatedAt=h.updatedAt;updatedCount++;}
+            }
+          }
+        }
+      }
+      state.lastPulledAt=data.syncedAt||new Date().toISOString();
+      state.syncState="synced";
+      state.syncMessage=state.lang==="ar"?`تم تحديث ${updatedCount} سجل من Notion.`:`Updated ${updatedCount} record${updatedCount===1?"":"s"} from Notion.`;
+      persist();
+      if(typeof renderNutrition==="function"&&(state.view==="food"||state.activeTab==="food"))renderNutrition();
+      if(typeof renderOverview==="function"&&(state.view==="home-overview"||state.activeTab==="home"))renderOverview();
+      updateSyncPanel();
+    }catch(error){
+      state.syncState="pending";
+      state.syncMessage=String(error.message||error);
+      persist();
+      updateSyncPanel();
+    }
+  }
   function install(){
     state.syncQueue=(state.syncQueue||[]).map(outbox.normalize).filter(Boolean);persist();syncPending=syncEverything;
     queueWorkout=record=>{if(!record?.entries?.length)return;persist();void syncRecord(workoutItem(record));};
@@ -93,5 +140,5 @@
     addEventListener("online",()=>void processOutbox());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")void processOutbox();});
     if(repAuth.isPaired())repAuth.fetch("/api/pair-check",{method:"POST"}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||"Pairing check failed.");state.connectionCapabilities=data;persist();updateSyncPanel();void processOutbox();}).catch(()=>{});scheduleRetry();
   }
-  window.REP_SYNC_RUNTIME={install,syncEverything,syncRecord,retryFailed,processOutbox,collectEverything,REQUEST_TIMEOUT_MS};
+  window.REP_SYNC_RUNTIME={install,syncEverything,syncRecord,pullFromNotion,retryFailed,processOutbox,collectEverything,REQUEST_TIMEOUT_MS};
 })();

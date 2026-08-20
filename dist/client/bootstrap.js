@@ -1,5 +1,5 @@
 (async function(){
-  const version=window.REP_BUILD_VERSION||"90adfcd5663a";
+  const version=window.REP_BUILD_VERSION||"04d43190c93c";
   const load=src=>new Promise((resolve,reject)=>{
     const script=document.createElement("script");
     script.src=`${src}?v=${version}`;
@@ -9,6 +9,7 @@
   });
   try{
     window.REP_HYDRATED_STATE=await window.REP_STORE?.hydrate("rep-gym-companion-v1");
+    await load("offline-nutrition.js");
     await load("app.js");
     await load("sync-outbox.js");
     await load("telemetry.js");

@@ -177,6 +177,7 @@
   }
   function bindSyncCenter(ar){
     document.querySelector("[data-sync-all]")?.addEventListener("click",()=>window.REP_SYNC_RUNTIME?.syncEverything());
+    document.querySelector("[data-sync-pull]")?.addEventListener("click",()=>window.REP_SYNC_RUNTIME?.pullFromNotion());
     document.querySelector("[data-sync-retry-all]")?.addEventListener("click",()=>window.REP_SYNC_RUNTIME?.retryFailed());
     document.querySelector("[data-sync-refresh]")?.addEventListener("click",()=>probeSystemHealth(true));
     document.querySelector("[data-system-self-test]")?.addEventListener("click",async()=>{try{await syncCenter.backupSelfTest(features);await probeSystemHealth(false);state.systemSelfTest={ok:true,message:ar?"نجح تشفير وفك النسخة، واتصال الخادم سليم.":"Backup encryption round-trip and server connection passed."};}catch(error){state.systemSelfTest={ok:false,message:String(error.message||error)};}renderSettings("sync");});

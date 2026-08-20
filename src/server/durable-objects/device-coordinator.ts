@@ -169,8 +169,26 @@ export class DeviceCoordinator extends DurableObject<Env> {
     const zone=row.timezone||row.timezone_offset,today = localDateAt(Date.now(), zone);
     if (row.last_sent_date === today) { await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone)); return; }
     const message = row.lang === "ar"
-      ? { title: "Health OS", body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم." }
-      : { title: "Health OS", body: "Time to log your day — a workout, a meal, or your sleep." };
+      ? {
+          title: "Health OS",
+          body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم.",
+          data: { url: "/?quick=home" },
+          actions: [
+            { action: "open-habits", title: "العادات" },
+            { action: "log-meal", title: "وجبة" },
+            { action: "log-sleep", title: "نوم" }
+          ]
+        }
+      : {
+          title: "Health OS",
+          body: "Time to log your day — a workout, a meal, or your sleep.",
+          data: { url: "/?quick=home" },
+          actions: [
+            { action: "open-habits", title: "Habits" },
+            { action: "log-meal", title: "Meal" },
+            { action: "log-sleep", title: "Sleep" }
+          ]
+        };
     try {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) { await this.clearPush(); return; }

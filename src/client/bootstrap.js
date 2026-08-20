@@ -9,6 +9,7 @@
   });
   try{
     window.REP_HYDRATED_STATE=await window.REP_STORE?.hydrate("rep-gym-companion-v1");
+    await load("offline-nutrition.js");
     await load("app.js");
     await load("sync-outbox.js");
     await load("telemetry.js");

@@ -95,6 +95,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
         let sleepResult = try await sleep
         let formatter = DateFormatter(); formatter.calendar = .current; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
         let coverageResult = try await heartCoverage
+        let batteryPct: Double? = Calendar.current.isDateInToday(day) ? currentBatteryPercentage() : nil
         return try await RepDailyVitals(
             date: formatter.string(from: day), sleep_hours: sleepResult.total,
             bedtime: sleepResult.start, wake_time: sleepResult.end,
@@ -105,8 +106,15 @@ final class HealthKitSyncCoordinator: ObservableObject {
             wrist_temperature_c: temperature, sleep_deep_hours: sleepResult.deep,
             sleep_rem_hours: sleepResult.rem, coverage_minutes: coverageResult.minutes,
             heart_rate_samples: Double(coverageResult.count), workout_hr_samples: Double(workoutSamples),
-            watch_battery_pct: nil, source: "Rep HealthKit Companion"
+            watch_battery_pct: batteryPct, source: "Rep HealthKit Companion"
         )
+    }
+
+    private func currentBatteryPercentage() -> Double? {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let level = UIDevice.current.batteryLevel
+        guard level >= 0 else { return nil }
+        return Double(round(level * 100))
     }
 
     private func predicate(_ interval: DateInterval) -> NSPredicate {
