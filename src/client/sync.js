@@ -72,7 +72,9 @@
       persist();updateSyncPanel();
     }
     processing=false;if(state.syncState!=="auth")state.syncState=state.syncProgress.failed?"pending":"synced";
-    const summary=outbox.summary(state.syncQueue);state.syncMessage=summary.total?`${summary.total} record${summary.total===1?"":"s"} pending verification.`:"";persist();updateSyncPanel();scheduleRetry();
+    const summary=outbox.summary(state.syncQueue);
+    state.syncMessage=summary.permanently_failed?`${summary.permanently_failed} record${summary.permanently_failed===1?"":"s"} failed and need${summary.permanently_failed===1?"s":""} review in Sync Center.`:summary.total?`${summary.total} record${summary.total===1?"":"s"} pending verification.`:"";
+    persist();updateSyncPanel();scheduleRetry();
   }
   async function syncRecord(item){enqueue(item);await processOutbox();}
   async function syncEverything(){

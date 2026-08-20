@@ -175,8 +175,10 @@ export class DeviceCoordinator extends DurableObject<Env> {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) { await this.clearPush(); return; }
       if (!response.ok) throw new Error(`Push provider returned ${response.status}.`);
+      // Commit last_sent_date the instant the send succeeds, before anything else that
+      // could throw. A native alarm retry re-enters this function and, because the guard
+      // above already sees today's date, reschedules without resending the notification.
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
-      await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -184,5 +186,6 @@ export class DeviceCoordinator extends DurableObject<Env> {
       if ((alarmInfo?.retryCount ?? 0) >= 5) { await this.ctx.storage.setAlarm(Date.now() + 30 * 60_000); return; }
       throw error;
     }
+    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
   }
 }

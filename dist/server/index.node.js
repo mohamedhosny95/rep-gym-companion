@@ -351,7 +351,6 @@ var DeviceCoordinator = class extends DurableObject {
       }
       if (!response.ok) throw new Error(`Push provider returned ${response.status}.`);
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
-      await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -362,6 +361,7 @@ var DeviceCoordinator = class extends DurableObject {
       }
       throw error;
     }
+    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
   }
 };
 
@@ -416,6 +416,11 @@ var HEALTH_DATA_SOURCES = {
   habit: "e4ed7261-0722-43be-84b7-a0fffc414a11",
   food: "97671c61-586a-4443-aea6-00b1d9f835a7"
 };
+function requireDataSource(env, configured, fallback, label) {
+  if (configured) return configured;
+  if (env.ENVIRONMENT === "staging") throw Error(`No ${label} Notion data source is configured for the staging environment.`);
+  return fallback;
+}
 var FOOD_DESTINATION = {
   name: "View of Food Entries",
   databaseId: "6433f54c-687e-4813-869a-aadeaf3acaab",
@@ -905,7 +910,7 @@ async function verifyNotionPage(env, pageId, expectedSource) {
   return notionPageReceipt(page, expectedSource);
 }
 async function existingEntries(env, workoutId) {
-  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
+  const source = requireDataSource(env, env.NOTION_DATA_SOURCE_ID, WORKOUT_DATA_SOURCE, "workout");
   const titles = /* @__PURE__ */ new Set();
   let cursor;
   for (let page = 0; page < 5; page++) {
@@ -953,7 +958,7 @@ async function syncWorkoutBody(env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
-  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
+  const source = requireDataSource(env, env.NOTION_DATA_SOURCE_ID, WORKOUT_DATA_SOURCE, "workout");
   const workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
@@ -982,7 +987,7 @@ async function syncWorkoutBody(env, body) {
 }
 function healthSource(env, kind) {
   const names = { recovery: "NOTION_RECOVERY_DATA_SOURCE_ID", sleep: "NOTION_RECOVERY_DATA_SOURCE_ID", nutrition: "NOTION_NUTRITION_DATA_SOURCE_ID", hygiene: "NOTION_HYGIENE_DATA_SOURCE_ID", habit: "NOTION_HABIT_DATA_SOURCE_ID", food: "NOTION_FOOD_DATA_SOURCE_ID" };
-  return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
+  return requireDataSource(env, env[names[kind]], HEALTH_DATA_SOURCES[kind], kind);
 }
 async function existingHealthPage(env, dataSourceId, date) {
   const result = await notionRequest(env, `/data_sources/${dataSourceId}/query`, { method: "POST", body: JSON.stringify({ page_size: 1, filter: { property: "Date", date: { equals: safeText(date, 10) } } }) });
