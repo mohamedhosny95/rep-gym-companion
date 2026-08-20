@@ -149,6 +149,20 @@
     const todayOnly=[...document.querySelectorAll(".vitals-teaser,.today-strip,.health-status,.reminder-strip,.health-coach-card")];todayOnly.forEach(element=>element.hidden=state.trainingView!=="today");
     if(state.trainingView==="today"){
       const focus=daySchedule().focus,id=focus==="gym"?"gym":focus==="cardio"?"cardio":"bad",card=document.createElement("section");card.className="today-training-action";card.innerHTML=`<small>${ar?"الخطوة التالية":"NEXT ACTION"}</small><h2>${esc(todayPlan())}</h2><p>${ar?"ابدأ الخطة المحددة لهذا اليوم، ويمكنك تعديلها بعد مراجعة الاستشفاء.":"Start the plan selected for today; adjust it after checking your recovery."}</p><button data-start-today>${ar?"ابدأ خطة اليوم":"Start today's plan"}</button>`;nav.insertAdjacentElement("afterend",card);card.querySelector("[data-start-today]").onclick=()=>showSessionPreview(id);
+    } else if(state.trainingView==="program"){
+      const exporterCard=document.createElement("section");exporterCard.className="settings-card program-exporter-card";
+      exporterCard.innerHTML=`<small>${ar?"مخطط البرنامج والتدوير التدريبي":"MESOCYCLE & PROGRAM BUILDER"}</small><h2>${ar?"مشاركة وتصدير الخطة التدريبية":"Share & Export Routine Plan"}</h2><p>${ar?"صدّر جدولك التدريبي ومجموعات التمارين كبطاقة رقمية لمشاركتها أو استيرادها على جهاز آخر.":"Export your training split, exercise list, and target sets as a portable digital routine card."}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button class="settings-primary" data-export-program>${ar?"📤 تصدير البرنامج (JSON)":"📤 Export Program (JSON)"}</button><button class="quiet-setting" data-share-program>${ar?"🔗 نسخ رابط الخطة":"🔗 Copy Share Link"}</button></div>`;
+      nav.insertAdjacentElement("afterend",exporterCard);
+      exporterCard.querySelector("[data-export-program]")?.addEventListener("click",()=>{
+        const exportData={app:"Rep Gym Companion",type:"mesocycle-program",version:1,exportedAt:new Date().toISOString(),schedule:state.preferences.schedule,sessions:window.sessions||{}};
+        features.downloadJson(exportData,`rep-training-program-${Date.now()}.json`);
+      });
+      exporterCard.querySelector("[data-share-program]")?.addEventListener("click",()=>{
+        if(navigator.clipboard){
+          const shareUrl=`${window.location.origin}${window.location.pathname}#program-active`;
+          navigator.clipboard.writeText(shareUrl).then(()=>showToast(ar?"تم نسخ رابط البرنامج!":"Program link copied!"));
+        }
+      });
     }
     nav.querySelectorAll("[data-training-view]").forEach(button=>button.onclick=()=>{if(button.dataset.trainingView==="history")return renderHistory();state.trainingView=button.dataset.trainingView;persist();renderHome();});
   }

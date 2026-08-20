@@ -514,3 +514,34 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 .workout-mode .quick-log{display:none}
 @media(max-width:680px){.analytics-goal-form{grid-template-columns:1fr 1fr}.analytics-goal-form button{grid-column:1/-1}.lift-insight-list{grid-template-columns:1fr}.analytics-summary-grid{grid-template-columns:1fr 1fr}.inbox-list article{grid-template-columns:1fr}.inbox-actions{flex-direction:row}.forecast-result,.nutrition-model-grid{grid-template-columns:1fr}}
 @media(max-width:430px){.performance-card{padding:15px}.analytics-goal-form,.adherence-grid{grid-template-columns:1fr}.analytics-summary-grid{grid-template-columns:1fr}.ask-data form>div{grid-template-columns:1fr}.ask-data form button{width:100%}.muscle-volume>span{grid-template-columns:86px minmax(0,1fr) 20px}}
+
+/* --- Advanced Fitness & Workout Feature Styles --- */
+.muscle-heatmap-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.muscle-heatmap-cell{padding:12px;border:1px solid var(--line);border-radius:13px;background:#0c100d;display:grid;gap:6px}
+.muscle-heatmap-cell .cell-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.muscle-heatmap-cell .cell-head strong{font-size:13px}
+.muscle-heatmap-cell .status-badge{font-size:10px;font-weight:800}
+.muscle-heatmap-cell .cell-body{display:flex;justify-content:space-between;align-items:baseline;color:var(--muted);font-size:11px}
+.muscle-heatmap-cell .cell-body b{color:var(--text);font-size:14px}
+.volume-bar-bg{height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.volume-bar-fill{height:100%;border-radius:99px;transition:width .3s ease}
+
+.progression-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:850;margin-top:4px}
+.progression-badge.status-bump{background:rgba(201,255,61,.12);color:var(--acid);border:1px solid rgba(201,255,61,.3)}
+.progression-badge.status-deload{background:rgba(255,139,61,.12);color:#ffab76;border:1px solid rgba(255,139,61,.3)}
+.progression-badge.status-hold{background:rgba(125,201,255,.08);color:var(--blue);border:1px solid rgba(125,201,255,.2)}
+.progression-badge.status-initial{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--line)}
+
+.exercise-swap-btn{margin-left:auto;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.05);color:var(--muted);font-size:11px;cursor:pointer}
+[dir="rtl"] .exercise-swap-btn{margin-left:0;margin-right:auto}
+
+.voice-set-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#151b17;color:var(--text);font-size:12px;font-weight:800;cursor:pointer}
+.voice-set-btn.is-listening{background:rgba(255,61,61,.15);border-color:#ff4d4d;color:#ff6b6b;animation:pulse-red 1.2s infinite}
+
+.barcode-scanner-overlay{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.barcode-video-box{position:relative;width:100%;max-width:360px;aspect-ratio:4/3;border-radius:18px;overflow:hidden;border:2px solid var(--acid);box-shadow:0 0 30px rgba(201,255,61,.2)}
+.barcode-video-box video{width:100%;height:100%;object-fit:cover}
+.barcode-reticle{position:absolute;inset:20px;border:2px dashed rgba(201,255,61,.6);border-radius:12px;pointer-events:none}
+
+@keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.5}}
+@media(max-width:430px){.muscle-heatmap-grid{grid-template-columns:1fr}}
