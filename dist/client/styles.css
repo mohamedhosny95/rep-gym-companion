@@ -10,8 +10,42 @@
   --acid-ink: #10150a;
   --orange: #ff8b3d;
   --blue: #7dc9ff;
+  --surface-glass: rgba(19, 23, 21, 0.75);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* True OLED Pure Black Mode */
+[data-theme="oled"] {
+  --bg: #000000;
+  --panel: #090b0a;
+  --panel-2: #111412;
+  --line: #1c221e;
+  --surface-glass: rgba(0, 0, 0, 0.88);
+}
+
+/* Gym Accent Themes */
+[data-accent="cyan"] {
+  --acid: #38bdf8;
+  --acid-ink: #03202e;
+}
+[data-accent="flame"] {
+  --acid: #fb923c;
+  --acid-ink: #2a1200;
+}
+[data-accent="violet"] {
+  --acid: #c084fc;
+  --acid-ink: #241539;
+}
+
+.step-btn:hover { background: rgba(201,255,61,.12)!important; border-color: var(--acid)!important; }
+.clone-set-btn:hover { background: rgba(201,255,61,.18)!important; border-color: var(--acid)!important; }
+.filter-tab { transition: all .2s ease; }
+.filter-tab:hover { border-color: var(--acid); color: var(--text); }
+
 
 * { box-sizing: border-box; }
 html { background: var(--bg); overscroll-behavior-y: none; overflow-x: hidden; touch-action: manipulation; }

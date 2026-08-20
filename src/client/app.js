@@ -632,7 +632,26 @@ function loadPanel(base,item){
   const advice=window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id,state);
   const curWeight=Number(log.sets[0]?.weight||60)||60;
   return `<section class="load-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل كل مجموعة":"Log every set"}</strong><div style="display:flex;gap:6px;"><button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${state.lang==="ar"?"الإيقاع":"Tempo"}</button><button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${state.lang==="ar"?"حساب الأوزان":"Plate Math"}</button><button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${state.lang==="ar"?"إملاء صوتي":"Voice Log"}</button></div></div><div class="set-log-grid">
-    ${Array.from({length:item.sets},(_,i)=>{const s=log.sets[i]||{};return `<div class="set-log-row"><b>${i+1}</b><label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label><label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label><label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label><label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label></div>`}).join("")}
+    ${Array.from({length:item.sets},(_,i)=>{
+      const s=log.sets[i]||{};
+      const canClone=i>0&&(log.sets[i-1]?.weight||log.sets[i-1]?.reps);
+      return `<div class="set-log-row">
+        <div style="display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;">
+          <b>${i+1}</b>
+          ${canClone?`<button class="clone-set-btn" data-clone-set="${i}" type="button" style="padding:2px 8px;border:1px solid var(--line);border-radius:6px;background:rgba(201,255,61,.08);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">⎘ ${state.lang==="ar"?`مطابقة مجموعة ${i}`:`Match Set ${i}`}</button>`:""}
+        </div>
+        <div style="display:grid;gap:4px;">
+          <label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label>
+          <div style="display:flex;gap:3px;margin-top:2px;">
+            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="-2.5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--muted);font-size:10px;font-weight:800;cursor:pointer;">-2.5</button>
+            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="2.5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">+2.5</button>
+            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">+5</button>
+          </div>
+        </div>
+        <label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label>
+        <label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label>
+        <label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label>
+      </div>`}).join("")}
   </div><p>${u.previousLog}: <strong>${prev}</strong></p><div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div></section>`;
 }
 function cardioPanel(item){
@@ -768,6 +787,29 @@ function renderExercise() {
   document.querySelector("[data-plate-math]")?.addEventListener("click",e=>showPlateCalculator(Number(e.currentTarget.dataset.plateMath)||60));
   document.querySelector("[data-voice-set-log]")?.addEventListener("click",()=>startVoiceSetLogger(base,item));
   document.querySelector("[data-exercise-timer]")?.addEventListener("click",()=>toggleExerciseTimer(item.motion));
+  document.querySelectorAll("[data-clone-set]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=Number(btn.dataset.cloneSet), id=exerciseId(base), log=normalizedLog(id,item.sets);
+      if(i>0&&log.sets[i-1]){
+        log.sets[i].weight=log.sets[i-1].weight;
+        log.sets[i].reps=log.sets[i-1].reps;
+        log.sets[i].rpe=log.sets[i-1].rpe;
+        persist();
+        renderExercise();
+        if(window.vibrateGym) window.vibrateGym("set");
+      }
+    };
+  });
+  document.querySelectorAll("[data-step-set]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=Number(btn.dataset.stepSet), delta=Number(btn.dataset.stepVal), id=exerciseId(base), log=normalizedLog(id,item.sets);
+      const cur=Number(log.sets[i].weight||(i>0?log.sets[i-1]?.weight:60))||60;
+      log.sets[i].weight=String(Math.max(0, Math.round((cur+delta)*10)/10));
+      persist();
+      renderExercise();
+      if(window.vibrateGym) window.vibrateGym("set");
+    };
+  });
   document.querySelectorAll("[data-log]").forEach(input=>input.addEventListener("input",()=>saveLog(base,item)));
   document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persistDebounced();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
   const swipe = document.querySelector("[data-swipe]");
@@ -1541,16 +1583,60 @@ function weightTrackerCard(ar){
     ${rows?`<div class="weight-history">${rows}</div>`:`<p class="weight-empty">${ar?"سجّل وزنك مرة أسبوعياً لمتابعة الاتجاه بمرور الوقت.":"Log your weight once a week to track the trend over time."}</p>`}</section>`;
 }
 function waterTrackerCard(water,goal,ar){const remaining=Math.max(goal-water,0),progress=Math.min(Math.round(water/goal*100),100);return `<section class="water-card"><div class="water-summary"><div><small>${ar?"الترطيب":"HYDRATION"}</small><strong>${water} / ${goal} ml</strong><span>${remaining} ml ${ar?"متبقي اليوم":"remaining today"}</span></div><div aria-label="${ar?"تقدم شرب المياه":"Water goal progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" role="progressbar">${miniRing(progress,"var(--blue)")}</div></div><div class="water-actions"><button data-water-delta="-250" aria-label="${ar?"اطرح 250 مل":"Subtract 250 milliliters"}">−250</button><button data-water-delta="250">+250</button><button data-water-delta="500">+500</button><button data-water-delta="1000">+1L</button></div><form class="water-custom" data-water-form><label><span>${ar?"كمية مخصصة":"Custom amount"}</span><input data-water-custom type="number" min="1" max="20000" step="1" inputmode="numeric" placeholder="${ar?"مثال 330":"e.g. 330"}" aria-label="${ar?"كمية المياه بالملليلتر":"Water amount in milliliters"}"></label><button type="submit" data-water-custom-action="add">${ar?"أضف":"Add"}</button><button type="button" data-water-custom-action="set">${ar?"حدد الإجمالي":"Set total"}</button></form><button class="water-reset" data-water-reset>${ar?"إعادة ضبط مياه اليوم":"Reset today's water"}</button></section>`;}
-function macroDonutRing(totals, ar){
+function macroDonutRing(totals, profile, ar){
   const pCal=(totals.protein_g||0)*4, cCal=(totals.carbs_g||0)*4, fCal=(totals.fat_g||0)*9;
   const tot=pCal+cCal+fCal||1;
   const pPct=Math.round((pCal/tot)*100), cPct=Math.round((cCal/tot)*100), fPct=Math.round((fCal/tot)*100);
-  return `<article class="macro-donut-card" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#0c100d;grid-column:1/-1;"><div><small style="color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em;">${ar?"توزيع السعرات الحرارية":"CALORIC MACRO RATIO"}</small><div style="display:flex;gap:10px;margin-top:5px;font-size:12px;font-weight:800;"><span style="color:var(--acid);">P ${pPct}%</span><span style="color:var(--blue);">C ${cPct}%</span><span style="color:var(--orange);">F ${fPct}%</span></div></div><div style="display:flex;gap:4px;align-items:center;"><div style="height:8px;width:${Math.max(12,pPct*1.2)}px;background:var(--acid);border-radius:3px;" title="Protein ${pPct}%"></div><div style="height:8px;width:${Math.max(12,cPct*1.2)}px;background:var(--blue);border-radius:3px;" title="Carbs ${cPct}%"></div><div style="height:8px;width:${Math.max(12,fPct*1.2)}px;background:var(--orange);border-radius:3px;" title="Fat ${fPct}%"></div></div></article>`;
+  const calPct=Math.min(100, Math.round(((totals.calories||0)/(profile?.calories||2200))*100));
+  const proPct=Math.min(100, Math.round(((totals.protein_g||0)/(profile?.protein||160))*100));
+  return `<article class="macro-donut-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--panel);grid-column:1/-1;">
+    <div style="flex:1;">
+      <small style="color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;">${ar?"توزيع السعرات ونسبة الأهداف":"CALORIC DISTRIBUTION & TARGETS"}</small>
+      <div style="display:flex;gap:12px;margin-top:6px;font-size:13px;font-weight:850;">
+        <span style="color:var(--acid);">P ${pPct}%</span>
+        <span style="color:var(--blue);">C ${cPct}%</span>
+        <span style="color:var(--orange);">F ${fPct}%</span>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;margin-top:8px;">
+        <div style="height:6px;width:${Math.max(16,pPct*1.4)}px;background:var(--acid);border-radius:3px;" title="Protein ${pPct}%"></div>
+        <div style="height:6px;width:${Math.max(16,cPct*1.4)}px;background:var(--blue);border-radius:3px;" title="Carbs ${cPct}%"></div>
+        <div style="height:6px;width:${Math.max(16,fPct*1.4)}px;background:var(--orange);border-radius:3px;" title="Fat ${fPct}%"></div>
+      </div>
+    </div>
+    <div style="position:relative;width:60px;height:60px;flex:none;display:grid;place-items:center;">
+      <svg viewBox="0 0 36 36" style="width:100%;height:100%;transform:rotate(-90deg);">
+        <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"></circle>
+        <circle cx="18" cy="18" r="15" fill="none" stroke="#ffd36a" stroke-width="2.5" stroke-dasharray="94.2" stroke-dashoffset="${94.2 - (calPct/100)*94.2}" stroke-linecap="round"></circle>
+        <circle cx="18" cy="18" r="11" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"></circle>
+        <circle cx="18" cy="18" r="11" fill="none" stroke="var(--acid)" stroke-width="2.5" stroke-dasharray="69.1" stroke-dashoffset="${69.1 - (proPct/100)*69.1}" stroke-linecap="round"></circle>
+      </svg>
+      <span style="position:absolute;font-size:11px;font-weight:900;color:var(--text);">${calPct}%</span>
+    </div>
+  </article>`;
+}
+
+function frequentMealsTray(ar){
+  const allEntries = Object.values(state.foodEntries||{}).flat();
+  const freqMap = {};
+  allEntries.forEach(e => {
+    const text = (e.text||e.description||"").trim();
+    if(text.length >= 3 && text.length <= 70) {
+      freqMap[text] = (freqMap[text] || 0) + 1;
+    }
+  });
+  const topMeals = Object.entries(freqMap).sort((a,b)=>b[1]-a[1]).slice(0, 5).map(([text])=>text);
+  if(!topMeals.length) return "";
+  return `<div class="frequent-meals-tray" style="margin-bottom:8px;">
+    <small style="display:block;color:var(--muted);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">${ar?"وجبات سابقة سريعة":"QUICK RECENT MEALS"}</small>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;">
+      ${topMeals.map(meal=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(meal)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(201,255,61,.06);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">+ ${esc(meal)}</button>`).join("")}
+    </div>
+  </div>`;
 }
 
 function renderNutrition(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="nutrition";state.activeTab="food";state.foodMealType=state.foodMealType||autoMealType();persist();updatePrimaryTabs();const ar=state.lang==="ar",profile=foodProfile(),entries=todayFoodEntries(),totals=foodTotals(entries),water=Number(state.water[isoDay()])||0,note=state.foodNote||"";
-  app.innerHTML=`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div><div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`;
+  app.innerHTML=`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`;
   document.querySelector(".food-connect")?.insertAdjacentHTML("afterend",nutritionPlanNote());const foodHeadings=[...document.querySelectorAll(".food-section-head h2")];if(foodHeadings.length)foodHeadings.at(-1).textContent=ar?"وجبات اليوم":"Food entries today";
   bindFoodTracker();
 }
