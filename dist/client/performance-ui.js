@@ -136,7 +136,7 @@
 
   function renderPerformance(){
     const ar=state.lang==="ar",model=engine.analyze(state),anchor=document.querySelector(".weekly-health-review")||document.querySelector(".health-subnav")||document.querySelector(".module-head");if(!anchor)return;
-    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${goalPanel(model,ar)}${muscleHeatmapPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`;anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
+    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${window.REP_RECOVERY_MAP?.renderRecoveryMap(state)||""}${goalPanel(model,ar)}${muscleHeatmapPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`;anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
   }
 
   function bindPerformance(ar){
