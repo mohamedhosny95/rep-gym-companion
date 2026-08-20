@@ -72,7 +72,7 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
       // Wearable coverage alone can leave confidence "low", but a logged check-in still
       // carries real signal (soreness, energy, sleep) and should not be silently dropped.
       const checkinComponent=result.components.find(item=>item.id==="checkin"&&item.available);
-      if(checkinComponent&&checkinComponent.value<40)return {mode:"recovery",title:"Recovery day recommended",detail:"Wearable data is limited, but today's check-in reports heavy fatigue or soreness. Choose walking, mobility, breathing, or the minimum session.",volumeFactor:.35,intensityFactor:.55};
+      if(checkinComponent&&checkinComponent.value<=40)return {mode:"recovery",title:"Recovery day recommended",detail:"Wearable data is limited, but today's check-in reports heavy fatigue or soreness. Choose walking, mobility, breathing, or the minimum session.",volumeFactor:.35,intensityFactor:.55};
       if(checkinComponent&&checkinComponent.value<70)return {mode:"reduced",title:"Reduce today’s dose",detail:"Wearable data is limited, but today's check-in flags some fatigue or soreness. Keep technique work, but remove one set per exercise and stop with 3–4 reps in reserve.",volumeFactor:.7,intensityFactor:.85};
       return {mode:"normal",title:"Use the planned session",detail:"There is not enough reliable data to adjust the plan. Use your warm-up and effort rating as the final check.",volumeFactor:1,intensityFactor:1};
     }

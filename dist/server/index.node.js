@@ -1121,7 +1121,14 @@ async function executeSyncBody(env, body) {
   return body?.workout ? syncWorkoutBody(env, body) : syncHealthBody(env, body);
 }
 async function notionHealth(env) {
-  const configured = Boolean(env.NOTION_TOKEN), destination = foodDestination(env), source = destination.sourceId;
+  const configured = Boolean(env.NOTION_TOKEN);
+  let destination;
+  try {
+    destination = foodDestination(env);
+  } catch (error) {
+    return { configured, healthy: false, destination: FOOD_DESTINATION, sourceId: null, schema: { valid: false, missing: [], incompatible: [] }, error: error.message };
+  }
+  const source = destination.sourceId;
   if (!configured) return { configured: false, healthy: false, destination, error: "NOTION_TOKEN is not configured." };
   const started = Date.now();
   try {
