@@ -772,8 +772,22 @@ function renderExercise() {
   document.querySelectorAll("[data-log]").forEach(input=>input.addEventListener("input",()=>saveLog(base,item)));
   document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persistDebounced();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
   const swipe = document.querySelector("[data-swipe]");
-  swipe.addEventListener("touchstart", e => state.touchX = e.changedTouches[0].clientX, {passive:true});
-  swipe.addEventListener("touchend", e => { const dx=e.changedTouches[0].clientX-state.touchX; if(Math.abs(dx)>65) dx<0?next():prev(); }, {passive:true});
+  let touchStartX = 0, touchStartY = 0;
+  swipe?.addEventListener("touchstart", e => {
+    touchStartX = e.changedTouches[0].clientX;
+    touchStartY = e.changedTouches[0].clientY;
+  }, {passive:true});
+  swipe?.addEventListener("touchend", e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
+      if(state.lang === "ar"){
+        dx > 0 ? next() : prev();
+      } else {
+        dx < 0 ? next() : prev();
+      }
+    }
+  }, {passive:true});
 }
 function motionAction(action){
   if(action==="play")state.paused=!state.paused;
