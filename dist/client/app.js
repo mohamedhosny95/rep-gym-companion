@@ -616,6 +616,10 @@ function renderOverview(){
   app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}${day==="Friday"?(ar?" · يوم سورة الكهف":" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
     ${strainRecoveryCard(ar)}
+    <div class="today-vitals-sync-bar" style="display:flex;align-items:center;justify-content:space-between;margin:-6px 0 12px;padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.03);font-size:11px;">
+      <span style="color:var(--muted);">${state.vitalsImportStatus?esc(state.vitalsImportStatus):(ar?"ساعة أبل: مزامنة تلقائية جاهزة":"Apple Watch sync ready")}</span>
+      <button data-check-watch-vitals type="button" style="border:0;background:transparent;color:var(--acid);font-size:11px;font-weight:850;cursor:pointer;">↻ ${ar?"فحص المزامنة":"Check sync"}</button>
+    </div>
     <section class="bedtime-card"><div class="bedtime-row"><span>${ar?"موعد النوم الليلة":"BEDTIME TONIGHT"}</span><strong>${bedtime.time}</strong></div><small>${ar?`لاستيقاظ ${bedtime.wakeTime} · ${bedtime.need}h مطلوبة`:`For your ${bedtime.wakeTime} wake-up · ${bedtime.need}h needed`}</small></section>
     <section class="today-strip home-today-card"><div><span>${ar?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?(ar?"متابعة الحصة ←":"Resume session →"):(ar?"ابدأ خطة اليوم ←":"Start today's plan →")}</button></section>
     <div class="today-secondary-actions" style="display:flex;gap:8px;margin:-4px 0 14px;">
@@ -624,6 +628,7 @@ function renderOverview(){
     </div>
     ${todayFuelSnippet(ar)}
     ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
+  document.querySelector("[data-check-watch-vitals]")?.addEventListener("click",()=>fetchPendingVitals(true));
   document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
   document.querySelector("[data-goto-fuel]")?.addEventListener("click",()=>setPrimaryTab("food"));
   document.querySelector("[data-today-bad-day]")?.addEventListener("click",()=>renderBadDay());
@@ -1758,15 +1763,15 @@ function applyVitalsEntry(entry){
 async function fetchPendingVitals(showStatus=false){
   const key=localStorage.getItem(syncKeyStorage);
   if(!key||!navigator.onLine){
-    if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"اتصل من تبويب التغذية أولاً.":"Connect in the Nutrition tab first.";state.vitalsImportError=true;renderVitals();}
+    if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"اتصل من تبويب التغذية أولاً.":"Connect in the Nutrition tab first.";state.vitalsImportError=true;if(state.view==="vitals")renderVitals();}
     return;
   }
   try{
-    const since=state.lastVitalsImportDate||"2000-01-01";
+    const since=shiftLocalDay(-7);
     const response=await repAuth.fetch(`/api/vitals/pending?since=${encodeURIComponent(since)}`);
     const data=await response.json().catch(()=>({}));
     if(!response.ok||!data.ok)throw Error(data.error||`Check failed (${response.status})`);
-    if(data.entries.length){
+    if(data.entries&&data.entries.length){
       const reports=data.entries.map(applyVitalsEntry);
       state.lastVitalsImportDate=data.entries[data.entries.length-1].date;
       const ar=state.lang==="ar";
@@ -1774,16 +1779,26 @@ async function fetchPendingVitals(showStatus=false){
       if(problems.length){
         const dropped=[...new Set(problems.flatMap(r=>r.dropped))];
         const parts=[];
-        if(dropped.length)parts.push(ar?`قيم خارج النطاق المعقول تم تجاهلها: ${dropped.join("، ")}`:`Ignored out-of-range values: ${dropped.join(", ")}`);
-        if(problems.some(r=>r.noSleep))parts.push(ar?"لم تصل مدة نوم صالحة":"no valid sleep duration arrived");
-        state.vitalsImportStatus=(ar?"تم الاستيراد مع تحذيرات — ":"Imported with warnings — ")+parts.join(ar?" · ":" · ")+(ar?". تحقق من إعداد الاختصار.":". Check the Shortcut's setup.");
+        if(dropped.length)parts.push(ar?`قيم خارج النطاق: ${dropped.join("، ")}`:`Ignored: ${dropped.join(", ")}`);
+        if(problems.some(r=>r.noSleep))parts.push(ar?"لم تصل مدة نوم صالحة":"no valid sleep duration");
+        state.vitalsImportStatus=(ar?"تم الاستيراد مع تنبيهات — ":"Imported with warnings — ")+parts.join(ar?" · ":" · ");
         state.vitalsImportError=true;
-      }else if(showStatus){state.vitalsImportStatus=ar?"تم استيراد بيانات جديدة.":"New data imported.";state.vitalsImportError=false;}
-    }else if(showStatus){state.vitalsImportStatus=state.lang==="ar"?"لا توجد بيانات جديدة بعد.":"No new data yet.";state.vitalsImportError=false;}
-    persist();
-    if(showStatus||state.view==="vitals")renderVitals();
+      }else{
+        state.vitalsImportStatus=ar?`تم استيراد ${data.entries.length} سجل من ساعة أبل.`:`Imported ${data.entries.length} Apple Watch record${data.entries.length===1?"":"s"}.`;
+        state.vitalsImportError=false;
+      }
+      persist();
+      if(state.view==="home-overview"||state.activeTab==="home")renderOverview();
+      else if(state.view==="vitals"||state.activeTab==="health")renderVitals();
+      else if(state.view==="insights"||state.activeTab==="insights")renderInsights();
+    }else if(showStatus){
+      state.vitalsImportStatus=state.lang==="ar"?"لا توجد بيانات جديدة بعد.":"No new data yet.";
+      state.vitalsImportError=false;
+      persist();
+      if(state.view==="vitals")renderVitals();
+    }
   }catch(error){
-    if(showStatus){state.vitalsImportStatus=String(error.message||error);state.vitalsImportError=true;renderVitals();}
+    if(showStatus){state.vitalsImportStatus=String(error.message||error);state.vitalsImportError=true;if(state.view==="vitals")renderVitals();}
   }
 }
 // Days since the last automated import landed. Returns null when nothing has

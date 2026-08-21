@@ -79,6 +79,7 @@
   async function syncRecord(item){enqueue(item);await processOutbox();}
   async function syncEverything(){
     if(processing)return;if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage=state.lang==="ar"?"اقرن هذا الجهاز مرة واحدة أولاً.":"Pair this device once first.";updateSyncPanel();return;}
+    if(typeof fetchPendingVitals==="function") fetchPendingVitals(false).catch(()=>{});
     for(const item of collectEverything())enqueue(item,{force:true});
     if(!navigator.onLine){state.syncState="pending";state.syncMessage=state.lang==="ar"?"لا يوجد اتصال. السجلات محفوظة وستُعاد المحاولة تلقائياً.":"You are offline. Records are safely pending and will retry automatically.";persist();updateSyncPanel();return;}
     await processOutbox({all:true,force:true});

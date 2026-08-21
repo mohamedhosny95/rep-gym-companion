@@ -128,6 +128,7 @@
     else if(tab==="insights")renderInsights();
     else if(tab==="vitals")renderVitals();
     else renderHome();
+    if(navigator.onLine&&localStorage.getItem(syncKeyStorage)&&typeof fetchPendingVitals==="function")fetchPendingVitals(false).catch(()=>{});
   };
   function localizeArabicUnits(){if(state.lang!=="ar")return;const walker=document.createTreeWalker(app,NodeFilter.SHOW_TEXT);while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest("input,textarea,script,style"))continue;node.nodeValue=node.nodeValue.replace(/(\d+(?:\.\d+)?)h\b/g,"$1 س").replace(/\bkg\b/g,"كجم").replace(/\bkcal\b/g,"سعرة");}}
   function healthNav(){const ar=state.lang==="ar",items=[["vitals",ar?"الحيوية":"Vitals"],["care",ar?"العناية":"Wellness"],["insights",ar?"التحليلات":"Insights"]];localizeArabicUnits();const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label",ar?"أقسام الصحة":"Health sections");nav.innerHTML=items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}">${label}</button>`).join("");const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
