@@ -440,6 +440,7 @@ function renderInsights(){
     <article class="trend-card"><span class="card-kicker">${ar?`مقياس 0–21 · آخر ${strainCount} أيام`:`0–21 SCALE · LAST ${strainCount} DAYS`}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"var(--blue)"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
     <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
+  ${window.REP_MUSCLE_HEATMAP ? window.REP_MUSCLE_HEATMAP.renderHeatmapCard(state, ar) : ""}
   ${metricGuideCard(ar)}
   ${journalInsightsCard(ar)}
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
@@ -666,6 +667,7 @@ function renderHome() {
       ${Object.entries(sessions).filter(([id])=>!["bad","gymLite"].includes(id)).map(([id,s]) => sessionCard(id,s,resume && state.session===id)).join("")}
       <button class="session-card" data-log-activity style="--card-accent:#ffd36a"><span><small>${state.lang==="ar"?"بادل · كرة قدم · المزيد":"PADEL · FOOTBALL · MORE"}</small><h2>${state.lang==="ar"?"تسجيل نشاط":"Log an activity"}</h2></span><span class="session-icon">${ICONS.plus}</span><p>${state.lang==="ar"?"رياضات غير منظمة: المدة والسعرات المحروقة من ساعة أبل.":"Unstructured sports — duration and calories burned from your Apple Watch."}</p><small>${state.lang==="ar"?"سجّل الآن ←":"Log now →"}</small></button>
     </section>
+    ${window.REP_CUSTOM_WORKOUTS ? window.REP_CUSTOM_WORKOUTS.renderRoutinesSection(state.lang==="ar") : ""}
     <div class="section-title training-tools-title"><h2>${state.lang==="ar"?"أدوات التمرين":"Training tools"}</h2><span>${state.lang==="ar"?"الاستعداد · السجل · السلامة":"Readiness · history · safety"}</span></div>
     <section class="session-grid training-tools" aria-label="${state.lang==="ar"?"أدوات التمرين":"Training tools"}">
       <button class="session-card" data-recovery style="--card-accent:#d9b3ff"><span><small>${state.lang==="ar"?"الاستعداد والتقدم":"READINESS & PROGRESSION"}</small><h2>${state.lang==="ar"?"الاستشفاء":"Recovery"}</h2></span><span class="session-icon">${ICONS.waves}</span><p>${state.lang==="ar"?"مراجعة أسبوعية، بوابة التقدم، مؤقتات الاستشفاء، وإشارات الخطر.":"Weekly check-in, progression gate, recovery timers, and red-flag guidance."}</p><small>${state.lang==="ar"?"افتح نظام الاستشفاء ←":"Open recovery system →"}</small></button>
@@ -683,6 +685,13 @@ function renderHome() {
     const continuing = state.session === id && state.index > 0 && state.index < sessions[id].exercises.length && state.sessionStartedAt;
     continuing ? startSession(id) : showSessionPreview(id);
   }));
+  document.querySelector("[data-create-new-routine]")?.addEventListener("click", () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal());
+  document.querySelectorAll("[data-edit-custom]").forEach(btn => {
+    btn.onclick = () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal(btn.dataset.editCustom);
+  });
+  document.querySelectorAll("[data-launch-custom]").forEach(btn => {
+    btn.onclick = () => window.REP_CUSTOM_WORKOUTS?.launchRoutine(btn.dataset.launchCustom);
+  });
   document.querySelector("[data-goto-vitals]")?.addEventListener("click", ()=>setPrimaryTab("vitals"));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-log-activity]").addEventListener("click", showLogActivity);
@@ -979,7 +988,10 @@ function renderExercise() {
     <div class="player-header">
       <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
       <div class="player-progress"><strong>${ls.name}</strong><span>${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
-      <button class="round-button" data-exit aria-label="${state.lang==="ar"?"إنهاء الحصة":"Exit session"}">×</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(state.lang==="ar") : ""}
+        <button class="round-button" data-exit aria-label="${state.lang==="ar"?"إنهاء الحصة":"Exit session"}">×</button>
+      </div>
     </div>
     <div class="progress-bar"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
@@ -1000,6 +1012,7 @@ function renderExercise() {
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
+  document.querySelector("[data-open-hr-modal]")?.addEventListener("click", ()=>window.REP_HEART_RATE?.openHrModal());
   document.querySelectorAll("[data-jump-exercise]").forEach(btn=>{btn.onclick=()=>{state.index=Number(btn.dataset.jumpExercise);persist();renderExercise();};});
   document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => toggleSet(Number(b.dataset.set))));
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
@@ -1176,10 +1189,18 @@ function toggleSet(setIndex) {
   const key = `${state.session}-${state.index}`;
   const list = state.completed[key] || [];
   const already = list.includes(setIndex);
-  if(!already)vibrateGym("set");
+  const item=sessions[state.session].exercises[state.index];
+  if(!already){
+    vibrateGym("set");
+    const id = exerciseId(item), log = normalizedLog(id, item.sets);
+    const s = log.sets[setIndex] || {};
+    const advice = window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id, state);
+    if(window.REP_AUDIO_COACH?.announceSetComplete) {
+      window.REP_AUDIO_COACH.announceSetComplete(setIndex, s.weight, s.reps, s.rpe, advice?.badge);
+    }
+  }
   state.completed[key] = already ? list.filter(i=>i!==setIndex) : [...list,setIndex];
   persist();
-  const item=sessions[state.session].exercises[state.index];
   const allSetsDone=!already && state.completed[key].length===item.sets;
   if(allSetsDone){
     vibrateGym("pr");
@@ -1967,6 +1988,19 @@ function renderNutrition(){
 function bindFoodTracker(){const note=document.querySelector("[data-food-note]");note.oninput=e=>{state.foodNote=e.target.value;if(state.foodPendingPayload){state.foodPendingPayload=null;document.querySelector("[data-retry-food]")?.remove();}persistDebounced();};document.querySelectorAll("[data-quick-meal]").forEach(button=>button.onclick=()=>{state.foodNote=button.dataset.quickMeal;analyzeFood({mode:"text",description:button.dataset.quickMeal});});document.querySelectorAll("[data-meal-type]").forEach(button=>button.onclick=()=>{state.foodMealType=button.dataset.mealType;persist();renderNutrition();});document.querySelectorAll("[data-log-method]").forEach(button=>button.onclick=()=>{state.foodLogMethod=button.dataset.logMethod;persist();renderNutrition();});document.querySelector("[data-analyze-food]").onclick=()=>analyzeFood({mode:state.foodLogMethod==="Restaurant"?"restaurant":"text",description:String(state.foodNote||"").trim()});document.querySelector("[data-manual-food]").onclick=()=>manualFoodDraft();document.querySelector("[data-food-photo]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"photo");document.querySelector("[data-food-gallery]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"photo");document.querySelector("[data-food-barcode]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"barcode-image");document.querySelector("[data-live-barcode]")?.addEventListener("click",startLiveBarcodeScanner);document.querySelector("[data-food-voice]").onclick=startFoodVoice;document.querySelector("[data-food-pair-form]")?.addEventListener("submit",e=>{e.preventDefault();pairFromFood();});document.querySelector("[data-food-disconnect]")?.addEventListener("click",forgetPairingKey);document.querySelector("[data-retry-food]")?.addEventListener("click",()=>{const pending=state.foodPendingPayload;state.foodPendingPayload=null;if(pending)analyzeFood(pending);});document.querySelectorAll("[data-water-delta]").forEach(button=>button.onclick=()=>changeFoodWater(Number(button.dataset.waterDelta)));document.querySelector("[data-water-form]").onsubmit=e=>{e.preventDefault();applyCustomWater("add");};document.querySelector('[data-water-custom-action="set"]').onclick=()=>applyCustomWater("set");document.querySelector("[data-water-reset]").onclick=()=>setFoodWater(0);document.querySelector("[data-cancel-food]")?.addEventListener("click",()=>{state.foodDraft=null;renderNutrition();});document.querySelector("[data-save-food]")?.addEventListener("click",saveFoodDraft);document.querySelectorAll("[data-delete-food]").forEach(button=>button.onclick=()=>deleteFoodEntry(button.dataset.deleteFood));document.querySelectorAll("[data-save-template]").forEach(button=>button.onclick=()=>saveMealTemplate(button.dataset.saveTemplate));document.querySelectorAll("[data-use-template]").forEach(button=>button.onclick=()=>useMealTemplate(button.dataset.useTemplate));document.querySelectorAll("[data-delete-template]").forEach(button=>button.onclick=()=>deleteMealTemplate(button.dataset.deleteTemplate));document.querySelector("[data-new-template]")?.addEventListener("click",()=>{state.newTemplateOpen=!state.newTemplateOpen;renderNutrition();});document.querySelector("[data-cancel-template]")?.addEventListener("click",()=>{state.newTemplateOpen=false;renderNutrition();});document.querySelector("[data-template-form]")?.addEventListener("submit",e=>{e.preventDefault();createMealTemplateManual();});document.querySelectorAll("[data-daily-key]").forEach(el=>el.onchange=()=>{if(el.checked&&navigator.vibrate)navigator.vibrate(30);const b=dailyBucket("nutrition");b.checked[el.dataset.dailyKey]=el.checked;queueNutritionSummary();persist();renderNutrition();});document.querySelector("[data-weight-form]").onsubmit=e=>{e.preventDefault();const input=document.querySelector("[data-weight-input]"),value=Number(input.value);if(!Number.isFinite(value)||value<30||value>300){input.setCustomValidity(state.lang==="ar"?"أدخل وزناً بين 30 و300 كجم.":"Enter a weight from 30 to 300 kg.");input.reportValidity();return;}input.setCustomValidity("");saveBodyWeight(value);renderNutrition();};document.querySelectorAll("[data-delete-weight]").forEach(button=>button.onclick=()=>{deleteBodyWeight(button.dataset.deleteWeight);renderNutrition();});document.querySelectorAll("[data-reminder-tab]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.reminderTab));document.querySelector("[data-reminder-toggle]")?.addEventListener("click",e=>{const t=e.currentTarget.dataset.reminderToggle;state.reminderExpanded[t]=!state.reminderExpanded[t];renderNutrition();});updateSyncPanel();}
 
 async function startLiveBarcodeScanner(){
+  if(window.REP_BARCODE_SCANNER?.openScannerModal){
+    window.REP_BARCODE_SCANNER.openScannerModal(item => {
+      state.foodDraft = {
+        ...item,
+        mealType: state.foodMealType || "Snack",
+        logMethod: "Barcode"
+      };
+      state.foodStatus = state.lang==="ar" ? "تم جلب بيانات المنتج بالباركود. راجع ثم احفظ." : "Product nutrition loaded via barcode. Confirm portions.";
+      persist();
+      renderNutrition();
+    });
+    return;
+  }
   const ar=state.lang==="ar";
   if(!navigator.mediaDevices?.getUserMedia){showToast(ar?"الكاميرا غير متاحة في هذا المتصفح.":"Camera is not available.");return;}
   const overlay=document.createElement("div");
@@ -2105,6 +2139,9 @@ function updateTimer(){
   document.querySelector("#timerValue").textContent=`${min}:${sec}`; document.querySelector("#timerRing").style.setProperty("--progress",`${Math.max(0,t.remaining/t.total*100)}%`);
   document.querySelector("#timerNext").textContent=`${U().set} ${t.set+1} · ${U().breatheReset}`;
   updateMediaSessionRest(t.remaining, t.set);
+  if(window.REP_AUDIO_COACH?.announceRestCountdown) {
+    window.REP_AUDIO_COACH.announceRestCountdown(t.remaining);
+  }
 }
 function finishTimer(){
   if(!state.timer)return;clearInterval(state.timer.interval);signalEnd();timerDock.classList.add("is-hidden");state.timer=null;

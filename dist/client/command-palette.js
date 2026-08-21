@@ -15,6 +15,10 @@
 
       // Quick Tools
       { id: "tool-plate", title: ar ? "حاسبة أوزان الباربل (Plate Math)" : "Barbell Plate Math Calculator", category: ar ? "أدوات" : "Tools", icon: "🏋️", action: () => window.showPlateCalculator?.(60) },
+      { id: "tool-hr", title: ar ? "ربط حساس نبضات القلب (Bluetooth HR)" : "Connect Bluetooth Heart Rate Monitor", category: ar ? "أدوات" : "Tools", icon: "💓", action: () => window.REP_HEART_RATE?.openHrModal?.() },
+      { id: "tool-barcode", title: ar ? "مسح باركود المنتج (Food Lens)" : "Scan Product Barcode (Food Lens)", category: ar ? "أدوات" : "Tools", icon: "📷", action: () => window.REP_BARCODE_SCANNER?.openScannerModal?.() },
+      { id: "tool-builder", title: ar ? "محرر التمارين والروتين المخصص" : "Custom Routine Builder & Splits", category: ar ? "أدوات" : "Tools", icon: "🛠️", action: () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal?.() },
+      { id: "tool-heatmap", title: ar ? "خريطة توازن وبناء العضلات (Volume Heatmap)" : "Hypertrophy Volume Heatmap", category: ar ? "أدوات" : "Tools", icon: "🔥", action: () => { window.setPrimaryTab?.("insights"); } },
       { id: "tool-pdf", title: ar ? "تصدير بطاقة الدورة التدريبية (PDF)" : "Export Mesocycle Report (PDF)", category: ar ? "أدوات" : "Tools", icon: "📄", action: () => window.REP_REPORT_CARD?.openPrintableReport(state) },
       { id: "tool-sync", title: ar ? "مزامنة كل شيء الآن" : "Sync Everything Now", category: ar ? "أدوات" : "Tools", icon: "🔄", action: () => window.REP_SYNC_RUNTIME?.syncEverything?.() },
       { id: "tool-import", title: ar ? "استيراد بيانات (Strong / Hevy / Apple Health)" : "Import Data (Strong / Hevy / Apple Health)", category: ar ? "أدوات" : "Tools", icon: "📥", action: () => { window.renderRepSettings?.("general"); document.querySelector(".data-migration-card")?.scrollIntoView({ behavior: "smooth" }); } },

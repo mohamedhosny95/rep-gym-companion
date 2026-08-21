@@ -794,5 +794,24 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 .btn-open-plate-calc { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 10px; font-weight: 800; cursor: pointer; }
 .btn-open-plate-calc:hover { border-color: var(--acid); color: var(--acid); }
 
+/* Heart Rate BLE Badge & Pulse */
+.hr-connect-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid rgba(244,63,94,.3); border-radius: 999px; background: rgba(244,63,94,.08); color: #f43f5e; font-size: 11px; font-weight: 850; cursor: pointer; transition: all .15s ease; }
+.hr-connect-btn:hover { background: rgba(244,63,94,.16); }
+.hr-live-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #f43f5e; border-radius: 999px; background: rgba(0,0,0,.6); font-size: 11px; font-weight: 900; cursor: pointer; transition: all .2s ease; }
+.hr-pulse-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; animation: hrBeat 1s infinite cubic-bezier(0.215, 0.61, 0.355, 1); }
+@keyframes hrBeat { 0%, 100% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.35); opacity: 1; } }
+
+/* Barcode Scanner Viewfinder & Laser */
+.barcode-viewfinder { position: relative; width: 100%; height: 240px; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+.scanner-laser { position: absolute; left: 10%; right: 10%; height: 2px; background: #f43f5e; box-shadow: 0 0 12px #f43f5e, 0 0 24px #f43f5e; animation: scanLine 2s infinite ease-in-out; }
+@keyframes scanLine { 0%, 100% { top: 15%; opacity: 0.8; } 50% { top: 85%; opacity: 1; } }
+.scanner-corners { position: absolute; inset: 20px; border: 2px solid rgba(255,255,255,.4); border-radius: 12px; pointer-events: none; }
+
+/* Muscle Heatmap & Routine Builder */
+.muscle-heatmap-card { border-color: rgba(201,255,61,.2); background: linear-gradient(145deg, rgba(201,255,61,.04), var(--panel)); }
+.custom-routine-card { transition: transform .1s ease, border-color .15s ease; }
+.custom-routine-card:hover { border-color: rgba(201,255,61,.3); }
+.builder-ex-row { transition: all .15s ease; }
+
 
 

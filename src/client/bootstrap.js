@@ -23,6 +23,11 @@
     await load("health-ui.js");
     await load("recovery-map.js");
     await load("plate-calculator.js");
+    await load("heart-rate-monitor.js");
+    await load("audio-coach.js");
+    await load("barcode-scanner.js");
+    await load("muscle-heatmap.js");
+    await load("custom-workouts.js");
     await load("performance-ui.js");
     document.querySelector("#commandPaletteButton")?.addEventListener("click",()=>window.REP_COMMAND_PALETTE?.open());
     document.documentElement.dataset.appReady="true";
