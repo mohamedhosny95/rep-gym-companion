@@ -54,7 +54,11 @@
   function profileKey(){const focus=daySchedule().focus;return focus==="gym"?"gym":focus==="cardio"?"active":"flex";}
   todayPlan=function(day=currentDay()){const plan=daySchedule(day),focus=focusLabel(plan.focus);return plan.morning?`${state.lang==="ar"?"تنشيط":"Activation"} + ${focus}`:focus;};
   nutritionPlanKey=function(){const key=profileKey();return key==="active"?"cardio":key==="flex"?"rest":"gym";};
-  foodProfile=function(){return clone(state.preferences.targets[profileKey()]);};
+  foodProfile=function(){
+    const type=profileKey(),ar=state.lang==="ar";
+    const carbCycleBadge=type==="gym"?(ar?"⚡ تدوير الكارب: عالي (يوم تدريب)":"⚡ CARB CYCLING: HIGH (TRAINING DAY)"):(type==="active"?(ar?"⚡ تدوير الكارب: معتدل (كارديو)":"⚡ CARB CYCLING: MODERATE (CARDIO)"):(ar?"⚡ تدوير الكارب: استشفاء (دهون صحية أعلى)":"⚡ CARB CYCLING: RECOVERY / REST"));
+    return {...clone(state.preferences.targets[type]),carbCycleBadge,cycleType:type};
+  };
   function weightLabel(kg){const n=Number(kg);if(!Number.isFinite(n))return "—";return state.preferences.weightUnit==="lb"?`${Math.round(n*22.046226)/10} lb`:`${Math.round(n*10)/10} kg`;}
   function weightInput(kg){const n=Number(kg);if(!Number.isFinite(n))return "";return state.preferences.weightUnit==="lb"?Math.round(n*22.046226)/10:Math.round(n*10)/10;}
   function weightToKg(value){const n=Number(value);return state.preferences.weightUnit==="lb"?n/2.2046226:n;}
