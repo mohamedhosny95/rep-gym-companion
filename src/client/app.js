@@ -755,7 +755,7 @@ function showSwapModal(exerciseName){
 }
 
 function startTempoCoach(base, item){
-  const ar=state.lang==="ar";
+  const ar=state.lang==="ar",u=U();
   let currentRep=1, phaseIdx=0, secondsInPhase=0, paused=false;
   const targetReps=10;
   const phases = [
@@ -767,13 +767,34 @@ function startTempoCoach(base, item){
   
   const overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=`<button class="timed-close" data-tempo-close aria-label="Close">×</button><p>${esc(item.name)}</p><div style="margin:16px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="tempo-ring" style="width:140px;height:140px;border-radius:50%;border:4px solid var(--acid);display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;transform:scale(1);"><strong data-tempo-rep style="font-size:36px;font-weight:900;">${currentRep}</strong></div><span data-tempo-phase style="margin-top:14px;font-weight:800;font-size:14px;letter-spacing:.06em;color:var(--acid);">${phases[0].name}</span></div><div class="timed-actions"><button data-tempo-pause>${U().pause}</button><button data-tempo-finish>${U().finish}</button></div>`;
+  overlay.innerHTML=`<div class="timed-mode-card">
+    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="text-align:start;"><span style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">⏱️ ${ar?"مدرب الإيقاع":"TEMPO COACH"}</span><h2 style="margin:2px 0 0;font-size:18px;">${esc(item.name)}</h2></div>
+      <button class="round-button" data-tempo-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
+    </div>
+    <div class="visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}" style="width:100%;height:180px;min-height:180px;margin-bottom:6px;border-radius:18px;">
+      ${anatomyVisual(item.motion)}
+    </div>
+    <div style="margin:6px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div class="tempo-ring" style="width:100px;height:100px;border-radius:50%;border:4px solid var(--acid);display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;transform:scale(1);">
+        <strong data-tempo-rep style="font-size:32px;font-weight:900;">${currentRep}</strong>
+      </div>
+      <span data-tempo-phase style="margin-top:8px;font-weight:800;font-size:13px;letter-spacing:.06em;color:var(--acid);">${phases[0].name}</span>
+    </div>
+    <div class="timed-actions" style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button data-tempo-pause style="min-height:48px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:#181d1a;color:#fff;font-weight:900;">${u.pause}</button>
+      <button data-tempo-finish style="min-height:48px;border:0;border-radius:12px;background:var(--acid);color:var(--acid-ink);font-weight:900;">${u.finish}</button>
+    </div>
+    <div style="margin-top:6px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:12px;font-size:11px;color:var(--muted);text-align:start;width:100%;">
+      <strong style="color:var(--text);">${u.cue}:</strong> ${esc(item.cues)}
+    </div>
+  </div>`;
   document.body.appendChild(overlay);
   
   const close=()=>{clearInterval(tick);overlay.remove();window.speechSynthesis?.cancel();};
   overlay.querySelector("[data-tempo-close]").onclick=close;
   overlay.querySelector("[data-tempo-finish]").onclick=()=>{vibrateGym("pr");triggerConfetti();close();};
-  overlay.querySelector("[data-tempo-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};
+  overlay.querySelector("[data-tempo-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?u.resume:u.pause;};
 
   const ring=overlay.querySelector(".tempo-ring"),repEl=overlay.querySelector("[data-tempo-rep]"),phaseEl=overlay.querySelector("[data-tempo-phase]");
   speak(phases[0].speak);
@@ -884,8 +905,13 @@ function renderExercise() {
         log.sets[i].weight=log.sets[i-1].weight;
         log.sets[i].reps=log.sets[i-1].reps;
         log.sets[i].rpe=log.sets[i-1].rpe;
-        persist();
-        renderExercise();
+        persistDebounced();
+        const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
+        const repsInput=document.querySelector(`input[data-log="reps"][data-log-set="${i}"]`);
+        const rpeInput=document.querySelector(`input[data-log="rpe"][data-log-set="${i}"]`);
+        if(weightInput) weightInput.value=log.sets[i].weight;
+        if(repsInput) repsInput.value=log.sets[i].reps;
+        if(rpeInput) rpeInput.value=log.sets[i].rpe;
         if(window.vibrateGym) window.vibrateGym("set");
       }
     };
@@ -894,9 +920,11 @@ function renderExercise() {
     btn.onclick=()=>{
       const i=Number(btn.dataset.stepSet), delta=Number(btn.dataset.stepVal), id=exerciseId(base), log=normalizedLog(id,item.sets);
       const cur=Number(log.sets[i].weight||(i>0?log.sets[i-1]?.weight:60))||60;
-      log.sets[i].weight=String(Math.max(0, Math.round((cur+delta)*10)/10));
-      persist();
-      renderExercise();
+      const nextVal=String(Math.max(0, Math.round((cur+delta)*10)/10));
+      log.sets[i].weight=nextVal;
+      persistDebounced();
+      const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
+      if(weightInput) weightInput.value=nextVal;
       if(window.vibrateGym) window.vibrateGym("set");
     };
   });
@@ -934,11 +962,51 @@ function motionAction(action){
 function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60).padStart(2,"0");return `${m}:${s}`;}
 function toggleExerciseTimer(motion){
   if(state.exerciseTimer){stopExerciseClock();return;}
-  const total=motionGuide[motion]?.[2]||30,item=currentItem(sessions[state.session].exercises[state.index]),sided=["kneel","birddog","stretch"].includes(motion);
+  const total=motionGuide[motion]?.[2]||30,item=currentItem(sessions[state.session].exercises[state.index]),sided=["kneel","birddog","stretch"].includes(motion),u=U(),ar=state.lang==="ar";
   state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided};
-  const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=`<button class="timed-close" data-timed-close aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><p>${esc(item.name)}</p><strong data-timed-value>${formatClock(total)}</strong><span data-timed-phase>${state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL"}</span><div class="timed-progress"><i data-timed-progress></i></div><div class="timed-actions"><button data-timed-pause>${U().pause}</button><button data-timed-skip>${U().skip}</button></div><label><input type="checkbox" data-voice ${state.voice?"checked":""}> ${state.lang==="ar"?"إرشادات صوتية":"Spoken cues"}</label>`;document.body.appendChild(overlay);
-  document.querySelector("[data-timed-close]").onclick=stopExerciseClock;document.querySelector("[data-timed-skip]").onclick=finishExerciseTimer;document.querySelector("[data-timed-pause]").onclick=e=>{state.exerciseTimer.paused=!state.exerciseTimer.paused;e.currentTarget.textContent=state.exerciseTimer.paused?U().resume:U().pause;};document.querySelector("[data-voice]").onchange=e=>{state.voice=e.target.checked;persist();};
-  speak(state.lang==="ar"?"ابدأ":"Start");updateExerciseTimer();state.exerciseTimer.interval=setInterval(()=>{const t=state.exerciseTimer;if(!t||t.paused)return;t.remaining--;updateExerciseTimer();if(!t.halfway&&t.remaining<=Math.ceil(t.total/2)){t.halfway=true;speak(t.sided?(state.lang==="ar"?"بدّل الجهة":"Switch sides"):(state.lang==="ar"?"منتصف الوقت":"Halfway"));if(navigator.vibrate)navigator.vibrate(100);}if(t.remaining<=3&&t.remaining>0)speak(String(t.remaining));if(t.remaining<=0)finishExerciseTimer();},1000);
+  const overlay=document.createElement("div");
+  overlay.className="timed-mode";
+  overlay.innerHTML=`<div class="timed-mode-card">
+    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="text-align:start;"><span style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">${esc(item.category)} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</span><h2 style="margin:2px 0 0;font-size:18px;">${esc(item.name)}</h2></div>
+      <button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
+    </div>
+    <div class="visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}" style="width:100%;height:180px;min-height:180px;margin-bottom:6px;border-radius:18px;">
+      ${anatomyVisual(item.motion)}
+    </div>
+    <strong data-timed-value style="font-size:clamp(54px, 14vw, 76px);line-height:1;margin:4px 0 2px;font-weight:900;color:var(--acid);">${formatClock(total)}</strong>
+    <span data-timed-phase style="font-size:13px;font-weight:800;color:#cbd2ce;letter-spacing:.05em;">${ar?"ابدأ الحركة بثبات":"HOLD WITH CONTROL"}</span>
+    <div class="timed-progress" style="width:100%;height:8px;margin:10px 0;background:#2a302d;border-radius:99px;overflow:hidden;"><i data-timed-progress style="display:block;height:100%;width:100%;background:var(--acid);transition:width .25s linear;"></i></div>
+    <div class="timed-actions" style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <button data-timed-add type="button" style="min-height:48px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:#181d1a;color:#fff;font-weight:900;font-size:13px;">+15s</button>
+      <button data-timed-pause type="button" style="min-height:48px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:#181d1a;color:#fff;font-weight:900;font-size:13px;">${u.pause}</button>
+      <button data-timed-skip type="button" style="min-height:48px;border:0;border-radius:12px;background:var(--acid);color:var(--acid-ink);font-weight:900;font-size:13px;">${u.done}</button>
+    </div>
+    <div style="margin-top:6px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:12px;font-size:11px;color:var(--muted);text-align:start;width:100%;">
+      <strong style="color:var(--text);">${u.cue}:</strong> ${esc(item.cues)}
+    </div>
+    <label style="margin-top:6px;font-size:11px;color:#aeb8b2;display:flex;align-items:center;gap:6px;"><input type="checkbox" data-voice ${state.voice?"checked":""}> ${ar?"إرشادات صوتية":"Spoken cues"}</label>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("[data-timed-close]").onclick=stopExerciseClock;
+  overlay.querySelector("[data-timed-skip]").onclick=finishExerciseTimer;
+  overlay.querySelector("[data-timed-add]").onclick=()=>{if(state.exerciseTimer){state.exerciseTimer.remaining+=15;state.exerciseTimer.total+=15;updateExerciseTimer();}};
+  overlay.querySelector("[data-timed-pause]").onclick=e=>{state.exerciseTimer.paused=!state.exerciseTimer.paused;e.currentTarget.textContent=state.exerciseTimer.paused?u.resume:u.pause;};
+  overlay.querySelector("[data-voice]").onchange=e=>{state.voice=e.target.checked;persist();};
+  speak(ar?"ابدأ":"Start");
+  updateExerciseTimer();
+  state.exerciseTimer.interval=setInterval(()=>{
+    const t=state.exerciseTimer;if(!t||t.paused)return;
+    t.remaining--;
+    updateExerciseTimer();
+    if(!t.halfway&&t.remaining<=Math.ceil(t.total/2)){
+      t.halfway=true;
+      speak(t.sided?(ar?"بدّل الجهة":"Switch sides"):(ar?"منتصف الوقت":"Halfway"));
+      if(navigator.vibrate)navigator.vibrate(100);
+    }
+    if(t.remaining<=3&&t.remaining>0)speak(String(t.remaining));
+    if(t.remaining<=0)finishExerciseTimer();
+  },1000);
 }
 function updateExerciseTimer(){const t=state.exerciseTimer;if(!t)return;document.querySelector("[data-timed-value]").textContent=formatClock(t.remaining);document.querySelector("[data-timed-progress]").style.width=`${Math.max(0,t.remaining/t.total*100)}%`;document.querySelector("[data-timed-phase]").textContent=t.halfway?(t.sided?(state.lang==="ar"?"الجهة الثانية":"SECOND SIDE"):(state.lang==="ar"?"النصف الثاني":"SECOND HALF")):(state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL");}
 function speak(text){if(!state.voice||state.muted||!window.speechSynthesis)return;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang=state.lang==="ar"?"ar-EG":"en-US";utterance.rate=.95;window.speechSynthesis.speak(utterance);}
