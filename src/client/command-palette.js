@@ -32,10 +32,29 @@
     ];
   }
 
+  function getExerciseActions(state){
+    if(typeof sessions === "undefined") return [];
+    const ar = state.lang === "ar";
+    const seen = new Map();
+    for(const [sessionId, session] of Object.entries(sessions)){
+      for(const exercise of session.exercises || []){
+        if(exercise?.name && !seen.has(exercise.name)) seen.set(exercise.name, sessionId);
+      }
+    }
+    return [...seen].map(([name, sessionId]) => ({
+      id: `exercise-${sessionId}-${name}`,
+      title: name,
+      category: ar ? "تمرين" : "Exercise",
+      icon: "🏋️",
+      action: () => window.showSessionPreview?.(sessionId)
+    }));
+  }
+
   function openPalette(){
     if(document.querySelector(".command-palette-overlay")) return;
     const ar = window.state?.lang === "ar";
     const actions = getActions(window.state || {});
+    const exerciseActions = getExerciseActions(window.state || {});
     let selectedIdx = 0;
 
     const overlay = document.createElement("div");
@@ -48,10 +67,10 @@
       <div class="command-palette-modal">
         <div class="palette-input-wrap">
           <span class="palette-search-icon">🔍</span>
-          <input type="text" class="palette-input" placeholder="${ar ? "ابحث عن تمرين، أداة، أو إعداد… (Esc للإغلاق)" : "Search exercises, tools, or settings… (Esc to exit)"}" autofocus>
+          <input type="text" class="palette-input" aria-label="${ar ? "بحث" : "Search"}" placeholder="${ar ? "ابحث عن تمرين، أداة، أو إعداد… (Esc للإغلاق)" : "Search exercises, tools, or settings… (Esc to exit)"}" autofocus>
           <kbd class="palette-esc-kbd">ESC</kbd>
         </div>
-        <div class="palette-results-list" role="listbox"></div>
+        <div class="palette-results-list" role="listbox" aria-label="${ar ? "النتائج" : "Results"}"></div>
       </div>
     `;
 
@@ -63,7 +82,7 @@
     function renderResults(query = ""){
       const q = query.toLowerCase().trim();
       const filtered = q
-        ? actions.filter(a => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q))
+        ? [...actions, ...exerciseActions].filter(a => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q))
         : actions;
 
       if(!filtered.length){
@@ -115,7 +134,7 @@
 
       const q = input.value.toLowerCase().trim();
       const filtered = q
-        ? actions.filter(a => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q))
+        ? [...actions, ...exerciseActions].filter(a => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q))
         : actions;
 
       if(e.key === "ArrowDown"){

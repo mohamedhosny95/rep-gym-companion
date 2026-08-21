@@ -96,7 +96,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 main { padding: 12px 18px calc(108px + var(--safe-bottom)); }
 
 .app-tabs { position: fixed; z-index: 18; left: 50%; bottom: calc(10px + var(--safe-bottom)); width: min(calc(100% - 20px), 720px); min-height: 72px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 6px; border: 1px solid rgba(255,255,255,.11); border-radius: 25px; background: rgba(19,23,21,.95); box-shadow: 0 20px 70px rgba(0,0,0,.58); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
-.app-tabs::before { content: ""; position: absolute; top: 6px; bottom: 6px; inset-inline-start: 6px; width: calc((100% - 12px) / 5); border-radius: 18px; background: var(--text); box-shadow: 0 7px 18px rgba(0,0,0,.28); transition: transform .3s cubic-bezier(.22,.85,.32,1.1); }
+.app-tabs::before { content: ""; position: absolute; top: 6px; bottom: 6px; inset-inline-start: 6px; width: calc((100% - 12px) / 5); border-radius: 18px; background: var(--text); box-shadow: 0 7px 18px rgba(0,0,0,.28); transition: transform .3s cubic-bezier(.22,.85,.32,1.1), opacity .2s ease; }
+.app-tabs:not(:has(button[aria-current="page"]))::before { opacity: 0; }
 .app-tabs:has(button:nth-child(2)[aria-current="page"])::before { transform: translateX(100%); }
 .app-tabs:has(button:nth-child(3)[aria-current="page"])::before { transform: translateX(200%); }
 .app-tabs:has(button:nth-child(4)[aria-current="page"])::before { transform: translateX(300%); }
@@ -138,7 +139,7 @@ h1, h2, h3, p { margin-top: 0; }
 [dir="rtl"] .home-today-card strong { text-align: right; }
 .home-today-card button { flex: none; min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--acid); color: var(--acid-ink); font-weight: 900; font-size: 13px; }
 .home-note { margin-top: 4px; }
-.bedtime-card { margin-bottom: 14px; padding: 14px 16px; background: rgba(125,201,255,.08); border: 1px solid rgba(125,201,255,.24); border-radius: 16px; }
+.bedtime-card { margin-bottom: 14px; padding: 14px 16px; padding-inline-end: 88px; background: rgba(125,201,255,.08); border: 1px solid rgba(125,201,255,.24); border-radius: 16px; }
 .bedtime-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .bedtime-row span { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .bedtime-row strong { font-size: 20px; color: var(--blue); }
@@ -577,8 +578,9 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 [dir="rtl"] .quality-warnings,[dir="rtl"] .data-answer ul{padding-left:0;padding-right:18px}[dir="rtl"] .inbox-list article{border-left:1px solid var(--line);border-right:3px solid var(--blue)}[dir="rtl"] .inbox-list article.priority-3{border-right-color:#ff8b3d}
 .quick-log{position:fixed;z-index:19;right:max(16px,env(safe-area-inset-right));bottom:calc(96px + var(--safe-bottom));display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 [dir="rtl"] .quick-log{right:auto;left:max(16px,env(safe-area-inset-left))}
-.quick-log-fab{width:56px;height:56px;flex:0 0 auto;border:1px solid rgba(255,255,255,.11);border-radius:50%;background:var(--acid);color:var(--acid-ink);display:grid;place-items:center;box-shadow:0 14px 40px rgba(0,0,0,.5);cursor:pointer;transition:transform .25s cubic-bezier(.22,.85,.32,1.1)}
+.quick-log-fab{width:56px;height:56px;flex:0 0 auto;border:1px solid rgba(255,255,255,.11);border-radius:50%;background:var(--acid);opacity:.86;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--acid-ink);display:grid;place-items:center;box-shadow:0 14px 40px rgba(0,0,0,.5);cursor:pointer;transition:transform .25s cubic-bezier(.22,.85,.32,1.1),opacity .2s ease}
 .quick-log-fab svg{width:24px;height:24px}
+.quick-log-fab:active,.quick-log-fab:focus-visible,.quick-log-fab.is-open{opacity:1}
 .quick-log-fab.is-open{transform:rotate(45deg)}
 .quick-log-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .quick-log-menu[hidden]{display:none}
