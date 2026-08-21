@@ -2031,7 +2031,7 @@ function finishTimer(){
 document.querySelector("#timerSkip").addEventListener("click",finishTimer);
 document.querySelector("#timerPause").addEventListener("click",()=>{if(!state.timer)return;state.timer.paused=!state.timer.paused;document.querySelector("#timerPause").textContent=state.timer.paused?U().resume:U().pause;});
 document.querySelector("#timerAdd").addEventListener("click",()=>{if(!state.timer)return;state.timer.remaining+=15;state.timer.total+=15;updateTimer();});
-document.querySelector("#homeButton").addEventListener("click",renderHome);
+document.querySelector("#homeButton").addEventListener("click",()=>setPrimaryTab("home"));
 document.querySelector("#previewModeButton")?.addEventListener("click",togglePreviewMode);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
