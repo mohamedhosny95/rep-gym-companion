@@ -405,13 +405,16 @@ function renderInsights(){
   const weights=[...state.bodyWeights].sort((a,b)=>b.week.localeCompare(a.week));
   const weightDelta=weights.length>=2?Math.round((weights[0].kg-weights[weights.length-1].kg)*10)/10:null;
   const weightText=weightDelta===null?(ar?"—":"—"):`${weightDelta>0?"+":""}${weightDelta} kg`;
+  const horizon=state.trendHorizon||"7d";
+  const horizonDays=horizon==="90d"?90:horizon==="28d"?28:7;
   const gate=recoveryGate(),items=buildInsights(),sleepAvg=recentSleepAvg(7),minSleep=REP_HEALTH_GUIDE.rules.minimumSleepHours;
-  const weightPoints=[...state.bodyWeights].sort((a,b)=>a.week.localeCompare(b.week)).slice(-12).map(w=>w.kg);
-  const sleepCutoff=Date.now()-14*86400000,sleepPoints=[...state.sleepLogs].filter(s=>new Date(s.date).getTime()>=sleepCutoff).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>s.hours);
-  const volumeBuckets=weeklyTrainingVolume(6);
+  const weightPoints=[...state.bodyWeights].sort((a,b)=>a.week.localeCompare(b.week)).slice(horizon==="90d"?-24:horizon==="28d"?-12:-6).map(w=>w.kg);
+  const sleepCutoff=Date.now()-horizonDays*86400000,sleepPoints=[...state.sleepLogs].filter(s=>new Date(s.date).getTime()>=sleepCutoff).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>s.hours);
+  const volumeBuckets=weeklyTrainingVolume(horizon==="90d"?12:horizon==="28d"?8:6);
   const todayRecovery=computeRecoveryScore();
-  const strainBuckets=Array.from({length:7},(_,i)=>computeStrainScore(shiftLocalDay(-(6-i))));
-  const recoveryPoints=[];for(let i=13;i>=0;i--){const r=computeRecoveryScore(shiftLocalDay(-i));if(r)recoveryPoints.push(r.score);}
+  const strainCount=horizonDays>14?14:horizonDays;
+  const strainBuckets=Array.from({length:strainCount},(_,i)=>computeStrainScore(shiftLocalDay(-(strainCount-1-i))));
+  const recoveryPoints=[];for(let i=horizonDays-1;i>=0;i--){const r=computeRecoveryScore(shiftLocalDay(-i));if(r)recoveryPoints.push(r.score);}
   app.innerHTML=`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
   <section class="insight-stats">
     <article><small>${ar?"سلسلة الأيام":"DAY STREAK"}</small><strong>${computeStreak()}</strong></article>
@@ -422,17 +425,25 @@ function renderInsights(){
     <article><small>${ar?"متوسط النوم (7 أيام)":"SLEEP AVG (7D)"}</small><strong class="${sleepAvg!==null&&sleepAvg<minSleep?"warn":""}">${sleepAvg!==null?`${sleepAvg}h`:"—"}</strong></article>
     <article><small>${ar?"الاستشفاء اليوم":"RECOVERY TODAY"}</small><strong class="${todayRecovery?(todayRecovery.band==="red"?"warn":""):(gate.hold?"warn":"")}">${todayRecovery?`${todayRecovery.score}%`:(gate.hold?(ar?"ثبّت":"Hold"):"—")}</strong></article>
   </section>
-  <div class="section-title"><h2>${ar?"الاتجاهات":"Trends"}</h2><span>${ar?"الوزن · النوم · حجم التدريب":"Weight · sleep · training volume"}</span></div>
+  <div class="section-title">
+    <h2>${ar?"الاتجاهات":"Trends"}</h2>
+    <div class="time-horizon-selector" role="group" aria-label="${ar?"المدى الزمني":"Time horizon"}">
+      <button data-trend-horizon="7d" class="${horizon==="7d"?"is-active":""}">7D</button>
+      <button data-trend-horizon="28d" class="${horizon==="28d"?"is-active":""}">28D</button>
+      <button data-trend-horizon="90d" class="${horizon==="90d"?"is-active":""}">90D</button>
+    </div>
+  </div>
   <section class="trends-grid">
-    ${trendCard(ar,{kicker:ar?"كجم · آخر التسجيلات":"KG · RECENT ENTRIES",title:ar?"اتجاه الوزن":"Weight trend",points:weightPoints,unit:" kg",color:"var(--blue)",emptyText:ar?"سجّل وزنك لبضعة أسابيع لرؤية الاتجاه.":"Log your weight for a few weeks to see a trend."})}
-    ${trendCard(ar,{kicker:ar?"ساعات · آخر 14 يوماً":"HOURS · LAST 14 DAYS",title:ar?"اتجاه النوم":"Sleep trend",points:sleepPoints,unit:"h",color:"#7dc9ff",emptyText:ar?"سجّل نومك لبضع ليالٍ لرؤية الاتجاه.":"Log a few nights of sleep to see a trend."})}
-    ${trendCard(ar,{kicker:ar?"% · آخر 14 يوماً":"% · LAST 14 DAYS",title:ar?"اتجاه الاستشفاء":"Recovery trend",points:recoveryPoints,unit:"%",color:"var(--acid)",emptyText:ar?"سجّل نومك ومراجعتك لرؤية الاتجاه.":"Log sleep and check-ins to see a trend."})}
-    <article class="trend-card"><span class="card-kicker">${ar?"مقياس 0–21 · آخر 7 أيام":"0–21 SCALE · LAST 7 DAYS"}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"var(--blue)"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
+    ${trendCard(ar,{kicker:ar?`كجم · آخر ${weightPoints.length} أسابيع`:`KG · LAST ${weightPoints.length} WEEKS`,title:ar?"اتجاه الوزن":"Weight trend",points:weightPoints,unit:" kg",color:"var(--blue)",emptyText:ar?"سجّل وزنك لبضعة أسابيع لرؤية الاتجاه.":"Log your weight for a few weeks to see a trend."})}
+    ${trendCard(ar,{kicker:ar?`ساعات · آخر ${horizonDays} يوماً`:`HOURS · LAST ${horizonDays} DAYS`,title:ar?"اتجاه النوم":"Sleep trend",points:sleepPoints,unit:"h",color:"#7dc9ff",emptyText:ar?"سجّل نومك لبضع ليالٍ لرؤية الاتجاه.":"Log a few nights of sleep to see a trend."})}
+    ${trendCard(ar,{kicker:ar?`% · آخر ${horizonDays} يوماً`:`% · LAST ${horizonDays} DAYS`,title:ar?"اتجاه الاستشفاء":"Recovery trend",points:recoveryPoints,unit:"%",color:"var(--acid)",emptyText:ar?"سجّل نومك ومراجعتك لرؤية الاتجاه.":"Log sleep and check-ins to see a trend."})}
+    <article class="trend-card"><span class="card-kicker">${ar?`مقياس 0–21 · آخر ${strainCount} أيام`:`0–21 SCALE · LAST ${strainCount} DAYS`}</span><h2>${ar?"الإجهاد اليومي":"Daily strain"}</h2>${strainBuckets.some(v=>v>0)?barChartSvg(strainBuckets,{color:"var(--blue)"}):`<p class="trend-empty">${ar?"سجّل حصة لرؤية الإجهاد اليومي.":"Log a session to see daily strain."}</p>`}</article>
     <article class="trend-card"><span class="card-kicker">${ar?"سعرات محروقة أسبوعياً · تقدير":"KCAL BURNED PER WEEK · EST."}</span><h2>${ar?"حجم التدريب":"Training volume"}</h2>${volumeBuckets.some(v=>v>0)?barChartSvg(volumeBuckets,{color:"#ffd36a"}):`<p class="trend-empty">${ar?"أكمل بضع حصص لرؤية النمط الأسبوعي.":"Complete a few sessions to see the weekly pattern."}</p>`}</article>
   </section>
   ${metricGuideCard(ar)}
   ${journalInsightsCard(ar)}
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
+  document.querySelectorAll("[data-trend-horizon]").forEach(btn=>{btn.onclick=()=>{state.trendHorizon=btn.dataset.trendHorizon;persist();renderInsights();};});
 }
 function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
 function focusViewHeading(){

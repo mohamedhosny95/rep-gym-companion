@@ -77,12 +77,86 @@
     document.querySelector("[data-health-report]")?.addEventListener("click",()=>{const payload={generatedAt:new Date().toISOString(),coverage:coverage.coverage(state,today()),baseline:coverage.longTerm(state,today()),recentCheckins:(state.recoveryCheckins||[]).slice(0,28),measurements:(state.bodyMeasurements||[]).slice(0,90),disclaimer:"General wellness trends; not a diagnosis."},blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=`rep-health-report-${today()}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);});
   }
 
+  function domainOverviewGrid(){
+    const rtl=ar(),longTerm=coverage.longTerm(state,today());
+    const metrics=state.healthMetrics?.[today()]||{};
+    const sleep=(state.sleepLogs||[]).find(s=>String(s.date).slice(0,10)===today())||{};
+    const energy=state.activeEnergy?.[today()]||0;
+    const strain=window.health?.strain?window.health.strain(state,today()):0;
+    const weights=[...(state.bodyWeights||[])].sort((a,b)=>b.week.localeCompare(a.week));
+    const currentWeight=weights[0]?.kg||null,prevWeight=weights[1]?.kg||null;
+    const weightDelta=(currentWeight&&prevWeight)?Math.round((currentWeight-prevWeight)*10)/10:null;
+
+    const sleepMetric=longTerm.metrics.find(m=>m.name==="sleep");
+    const sleepHours=sleep.hours||sleepMetric?.current||null;
+    const sleepBase=sleepMetric?.average28||7.5;
+    const sleepDebt=sleepHours?Math.round((sleepBase-sleepHours)*10)/10:null;
+    const sleepStatus=!sleepHours?(rtl?"سجّل النوم":"Log sleep"):(sleepDebt<=0.3?(rtl?"ضمن المعدل":"In baseline"):(rtl?`دين: ${sleepDebt}س`:`Debt: ${sleepDebt}h`));
+    const sleepTone=!sleepHours?"neutral":(sleepDebt<=0.3?"good":"warning");
+
+    const hrvMetric=longTerm.metrics.find(m=>m.name==="hrv"),rhrMetric=longTerm.metrics.find(m=>m.name==="rhr");
+    const hrv=sleep.hrv||hrvMetric?.current||null,rhr=sleep.rhr||rhrMetric?.current||null;
+    const hrvBase=hrvMetric?.average28||null,rhrBase=rhrMetric?.average28||null;
+    const heartStatus=(!hrv&&!rhr)?(rtl?"في انتظار الساعة":"Awaiting Watch"):((hrv&&hrvBase&&hrv>=hrvBase*0.9)?(rtl?"استشفاء ممتاز":"Balanced recovery"):(rtl?"إجهاد طفيف":"Mild strain"));
+    const heartTone=(!hrv&&!rhr)?"neutral":((hrv&&hrvBase&&hrv>=hrvBase*0.9)?"good":"warning");
+
+    const steps=metrics.steps||null;
+    const activityStatus=strain>=14?(rtl?"حمل تدريبي عالي":"High strain"):strain>=8?(rtl?"حمل مثالي":"Optimal load"):(rtl?"استشفاء نشط":"Active recovery");
+
+    const waist=longTerm.waistCm||null;
+    const bodyMeasurements=state.bodyMeasurements?.[0]||{};
+    const bp=(bodyMeasurements.systolic&&bodyMeasurements.diastolic)?`${bodyMeasurements.systolic}/${bodyMeasurements.diastolic}`:null;
+
+    return `<section class="domain-cards-grid" aria-label="${rtl?"المجالات الفسيولوجية الأربعة":"Four physiological domains"}">
+      <article class="domain-card tone-${sleepTone}">
+        <div class="domain-head">
+          <span><small>${rtl?"النوم والاستشفاء":"SLEEP & RECOVERY"}</small><h3>🌙 ${sleepHours?`${sleepHours}h`:"—"}</h3></span>
+          <span class="domain-pill ${sleepTone}">${sleepStatus}</span>
+        </div>
+        <div class="domain-stats">
+          <div><small>${rtl?"المعدل (28 يوم)":"28D BASELINE"}</small><strong>${sleepBase}h</strong></div>
+          <div><small>${rtl?"النوم العميق":"DEEP SLEEP"}</small><strong>${metrics.deepSleepHours?`${metrics.deepSleepHours}h`:(sleep.bedtime?`${sleep.bedtime} → ${sleep.wake}`:"—")}</strong></div>
+        </div>
+      </article>
+      <article class="domain-card tone-${heartTone}">
+        <div class="domain-head">
+          <span><small>${rtl?"القلب والاستجابة":"HEART & AUTONOMIC"}</small><h3>❤️ ${hrv?`${hrv} ms`:"—"} <span class="sub-metric">${rhr?`· ${rhr} bpm`:""}</span></h3></span>
+          <span class="domain-pill ${heartTone}">${heartStatus}</span>
+        </div>
+        <div class="domain-stats">
+          <div><small>${rtl?"معدل HRV":"HRV BASELINE"}</small><strong>${hrvBase?`${Math.round(hrvBase)} ms`:"—"}</strong></div>
+          <div><small>${rtl?"النبض أثناء الراحة":"RESTING HR"}</small><strong>${rhrBase?`${Math.round(rhrBase)} bpm`:"—"}</strong></div>
+        </div>
+      </article>
+      <article class="domain-card tone-good">
+        <div class="domain-head">
+          <span><small>${rtl?"النشاط والإجهاد":"ACTIVITY & STRAIN"}</small><h3>⚡ ${strain?`${strain.toFixed(1)}`:"0.0"} <small>/ 21</small></h3></span>
+          <span class="domain-pill good">${activityStatus}</span>
+        </div>
+        <div class="domain-stats">
+          <div><small>${rtl?"الطاقة النشطة":"ACTIVE KCAL"}</small><strong>${energy?`${energy} kcal`:"—"}</strong></div>
+          <div><small>${rtl?"الخطوات":"STEPS"}</small><strong>${steps?steps.toLocaleString():"—"}</strong></div>
+        </div>
+      </article>
+      <article class="domain-card tone-neutral">
+        <div class="domain-head">
+          <span><small>${rtl?"الجسم والقياسات":"BODY & COMPOSITION"}</small><h3>⚖️ ${currentWeight?`${currentWeight} kg`:"—"}</h3></span>
+          <span class="domain-pill neutral">${weightDelta!==null?`${weightDelta>0?"+":""}${weightDelta} kg/wk`:(rtl?"ثابت":"Stable")}</span>
+        </div>
+        <div class="domain-stats">
+          <div><small>${rtl?"محيط الخصر":"WAIST"}</small><strong>${waist?`${waist} cm`:"—"}</strong></div>
+          <div><small>${rtl?"ضغط الدم":"BLOOD PRESSURE"}</small><strong>${bp||"—"}</strong></div>
+        </div>
+      </article>
+    </section>`;
+  }
+
   function organizeHealthWorkflow(){
     const active=uiState?.get("healthWorkflow")||"summary",rtl=ar();
     const nav=shell?.tabs({label:rtl?"مهام الحيوية":"Vitals workflows",active,items:[["summary",rtl?"الملخص":"Summary"],["log",rtl?"تسجيل":"Log"],["data",rtl?"البيانات":"Data & setup"]].map(([id,label])=>({id,label})),onChange:id=>{uiState?.set("healthWorkflow",id);renderVitals();},className:"workflow-nav health-workflow-nav"});
     const anchor=document.querySelector(".health-subnav");if(nav&&anchor)anchor.insertAdjacentElement("afterend",nav);
     const groups=[];
-    document.querySelectorAll(".coverage-card,.health-coach-card,.vitals-trio").forEach(element=>groups.push([element,"summary"]));
+    document.querySelectorAll(".coverage-card,.health-coach-card,.domain-cards-grid,.vitals-trio").forEach(element=>groups.push([element,"summary"]));
     document.querySelectorAll(".morning-card,.sleep-card,.journal-card,.active-energy-card,.vitals-import-card.is-review").forEach(element=>groups.push([element,"log"]));
     document.querySelectorAll(".charging-card,.health-quality-card,.vitals-import-card:not(.is-review),.recovery-card.wide:not(.sleep-card):not(.journal-card)").forEach(element=>groups.push([element,"data"]));
     shell?.showOnly(groups,active);
@@ -99,7 +173,7 @@
   }
 
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
-  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
+  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
   renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
   renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();else if(state.activeTab==="train")renderHome();
