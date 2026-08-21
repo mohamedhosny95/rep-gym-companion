@@ -175,6 +175,6 @@
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
   renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
   renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
-  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;const isRestDay=(state.preferences?.schedule?.[currentDay()]?.focus)==="rest";start.addEventListener("click",()=>{if(!isRestDay&&needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
+  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();else if(state.activeTab==="train")renderHome();
 })();
