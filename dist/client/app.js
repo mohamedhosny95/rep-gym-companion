@@ -572,8 +572,14 @@ function renderOverview(){
     ${strainRecoveryCard(ar)}
     <section class="bedtime-card"><div class="bedtime-row"><span>${ar?"موعد النوم الليلة":"BEDTIME TONIGHT"}</span><strong>${bedtime.time}</strong></div><small>${ar?`لاستيقاظ ${bedtime.wakeTime} · ${bedtime.need}h مطلوبة`:`For your ${bedtime.wakeTime} wake-up · ${bedtime.need}h needed`}</small></section>
     <section class="today-strip home-today-card"><div><span>${ar?({Sunday:"الأحد",Monday:"الاثنين",Tuesday:"الثلاثاء",Wednesday:"الأربعاء",Thursday:"الخميس",Friday:"الجمعة",Saturday:"السبت"}[day]):day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?(ar?"متابعة الحصة ←":"Resume session →"):(ar?"ابدأ خطة اليوم ←":"Start today's plan →")}</button></section>
+    <div class="today-secondary-actions" style="display:flex;gap:8px;margin:-4px 0 14px;">
+      <button data-today-bad-day type="button" style="flex:1;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(217,179,255,.08);color:#d9b3ff;font-size:11px;font-weight:850;cursor:pointer;">⚡ ${ar?"يوم مرهق؟ خطة بديلة (15 د)":"Low Energy? Fallback (15m)"}</button>
+      <button data-today-log-act type="button" style="min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:11px;font-weight:850;cursor:pointer;">+ ${ar?"نشاط رياضي":"Log Activity"}</button>
+    </div>
     ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
   document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
+  document.querySelector("[data-today-bad-day]")?.addEventListener("click",()=>renderBadDay());
+  document.querySelector("[data-today-log-act]")?.addEventListener("click",()=>showLogActivity());
 }
 
 function renderHome() {
@@ -834,6 +840,9 @@ function renderExercise() {
   const done = state.completed[key] || [];
   const subs = window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[base.name] || [];
   const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${state.lang==="ar"?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
+  const nextSetIndex = Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
+  const isAllDone = nextSetIndex === undefined;
+  const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(state.lang==="ar"?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
   app.innerHTML = `<section class="player" data-swipe>
     <div class="player-header">
       <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
@@ -854,10 +863,10 @@ function renderExercise() {
       ${cardioPanel(item)}
       <div class="set-tracker" aria-label="${state.lang==="ar"?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
-      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${state.index===session.exercises.length-1?u.finish:u.next}</button></nav>
+      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
     </article></section>`;
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
-  document.querySelector("[data-next]").addEventListener("click", next);
+  document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
   document.querySelectorAll("[data-jump-exercise]").forEach(btn=>{btn.onclick=()=>{state.index=Number(btn.dataset.jumpExercise);persist();renderExercise();};});
   document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => toggleSet(Number(b.dataset.set))));
