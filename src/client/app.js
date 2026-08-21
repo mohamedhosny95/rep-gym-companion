@@ -772,32 +772,80 @@ function progressionCode(id,sets){
   return state.session==="gym"?"Hold":"Recovery";
 }
 function loadPanel(base,item){
-  if(!isLoadExercise(item))return ""; const u=U(),id=exerciseId(base),log=normalizedLog(id,item.sets);
-  const prev=log.previousSets?.map((s,i)=>`${i+1}: ${s.weight||"—"} kg × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
+  if(!isLoadExercise(item))return "";
+  const u=U(), ar=state.lang==="ar", id=exerciseId(base), log=normalizedLog(id,item.sets);
+  const isLb = state.preferences?.weightUnit === "lb";
+  const unitLabel = isLb ? "lb" : "kg";
+  const prev=log.previousSets?.map((s,i)=>`${i+1}: ${isLb?(window.weightLabel?weightLabel(s.weight):`${s.weight||"—"} lb`):`${s.weight||"—"} kg`} × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
   const advice=window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id,state);
   const curWeight=Number(log.sets[0]?.weight||60)||60;
-  return `<section class="load-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل كل مجموعة":"Log every set"}</strong><div style="display:flex;gap:6px;"><button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${state.lang==="ar"?"الإيقاع":"Tempo"}</button><button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${state.lang==="ar"?"حساب الأوزان":"Plate Math"}</button><button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${state.lang==="ar"?"إملاء صوتي":"Voice Log"}</button></div></div><div class="set-log-grid">
-    ${Array.from({length:item.sets},(_,i)=>{
-      const s=log.sets[i]||{};
-      const canClone=i>0&&(log.sets[i-1]?.weight||log.sets[i-1]?.reps);
-      return `<div class="set-log-row">
-        <div style="display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;">
-          <b>${i+1}</b>
-          ${canClone?`<button class="clone-set-btn" data-clone-set="${i}" type="button" style="padding:2px 8px;border:1px solid var(--line);border-radius:6px;background:rgba(201,255,61,.08);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">⎘ ${state.lang==="ar"?`مطابقة مجموعة ${i}`:`Match Set ${i}`}</button>`:""}
-        </div>
-        <div style="display:grid;gap:4px;">
-          <label><span>${u.weight}</span><input data-log="weight" data-log-set="${i}" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(s.weight||"")}" placeholder="kg"></label>
-          <div style="display:flex;gap:3px;margin-top:2px;">
-            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="-2.5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--muted);font-size:10px;font-weight:800;cursor:pointer;">-2.5</button>
-            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="2.5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">+2.5</button>
-            <button class="step-btn" type="button" data-step-set="${i}" data-step-val="5" style="flex:1;min-height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--acid);font-size:10px;font-weight:800;cursor:pointer;">+5</button>
+  const key = `${state.session}-${state.index}`;
+  const done = state.completed[key] || [];
+
+  return `<section class="load-panel">
+    <div class="set-log-head">
+      <div>
+        <span class="set-log-kicker">${ar?"تسجيل القوة":"STRENGTH LOG"}</span>
+        <h2>${ar?"سجل المجموعات":"Log Every Set"}</h2>
+      </div>
+      <div class="set-log-actions">
+        <button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${ar?"الإيقاع":"Tempo"}</button>
+        <button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${ar?"الأوزان":"Plates"}</button>
+        <button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${ar?"صوتي":"Voice"}</button>
+      </div>
+    </div>
+
+    <div class="set-table-header">
+      <span class="col-set">${ar?"مجموعة":"SET"}</span>
+      <span class="col-prev">${ar?"السابق":"PREV"}</span>
+      <span class="col-weight">${u.weight} (${unitLabel})</span>
+      <span class="col-reps">${u.reps}</span>
+      <span class="col-rpe">RPE</span>
+      <span class="col-check">✓</span>
+    </div>
+
+    <div class="set-log-grid">
+      ${Array.from({length:item.sets},(_,i)=>{
+        const s=log.sets[i]||{};
+        const prevSet=log.previousSets?.[i];
+        const prevText=prevSet?(prevSet.weight?`${isLb?(window.weightLabel?weightLabel(prevSet.weight):prevSet.weight):prevSet.weight}×${prevSet.reps}`:`${prevSet.reps}r`):"—";
+        const isDone=done.includes(i);
+        const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
+        return `<div class="set-card-row ${isDone?"is-completed":""}">
+          <div class="set-main-fields">
+            <span class="set-badge ${isDone?"is-done":""}">${i+1}</span>
+            <div class="set-prev-cell"><small>${prevText}</small></div>
+            <div class="set-input-wrap">
+              <input data-log="weight" data-log-set="${i}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${wVal}" placeholder="${unitLabel}" aria-label="${u.weight} ${i+1}">
+            </div>
+            <div class="set-input-wrap">
+              <input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}" placeholder="0" aria-label="${u.reps} ${i+1}">
+            </div>
+            <div class="set-input-wrap">
+              <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="7.5" aria-label="RPE ${i+1}">
+            </div>
+            <button class="set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
+              ${isDone?"✓":"○"}
+            </button>
           </div>
-        </div>
-        <label><span>${u.reps}</span><input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}"></label>
-        <label><span>RPE</span><input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}"></label>
-        <label class="set-note"><span>${state.lang==="ar"?"ملاحظة":"Note"}</span><input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${state.lang==="ar"?"اختياري":"optional"}"></label>
-      </div>`}).join("")}
-  </div><p>${u.previousLog}: <strong>${prev}</strong></p><div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div></section>`;
+          <div class="set-sub-bar">
+            <div class="set-steppers">
+              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?-5:-2.5}">${isLb?"-5":"-2.5"}</button>
+              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?5:2.5}">${isLb?"+5":"+2.5"}</button>
+              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?10:5}">${isLb?"+10":"+5"}</button>
+              ${i>0?`<button class="clone-set-btn" data-clone-set="${i}" type="button">⎘ ${ar?`مثل ${i}`:`Match S${i}`}</button>`:""}
+            </div>
+            <div class="set-note-wrap">
+              <input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${ar?"+ ملاحظة (اختياري)":"+ Note (optional)"}" aria-label="Note ${i+1}">
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    <p style="margin:10px 0 0;color:var(--muted);font-size:11px;">${u.previousLog}: <strong>${prev}</strong></p>
+    <div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div>
+  </section>`;
 }
 function cardioPanel(item){
   if(state.session!=="cardio"||item.motion!=="inclinewalk")return "";const d=state.cardioDraft,advice=cardioAdvice();
