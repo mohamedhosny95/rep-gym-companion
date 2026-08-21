@@ -1,5 +1,5 @@
 (async function(){
-  const version=window.REP_BUILD_VERSION||"45535efb6d2a";
+  const version=window.REP_BUILD_VERSION||"6d45d56ceaa8";
   const load=src=>new Promise((resolve,reject)=>{
     const script=document.createElement("script");
     script.src=`${src}?v=${version}`;
@@ -22,6 +22,7 @@
     await load("habits.js");
     await load("health-ui.js");
     await load("recovery-map.js");
+    await load("plate-calculator.js");
     await load("performance-ui.js");
     document.querySelector("#commandPaletteButton")?.addEventListener("click",()=>window.REP_COMMAND_PALETTE?.open());
     document.documentElement.dataset.appReady="true";

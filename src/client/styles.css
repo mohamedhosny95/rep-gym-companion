@@ -750,5 +750,31 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 @media(max-width:540px){.this-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.domain-cards-grid{grid-template-columns:1fr}}
 
+/* Modal & Plate Calculator */
+.rep-modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.75); display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rep-modal-sheet { width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; background: #111513; border: 1px solid rgba(255,255,255,.14); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.sheet-close { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; background: rgba(255,255,255,.05); color: var(--muted); font-size: 14px; cursor: pointer; display: grid; place-items: center; }
+.plate-visualizer-wrap { background: #080a09; border: 1px solid var(--line); border-radius: 16px; padding: 10px; margin-bottom: 12px; display: flex; justify-content: center; }
+.plate-summary-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.plate-badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 850; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.plate-stepper-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 14px; }
+.plate-stepper-grid button { height: 42px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.05); color: var(--text); font-size: 12px; font-weight: 850; cursor: pointer; }
+.plate-stepper-grid button:active { background: var(--acid); color: var(--acid-ink); }
+.plate-bar-selector { margin-bottom: 16px; }
+.bar-pill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bar-pill-grid button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #0c0f0d; color: var(--muted); font-size: 11px; font-weight: 800; cursor: pointer; text-align: start; }
+.bar-pill-grid button.is-active { border-color: var(--acid); color: var(--acid); background: rgba(201,255,61,.08); }
+.sheet-actions { display: flex; gap: 10px; margin-top: 10px; }
+
+/* Voice meal logging */
+.voice-record-btn { min-width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.05); color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: all .2s ease; font-size: 18px; }
+.voice-record-btn.is-listening { border-color: #ff5252; background: rgba(255,82,82,.15); color: #ff5252; animation: micPulse 1.2s infinite ease-in-out; }
+@keyframes micPulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Quick plate calc trigger pill */
+.btn-open-plate-calc { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.04); color: var(--muted); font-size: 10px; font-weight: 800; cursor: pointer; }
+.btn-open-plate-calc:hover { border-color: var(--acid); color: var(--acid); }
+
 
 
