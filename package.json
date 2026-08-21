@@ -30,7 +30,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.8.1",
     "playwright": "^1.48.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10",
     "wrangler": "4.120.1"
