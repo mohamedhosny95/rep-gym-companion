@@ -561,13 +561,48 @@ function greetingLine(ar){
   const key=hour<5?"night":hour<12?"morning":hour<17?"afternoon":hour<21?"evening":"night";
   return {morning:ar?"صباح الخير.":"Good morning.",afternoon:ar?"مساء الخير.":"Good afternoon.",evening:ar?"مساء الخير.":"Good evening.",night:ar?"طابت ليلتك.":"Good night."}[key];
 }
+function todayFuelSnippet(ar){
+  const p=foodProfile(), entries=todayFoodEntries(), totals=foodTotals(entries), water=Number(state.water[isoDay()])||0;
+  const cal=Math.round(totals.calories||0), calTarget=p.calories||2200, calPct=Math.min(100, Math.round(cal/calTarget*100));
+  const pro=Math.round(totals.protein_g||0), proTarget=p.protein||160, proPct=Math.min(100, Math.round(pro/proTarget*100));
+  const watGoal=p.water||3000, watPct=Math.min(100, Math.round(water/watGoal*100));
+  return `<section class="today-fuel-card" style="margin-bottom:14px;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <small style="color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">${ar?"تغذية وترطيب اليوم":"TODAY'S FUEL & HYDRATION"}</small>
+        <h2 style="font-size:15px;margin:2px 0 0;">${cal} / ${calTarget} kcal <span style="font-size:12px;font-weight:700;color:var(--muted);">(${calPct}%)</span></h2>
+      </div>
+      <button type="button" data-goto-fuel style="padding:6px 12px;border:1px solid rgba(201,255,61,.3);border-radius:999px;background:rgba(201,255,61,.08);color:var(--acid);font-size:11px;font-weight:850;cursor:pointer;">${ar?"+ تسجيل طعام / ماء":"+ Log Meal / Water"}</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="padding:8px 10px;border-radius:12px;background:var(--panel-2);">
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;margin-bottom:4px;">
+          <span>${ar?"البروتين":"Protein"}</span>
+          <strong style="color:var(--acid);">${pro} / ${proTarget}g</strong>
+        </div>
+        <div style="height:5px;width:100%;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;">
+          <div style="height:100%;width:${proPct}%;background:var(--acid);border-radius:99px;"></div>
+        </div>
+      </div>
+      <div style="padding:8px 10px;border-radius:12px;background:var(--panel-2);">
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;margin-bottom:4px;">
+          <span>${ar?"الماء":"Water"}</span>
+          <strong style="color:var(--blue);">${water} / ${watGoal} ml</strong>
+        </div>
+        <div style="height:5px;width:100%;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;">
+          <div style="height:100%;width:${watPct}%;background:var(--blue);border-radius:99px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
 function renderOverview(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="home-overview";state.activeTab="home";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore(),bedtime=computeBedtimeSuggestion();
   const items=buildInsights(),note=items[0];
   const resume=state.session&&sessions[state.session]&&state.index<sessions[state.session].exercises.length;
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
-  app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
+  app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}${day==="Friday"?(ar?" · يوم سورة الكهف":" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
     ${strainRecoveryCard(ar)}
     <section class="bedtime-card"><div class="bedtime-row"><span>${ar?"موعد النوم الليلة":"BEDTIME TONIGHT"}</span><strong>${bedtime.time}</strong></div><small>${ar?`لاستيقاظ ${bedtime.wakeTime} · ${bedtime.need}h مطلوبة`:`For your ${bedtime.wakeTime} wake-up · ${bedtime.need}h needed`}</small></section>
@@ -576,8 +611,10 @@ function renderOverview(){
       <button data-today-bad-day type="button" style="flex:1;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(217,179,255,.08);color:#d9b3ff;font-size:11px;font-weight:850;cursor:pointer;">⚡ ${ar?"يوم مرهق؟ خطة بديلة (15 د)":"Low Energy? Fallback (15m)"}</button>
       <button data-today-log-act type="button" style="min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:11px;font-weight:850;cursor:pointer;">+ ${ar?"نشاط رياضي":"Log Activity"}</button>
     </div>
+    ${todayFuelSnippet(ar)}
     ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
   document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
+  document.querySelector("[data-goto-fuel]")?.addEventListener("click",()=>setPrimaryTab("food"));
   document.querySelector("[data-today-bad-day]")?.addEventListener("click",()=>renderBadDay());
   document.querySelector("[data-today-log-act]")?.addEventListener("click",()=>showLogActivity());
 }
@@ -1292,7 +1329,7 @@ function bindDaily(kind,render){document.querySelectorAll("[data-daily-key]").fo
 function moduleHeader(kicker,title,copy){return `<section class="recovery-head module-head"><p class="eyebrow">${kicker}</p><h1>${title}</h1><p>${copy}</p><span class="guide-version">${state.lang==="ar"?"الدليل":"Guide"} v${REP_HEALTH_GUIDE.version} · ${REP_HEALTH_GUIDE.updatedAt}</span></section>`;}
 const FOOD_PROFILES={gym:{label:"Gym Day",calories:2162,protein:176,carbs:248,fat:70,fiber:30,water:3500},active:{label:"Active Day",calories:1990,protein:173,carbs:202,fat:70,fiber:30,water:3200},flex:{label:"Flex Day",calories:2480,protein:150,carbs:0,fat:70,fiber:30,water:3000,calorieCeiling:true,proteinFloor:true}};
 function foodProfile(){
-  const dayName=DAY_NAMES[new Date().getDay()];
+  const dayName=currentDay();
   const focus=state.preferences?.schedule?.[dayName]?.focus||([0,2,4].includes(new Date().getDay())?"gym":"flex");
   const type=(focus==="gym"||focus==="gymLite")?"gym":(focus==="cardio"?"active":"flex");
   const base=FOOD_PROFILES[type]||FOOD_PROFILES.gym;

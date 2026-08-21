@@ -109,8 +109,26 @@
   deleteFoodEntry=function(id){const index=state.foodEntries.findIndex(entry=>entry.id===id),entry=state.foodEntries[index];if(!entry)return;state.foodEntries.splice(index,1);queueNutritionSummary();persist();renderNutrition();showUndo(state.lang==="ar"?"تم حذف الوجبة.":"Meal deleted.",()=>{state.foodEntries.splice(index,0,entry);queueNutritionSummary();persist();renderNutrition();});};
 
   const baseUpdateTabs=updatePrimaryTabs;
-  updatePrimaryTabs=function(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const tab=button.dataset.appTab,active=tab==="health"?["care","insights","vitals"].includes(state.activeTab):tab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",health:state.lang==="ar"?"الصحة":"Health"};const span=button.querySelector("span");if(span)span.textContent=labels[tab]||tab;});};
-  setPrimaryTab=function(tab){if(tab==="health")tab=state.healthView||"vitals";state.activeTab=tab;persist();updatePrimaryTabs();if(tab==="home")renderOverview();else if(tab==="food")renderNutrition();else if(tab==="care")renderHygiene();else if(tab==="insights")renderInsights();else if(tab==="vitals")renderVitals();else renderHome();};
+  updatePrimaryTabs=function(){
+    document.querySelectorAll("[data-app-tab]").forEach(button=>{
+      const tab=button.dataset.appTab;
+      const active=tab==="health"?["care","vitals"].includes(state.activeTab)||state.activeTab==="health":tab==="insights"?state.activeTab==="insights":tab===state.activeTab;
+      button.setAttribute("aria-current",active?"page":"false");
+      const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",health:state.lang==="ar"?"الصحة":"Health",insights:state.lang==="ar"?"التحليلات":"Insights"};
+      const span=button.querySelector("span");
+      if(span)span.textContent=labels[tab]||tab;
+    });
+  };
+  setPrimaryTab=function(tab){
+    if(tab==="health")tab=state.healthView==="care"?"care":"vitals";
+    state.activeTab=tab;persist();updatePrimaryTabs();
+    if(tab==="home")renderOverview();
+    else if(tab==="food")renderNutrition();
+    else if(tab==="care")renderHygiene();
+    else if(tab==="insights")renderInsights();
+    else if(tab==="vitals")renderVitals();
+    else renderHome();
+  };
   function localizeArabicUnits(){if(state.lang!=="ar")return;const walker=document.createTreeWalker(app,NodeFilter.SHOW_TEXT);while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest("input,textarea,script,style"))continue;node.nodeValue=node.nodeValue.replace(/(\d+(?:\.\d+)?)h\b/g,"$1 س").replace(/\bkg\b/g,"كجم").replace(/\bkcal\b/g,"سعرة");}}
   function healthNav(){const ar=state.lang==="ar",items=[["vitals",ar?"الحيوية":"Vitals"],["care",ar?"العناية":"Wellness"],["insights",ar?"التحليلات":"Insights"]];localizeArabicUnits();const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label",ar?"أقسام الصحة":"Health sections");nav.innerHTML=items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}">${label}</button>`).join("");const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
   const confidenceLabel=(value,ar)=>({high:ar?"ثقة عالية":"High confidence",medium:ar?"ثقة متوسطة":"Medium confidence",low:ar?"ثقة منخفضة":"Low confidence"}[value]||value);

@@ -7,9 +7,9 @@ import {dirname,join} from "node:path";
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
 const read=path=>readFile(join(root,path),"utf8");
 
-test("the mobile shell exposes four primary tabs",async()=>{
+test("the mobile shell exposes five primary tabs",async()=>{
   const html=await read("dist/client/index.html"),tabs=[...html.matchAll(/data-app-tab="([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(tabs,["home","train","food","health"]);
+  assert.deepEqual(tabs,["home","train","food","health","insights"]);
 });
 
 test("every local script in the document exists",async()=>{
