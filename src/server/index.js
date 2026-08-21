@@ -597,20 +597,33 @@ async function syncWorkoutBody(env, body) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
   }
   if (workout.entries.length > 100) return json({ ok: false, error: "Workout is too large." }, 413);
-  let created = 0, skipped = 0;const existing=await existingEntries(env,workout.id);
-  let receipt = { verified: true };
+  let created = 0, skipped = 0;
+  const existing = await existingEntries(env, workout.id);
+  const toCreate = [];
   for (const row of workout.entries) {
     if (!row?.entry || !row?.exercise) continue;
-    if (existing.has(safeText(row.entry,200))) { skipped++; continue; }
-    const page = await notionRequest(env, "/pages", {
-      method: "POST",
-      body: JSON.stringify({
-        parent: { type: "data_source_id", data_source_id: source },
-        properties: notionProperties(workout, row)
-      })
-    });
-    receipt = await verifyNotionPage(env, page.id, source);
-    created++;
+    if (existing.has(safeText(row.entry, 200))) {
+      skipped++;
+    } else {
+      toCreate.push(row);
+    }
+  }
+  let receipt = { verified: true };
+  const CONCURRENCY = 3;
+  for (let i = 0; i < toCreate.length; i += CONCURRENCY) {
+    const chunk = toCreate.slice(i, i + CONCURRENCY);
+    const chunkReceipts = await Promise.all(chunk.map(async row => {
+      const page = await notionRequest(env, "/pages", {
+        method: "POST",
+        body: JSON.stringify({
+          parent: { type: "data_source_id", data_source_id: source },
+          properties: notionProperties(workout, row)
+        })
+      });
+      return verifyNotionPage(env, page.id, source);
+    }));
+    created += chunk.length;
+    if (chunkReceipts.length) receipt = chunkReceipts[chunkReceipts.length - 1];
   }
   return json({ ok: true, ...receipt, kind: "workout", created, skipped });
 }
@@ -1303,6 +1316,7 @@ async function route(request, env, ctx) {
   }
   if (url.pathname === "/api/security/csp-report") {
     if (request.method !== "POST") return json({ok:false,error:"Method not allowed."},405);
+    if (await rateLimited(request, "csp-report", 60, 60, env)) return rateLimitResponse();
     if (requestTooLarge(request, 16_384)) return new Response(null,{status:413});
     const report=await request.json().catch(()=>null),body=report?.["csp-report"]||report?.body||{};
     const blocked=body["blocked-uri"]||body.blockedURL||"",source=body["source-file"]||body.sourceFile||"";
