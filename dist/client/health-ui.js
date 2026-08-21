@@ -12,7 +12,7 @@
   function coverageCard(){
     const data=coverage.coverage(state,today()),missing=data.missing.length?data.missing.join(", "):"None",tone=data.confidence==="high"?"good":data.confidence==="medium"?"medium":"warning";
     return `<section class="coverage-card ${tone}">
-      <div class="coverage-score" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${data.score}"><strong>${data.score}%</strong><span>${ar()?"ثقة البيانات":"data confidence"}</span></div>
+      <div class="coverage-score" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${data.score}" aria-label="${ar()?"ثقة البيانات":"Data confidence"}"><strong>${data.score}%</strong><span>${ar()?"ثقة البيانات":"data confidence"}</span></div>
       <div><small>${ar()?"تغطية القياسات":"MEASUREMENT COVERAGE"}</small><h2>${data.confidence==="high"?(ar()?"جاهزة للتحليل":"Ready to interpret"):ar()?"النتيجة تحتاج سياقاً":"Treat the score cautiously"}</h2>
       <p>${ar()?"تفصل هذه النتيجة اكتمال القياس عن الاستعداد البدني.":"This measures data completeness, separately from physical readiness."}</p>
       <details><summary>${ar()?"تفاصيل التغطية":"Coverage details"}</summary><ul>${data.items.map(item=>`<li class="${item.available?"is-present":"is-missing"}"><span>${item.label}</span><b>${item.available?"✓":"Missing"}</b></li>`).join("")}</ul><p><b>${ar()?"الناقص":"Missing"}:</b> ${esc(missing)}</p></details></div>

@@ -231,7 +231,7 @@
         </div>
       </div>
       <div class="push-actions" style="margin-top:10px;">
-        <input type="time" data-push-time value="${state.pushTime}" ${state.pushEndpoint?"disabled":""}>
+        <input type="time" data-push-time value="${state.pushTime}" aria-label="${ar?"وقت التذكير اليومي":"Daily reminder time"}" ${state.pushEndpoint?"disabled":""}>
         <button data-push-toggle>${state.pushEndpoint?(ar?"إيقاف":"Disable"):(ar?"تفعيل الإشعارات":"Enable Notifications")}</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;">
@@ -250,10 +250,10 @@
         <button data-sound-pack="bell" class="${soundPack==="bell"?"is-active":""}">${ar?"جرس":"Gong"}</button>
       </div></div>
       <div class="segmented-setting"><span>${ar?"لون التمييز":"Accent"}</span><div>
-        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}" style="color:#c9ff3d;">● Lime</button>
-        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}" style="color:#38bdf8;">● Cyan</button>
-        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}" style="color:#fb923c;">● Flame</button>
-        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}" style="color:#c084fc;">● Violet</button>
+        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}"><span style="color:#c9ff3d;">●</span> Lime</button>
+        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}"><span style="color:#38bdf8;">●</span> Cyan</button>
+        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}"><span style="color:#fb923c;">●</span> Flame</button>
+        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}"><span style="color:#c084fc;">●</span> Violet</button>
       </div></div>
       ${[["weightUnit",ar?"الوزن":"Weight",["kg","lb"]],["waterUnit",ar?"المياه":"Water",["ml","oz"]]].map(([key,label,values])=>`<div class="segmented-setting"><span>${label}</span><div>${values.map(value=>`<button data-unit="${key}" data-value="${value}" class="${state.preferences[key]===value?"is-active":""}">${value==="oz"?"fl oz":value}</button>`).join("")}</div></div>`).join("")}
       <button class="quiet-setting" data-install-settings>${ar?"تثبيت Health OS على الجهاز":"Install Health OS on this device"}</button>

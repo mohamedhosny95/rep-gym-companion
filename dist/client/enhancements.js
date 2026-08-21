@@ -231,7 +231,7 @@
         </div>
       </div>
       <div class="push-actions" style="margin-top:10px;">
-        <input type="time" data-push-time value="${state.pushTime}" ${state.pushEndpoint?"disabled":""}>
+        <input type="time" data-push-time value="${state.pushTime}" aria-label="${ar?"وقت التذكير اليومي":"Daily reminder time"}" ${state.pushEndpoint?"disabled":""}>
         <button data-push-toggle>${state.pushEndpoint?(ar?"إيقاف":"Disable"):(ar?"تفعيل الإشعارات":"Enable Notifications")}</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;">
@@ -250,10 +250,10 @@
         <button data-sound-pack="bell" class="${soundPack==="bell"?"is-active":""}">${ar?"جرس":"Gong"}</button>
       </div></div>
       <div class="segmented-setting"><span>${ar?"لون التمييز":"Accent"}</span><div>
-        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}" style="color:#c9ff3d;">● Lime</button>
-        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}" style="color:#38bdf8;">● Cyan</button>
-        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}" style="color:#fb923c;">● Flame</button>
-        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}" style="color:#c084fc;">● Violet</button>
+        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}"><span style="color:#c9ff3d;">●</span> Lime</button>
+        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}"><span style="color:#38bdf8;">●</span> Cyan</button>
+        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}"><span style="color:#fb923c;">●</span> Flame</button>
+        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}"><span style="color:#c084fc;">●</span> Violet</button>
       </div></div>
       ${[["weightUnit",ar?"الوزن":"Weight",["kg","lb"]],["waterUnit",ar?"المياه":"Water",["ml","oz"]]].map(([key,label,values])=>`<div class="segmented-setting"><span>${label}</span><div>${values.map(value=>`<button data-unit="${key}" data-value="${value}" class="${state.preferences[key]===value?"is-active":""}">${value==="oz"?"fl oz":value}</button>`).join("")}</div></div>`).join("")}
       <button class="quiet-setting" data-install-settings>${ar?"تثبيت Health OS على الجهاز":"Install Health OS on this device"}</button>
@@ -323,7 +323,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(ar?`أحدث نقطة: ${new Date(dates[0]).toLocaleString("ar-EG")}`:`Latest: ${new Date(dates[0]).toLocaleString()}`):(ar?"ستُنشأ نقطة بعد التغيير التالي.":"A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(ar?"ar-EG":undefined)}</button>`).join("");history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"16c4cd4486cb"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"6ea91a1d9543"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!repAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await repAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair Health OS",url});else await navigator.clipboard.writeText(url);showToast(state.lang==="ar"?"تم نسخ الرابط.":"Pairing link copied.");}catch{showToast(state.lang==="ar"?"تعذر مشاركة الرابط.":"Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt(state.lang==="ar"?"اكتب عبارة مرور من 8 أحرف على الأقل:":"Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"Rep Gym Companion",schema:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload()},payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`health-os-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast(state.lang==="ar"?"تم تنزيل النسخة المشفرة.":"Encrypted backup downloaded.");}catch(error){showToast(String(error.message||error));}}
