@@ -115,6 +115,7 @@
     if(value.checked[id]){
       if(window.vibrateGym)window.vibrateGym("habit");
       else if(navigator.vibrate)navigator.vibrate(30);
+      if(id==="sleep"&&!(state.sleepLogs||[]).some(row=>String(row.date).slice(0,10)===date)&&typeof showToast==="function")showToast(state.lang==="ar"?"تم. سجّل ساعات نومك الفعلية في الصحة ← الحيوية لحساب نتيجة الاستعداد.":"Marked done. Log your actual hours in Health → Vitals for a readiness score.");
       const todays=habitsForDate(date);
       if(completed(date).length===todays.length){
         if(window.triggerConfetti)window.triggerConfetti();

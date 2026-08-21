@@ -68,7 +68,7 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
   const workoutGuard=(state,key=dayKey())=>{
     const battery=metricValue(state,key,"battery"),data=coverage(state,key),checks=[
       {id:"sync",label:"Health data synced",ok:data.staleHours!==null&&data.staleHours<=24},
-      {id:"battery",label:"Watch battery ready",ok:!finite(battery)||Number(battery)>=25},
+      {id:"battery",label:"Watch battery ready",ok:finite(battery)&&Number(battery)>=25},
       {id:"baseline",label:"Recovery baseline available",ok:(state.sleepLogs||[]).length>=7},
       {id:"checkin",label:"Pain and energy checked",ok:Boolean(checkinFor(state,key))}
     ];

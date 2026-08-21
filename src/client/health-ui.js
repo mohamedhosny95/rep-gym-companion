@@ -5,7 +5,7 @@
   const shell=window.REP_UI_SHELL,uiState=window.REP_UI_STATE;
   const today=()=>coverage.dayKey();
   const ar=()=>state.lang==="ar";
-  const num=(value,digits=0)=>Number.isFinite(Number(value))?Number(value).toFixed(digits):"—";
+  const num=(value,digits=0)=>value===null||value===undefined||!Number.isFinite(Number(value))?"—":Number(value).toFixed(digits);
   const signed=(value,digits=1)=>Number.isFinite(Number(value))?`${Number(value)>0?"+":""}${Number(value).toFixed(digits)}`:"—";
   const labels={sleep:["Sleep","h",1],hrv:["HRV","ms",0],rhr:["Resting HR","bpm",0],resp:["Breathing","/min",1],vo2:["VO₂ max","",1]};
 
@@ -175,6 +175,6 @@
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
   renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
   renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
-  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
+  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;const isRestDay=(state.preferences?.schedule?.[currentDay()]?.focus)==="rest";start.addEventListener("click",()=>{if(!isRestDay&&needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}bind();};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();else if(state.activeTab==="train")renderHome();
 })();
