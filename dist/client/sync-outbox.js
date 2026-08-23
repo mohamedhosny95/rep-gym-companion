@@ -10,7 +10,7 @@
   function enqueue(queue,item,{force=false}={}){
     const list=Array.isArray(queue)?queue.map(normalize).filter(Boolean):[],index=list.findIndex(entry=>entry.id===item.id),previous=index>=0?list[index]:null;
     if(previous&&!force&&["pending","transmitting","retryable_failed"].includes(previous.status)){previous.item=cloneItem(item);previous.updatedAt=nowIso();return list;}
-    const next={schema:SCHEMA,id:String(item.id),item:cloneItem(item),status:"pending",attempts:previous?.attempts||0,createdAt:previous?.createdAt||nowIso(),updatedAt:nowIso(),nextAttemptAt:null,lastError:""};
+    const next={schema:SCHEMA,id:String(item.id),item:cloneItem(item),status:"pending",attempts:force?0:(previous?.attempts||0),createdAt:previous?.createdAt||nowIso(),updatedAt:nowIso(),nextAttemptAt:null,lastError:""};
     if(index>=0)list.splice(index,1,next);else list.push(next);
     return list.slice(-1000);
   }

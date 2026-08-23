@@ -53,7 +53,8 @@
           ]
         }
       ];
-      if(window.persist) window.persist();
+      if(window.persistDebounced) window.persistDebounced();
+      else if(window.persist) window.persist();
     }
     return window.state.customRoutines;
   }

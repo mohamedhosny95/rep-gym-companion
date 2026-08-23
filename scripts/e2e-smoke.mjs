@@ -42,7 +42,9 @@ async function assertAccessibleView(page,label){
   assertTrue(result.overflow<=1,`${label} has no horizontal viewport overflow`);
 }
 async function assertAxe(page,label){
+  await page.evaluate(p => { if(window.__repVitals) window.__repVitals.phase = "axe:" + p; }, label);
   const result=await page.evaluate(async()=>window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa"]}}));
+  await page.evaluate(() => { if(window.__repVitals) window.__repVitals.phase = "post-axe"; });
   const serious=result.violations.filter(violation=>["serious","critical"].includes(violation.impact));
   if(serious.length)console.log(JSON.stringify(serious.map(violation=>({id:violation.id,nodes:violation.nodes.slice(0,12).map(node=>({target:node.target,summary:node.failureSummary}))})),null,2));
   assertTrue(serious.length===0,`${label} has no serious or critical axe violations${serious.length?`: ${serious.map(item=>item.id).join(", ")}`:""}`);
@@ -60,10 +62,19 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
   const page = await context.newPage();
   await page.addInitScript(()=>{
-    window.__repVitals={lcp:0,cls:0,longTask:0};
+    window.__repVitals={lcp:0,cls:0,longTask:0,longTasks:[],phase:"init"};
     try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__repVitals.lcp=Math.max(window.__repVitals.lcp,entry.startTime))).observe({type:"largest-contentful-paint",buffered:true});}catch{}
     try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>{if(!entry.hadRecentInput)window.__repVitals.cls+=entry.value;})).observe({type:"layout-shift",buffered:true});}catch{}
-    try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__repVitals.longTask=Math.max(window.__repVitals.longTask,entry.duration))).observe({type:"longtask",buffered:true});}catch{}
+    try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>{
+      window.__repVitals.longTask=Math.max(window.__repVitals.longTask,entry.duration);
+      window.__repVitals.longTasks.push({
+        phase: window.__repVitals.phase,
+        startTime: Math.round(entry.startTime),
+        duration: Math.round(entry.duration),
+        name: entry.name,
+        attribution: (entry.attribution||[]).map(a=>({name:a.name,containerType:a.containerType,containerSrc:a.containerSrc,containerId:a.containerId}))
+      });
+    })).observe({type:"longtask",buffered:true});}catch{}
   });
   await page.addInitScript({content:axe.source});
   page.on("pageerror", err => consoleErrors.push(`pageerror: ${err.message}`));
@@ -293,6 +304,12 @@ try {
     await page.click(`[data-app-tab="${tab}"]`);await page.waitForTimeout(300);await assertAxe(page,label);
   }
   const vitals=await page.evaluate(()=>window.__repVitals);
+  if(vitals.longTasks&&vitals.longTasks.length){
+    console.log("Main thread long tasks (>50ms):");
+    for(const t of vitals.longTasks){
+      console.log(`  - [${t.phase}] ${t.duration}ms (start: ${t.startTime}ms, name: ${t.name})`);
+    }
+  }
   assertTrue(vitals.lcp>0&&vitals.lcp<=2500,`LCP stays within the 2.5s mobile budget (${Math.round(vitals.lcp)}ms)`);
   assertTrue(vitals.cls<=0.1,`CLS stays within the 0.1 budget (${vitals.cls.toFixed(3)})`);
   assertTrue(vitals.longTask<=200,`Longest main-thread task stays within 200ms (${Math.round(vitals.longTask)}ms)`);
