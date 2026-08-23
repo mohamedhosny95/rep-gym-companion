@@ -507,7 +507,7 @@ function motionControls(){const u=U();return `<div class="motion-controls" aria-
 function renderExercise() {
   const session = sessions[state.session];
   if (!session) return renderHome();
-  if (state.index >= session.exercises.length) return renderComplete();
+  if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
@@ -541,6 +541,7 @@ function renderExercise() {
   const swipe = document.querySelector("[data-swipe]");
   swipe.addEventListener("touchstart", e => state.touchX = e.changedTouches[0].clientX, {passive:true});
   swipe.addEventListener("touchend", e => { const dx=e.changedTouches[0].clientX-state.touchX; if(Math.abs(dx)>65) dx<0?next():prev(); }, {passive:true});
+  updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
   if(action==="play")state.paused=!state.paused;
@@ -580,9 +581,46 @@ function playChime(){
   const ctx=ensureAudioContext();if(!ctx)return;
   try{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=740;g.gain.value=.12;o.start();o.stop(ctx.currentTime+.25);}catch{}
 }
+function playCountdownBeep(freq=520,duration=0.08){
+  if(state.muted)return;
+  const ctx=ensureAudioContext();if(!ctx)return;
+  try{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=freq;
+    g.gain.setValueAtTime(0.08,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+    o.start();
+    o.stop(ctx.currentTime+duration);
+  }catch{}
+}
 function signalEnd(){
   if(navigator.vibrate)navigator.vibrate([180,80,180]);
   if(!state.muted)playChime();
+}
+function updateMediaSession(action="idle",detail={}){
+  if(!("mediaSession" in navigator))return;
+  try{
+    if(action==="idle"){
+      navigator.mediaSession.metadata=null;
+      navigator.mediaSession.playbackState="none";
+      return;
+    }
+    const isRest=action==="rest",session=sessions[state.session],exercise=detail.exercise||session?.exercises[state.index]?.name||"Training";
+    const setInfo=detail.set!==undefined?`Set ${detail.set+1}`:"";
+    navigator.mediaSession.metadata=new MediaMetadata({
+      title:isRest?`Rest: ${detail.time||"Next Set"}`:exercise,
+      artist:"Health OS",
+      album:isRest?`${exercise} · ${setInfo}`:(session?.title||"Workout"),
+      artwork:[
+        {src:"icon-192.png",sizes:"192x192",type:"image/png"},
+        {src:"icon-512.png",sizes:"512x512",type:"image/png"}
+      ]
+    });
+    navigator.mediaSession.playbackState=isRest&&state.timer?.paused?"paused":"playing";
+    navigator.mediaSession.setActionHandler("nexttrack",()=>{if(state.view==="player")next();});
+    navigator.mediaSession.setActionHandler("previoustrack",()=>{if(state.view==="player")prev();});
+  }catch{}
 }
 function toggleSet(setIndex) {
   const {isDone}=REP_TRAINING_SESSION.toggleSetCompletion(state,state.session,state.index,setIndex);
@@ -1384,15 +1422,22 @@ function startTimer(seconds, setIndex) {
   if (state.timer?.interval) clearInterval(state.timer.interval);
   state.timer={remaining:seconds,total:seconds,paused:false,set:setIndex}; timerDock.classList.remove("is-hidden");
   timerDock.querySelector("strong").textContent=U().restTitle;document.querySelector("#timerSkip").textContent=U().skip;document.querySelector("#timerPause").textContent=U().pause;
+  updateMediaSession("rest", {set: setIndex, time: formatClock(seconds)});
   updateTimer(); state.timer.interval=setInterval(()=>{if(!state.timer.paused){state.timer.remaining--;updateTimer();if(state.timer.remaining<=0)finishTimer();}},1000);
 }
 function updateTimer(){
   const t=state.timer;if(!t)return; const min=Math.floor(t.remaining/60),sec=String(t.remaining%60).padStart(2,"0");
   document.querySelector("#timerValue").textContent=`${min}:${sec}`; document.querySelector("#timerRing").style.setProperty("--progress",`${Math.max(0,t.remaining/t.total*100)}%`);
   document.querySelector("#timerNext").textContent=`${U().set} ${t.set+1} · ${U().breatheReset}`;
+  updateMediaSession("rest", {set: t.set, time: `${min}:${sec}`});
+  if(!t.paused && (t.remaining === 3 || t.remaining === 2 || t.remaining === 1)){
+    playCountdownBeep(520, 0.08);
+    if(navigator.vibrate)navigator.vibrate(40);
+  }
 }
 function finishTimer(){
   if(!state.timer)return;clearInterval(state.timer.interval);signalEnd();timerDock.classList.add("is-hidden");state.timer=null;
+  updateMediaSession("exercise");
   const item=sessions[state.session]?.exercises[state.index],key=`${state.session}-${state.index}`,allDone=item&&(state.completed[key]||[]).length===item.sets;
   if(allDone)setTimeout(()=>{if(state.view==="player")next();},800);else document.querySelector(`.set-button:not(.is-done)`)?.classList.add("is-next");
 }

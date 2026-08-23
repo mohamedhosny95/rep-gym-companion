@@ -248,8 +248,36 @@ try {
     await page.reload({waitUntil:"domcontentloaded"});
     await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
     assertTrue(await page.locator("main h1").count()>0,"A first controlled reload starts fully offline from the precache");
+    
+    // Offline mutation & outbox persistence test
+    await page.click('[data-app-tab="food"]');
+    await page.waitForTimeout(200);
+    await page.fill("[data-food-note]", "offline protein smoothie");
+    await page.click("[data-manual-food]");
+    await page.waitForTimeout(200);
+    if (await page.locator("[data-save-food]").count()) {
+      await page.click("[data-save-food]");
+      await page.waitForTimeout(200);
+    }
+    const offlineFoodLogged = (await page.locator(".food-log article, .food-entry").count()) > 0;
+    assertTrue(offlineFoodLogged, "Offline food entry is logged and displayed while disconnected");
     await context.setOffline(false);
-  }else console.log("SKIP: Service worker readiness is not available in this local browser environment");
+  }else {
+    console.log("SKIP: Service worker readiness is not available in this local browser environment");
+    // Verify offline outbox queuing logic directly
+    await context.setOffline(true);
+    await page.click('[data-app-tab="food"]');
+    await page.waitForTimeout(200);
+    await page.fill("[data-food-note]", "offline recovery bowl");
+    await page.click("[data-manual-food]");
+    await page.waitForTimeout(200);
+    if (await page.locator("[data-save-food]").count()) {
+      await page.click("[data-save-food]");
+      await page.waitForTimeout(200);
+    }
+    assertTrue((await page.locator(".food-log article, .food-entry").count()) > 0, "Offline food entry is preserved during network loss");
+    await context.setOffline(false);
+  }
 
   await context.setOffline(false);
   for(const [tab,label] of [["home","Today"],["train","Training"],["food","Nutrition"],["health","Health"]]){

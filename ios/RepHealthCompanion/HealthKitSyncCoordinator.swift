@@ -95,6 +95,11 @@ final class HealthKitSyncCoordinator: ObservableObject {
         let sleepResult = try await sleep
         let formatter = DateFormatter(); formatter.calendar = .current; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
         let coverageResult = try await heartCoverage
+        let batteryPct: Double? = {
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            let level = UIDevice.current.batteryLevel
+            return level >= 0 ? Double(round(level * 100)) : nil
+        }()
         return try await RepDailyVitals(
             date: formatter.string(from: day), sleep_hours: sleepResult.total,
             bedtime: sleepResult.start, wake_time: sleepResult.end,
@@ -105,7 +110,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
             wrist_temperature_c: temperature, sleep_deep_hours: sleepResult.deep,
             sleep_rem_hours: sleepResult.rem, coverage_minutes: coverageResult.minutes,
             heart_rate_samples: Double(coverageResult.count), workout_hr_samples: Double(workoutSamples),
-            watch_battery_pct: nil, source: "Rep HealthKit Companion"
+            watch_battery_pct: batteryPct, source: "Rep HealthKit Companion"
         )
     }
 
@@ -185,11 +190,11 @@ final class HealthKitSyncCoordinator: ObservableObject {
     }
 }
 
-enum SyncError: Error { case healthUnavailable, configurationMissing, serverRejected }
+enum SyncError: Error { case healthUnavailable, configurationMissing, serverRejected, networkError }
 
 final class RepVitalsUploader {
     static let shared = RepVitalsUploader()
-    func upload(_ vitals: RepDailyVitals) async throws {
+    func upload(_ vitals: RepDailyVitals, maxAttempts: Int = 3) async throws {
         guard let origin = UserDefaults.standard.string(forKey: "repOrigin"),
               let key = KeychainStore.read("repVitalsImportKey"),
               let url = URL(string: "/api/vitals/import", relativeTo: URL(string: origin))?.absoluteURL else { throw SyncError.configurationMissing }
@@ -197,8 +202,25 @@ final class RepVitalsUploader {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue(key, forHTTPHeaderField: "x-rep-sync-key")
         request.httpBody = try JSONEncoder().encode(vitals)
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.serverRejected }
+        
+        var lastError: Error?
+        for attempt in 1...maxAttempts {
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode == 200 { return }
+                if statusCode == 401 || statusCode == 403 { throw SyncError.serverRejected }
+                lastError = SyncError.serverRejected
+            } catch {
+                if error is SyncError && (error as? SyncError) == SyncError.serverRejected { throw error }
+                lastError = error
+            }
+            if attempt < maxAttempts {
+                let delay = Double(1 << (attempt - 1))
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+        throw lastError ?? SyncError.networkError
     }
 }
 
