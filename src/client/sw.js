@@ -24,7 +24,7 @@ self.addEventListener("fetch", event => {
   event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));}
     return response;
-  })));
+  })).catch(() => new Response("", { status: 408, statusText: "Offline" })));
 });
 self.addEventListener("push", event => {
   let payload = { title: "Health OS", body: "Time to log your day." };

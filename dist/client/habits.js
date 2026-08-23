@@ -38,7 +38,7 @@
     return order.map(id=>habitMap.get(id));
   }
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  function dayNameFor(date){return DAY_NAMES[new Date(`${date}T12:00:00`).getDay()];}
+  function dayNameFor(date){const d=typeof date==="string"?new Date(`${date.slice(0,10)}T12:00:00`):new Date(date);return Number.isNaN(d.getTime())?"":DAY_NAMES[d.getDay()]||"";}
   function appliesOn(habit,date){return !habit.days||habit.days.includes(dayNameFor(date));}
   function habitsForDate(date){return orderedHabits().filter(habit=>appliesOn(habit,date));}
   function saveOrder(order){state.habitOrder=order.map(habit=>habit.id);persist();renderOverview();}

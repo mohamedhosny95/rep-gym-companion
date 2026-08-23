@@ -37,3 +37,23 @@ test("weekly review never claims diagnosis or causation",()=>{
   assert.equal(typeof review.headline,"string"); assert.ok(review.daysLogged>=1);
   assert.ok(health.experiments(matureState(),profile).every(item=>item.language==="association"));
 });
+
+test("health engine handles empty, sparse, and corrupt data without throwing",()=>{
+  const emptyState={sleepLogs:[],history:[],activeEnergy:{},recoveryCheckins:[],daily:{journal:{}}};
+  const emptyReadiness=health.readiness(emptyState,date(),profile);
+  assert.equal(emptyReadiness.score,null);
+  assert.equal(emptyReadiness.confidence,"low");
+
+  const corruptState={
+    sleepLogs:[{date:null,hours:"invalid"},{date:"",hours:-5},{date:date(),hours:0}],
+    history:[{date:null,duration:null,entries:[{rpe:null}]}],
+    activeEnergy:{[date()]:"NaN"},
+    recoveryCheckins:null
+  };
+  const strain=health.strain(corruptState,date());
+  assert.equal(strain,0);
+  const baseline=health.baseline(corruptState,"hours",date(),28);
+  assert.equal(baseline.count,0);
+  assert.equal(baseline.value,null);
+});
+

@@ -10,7 +10,7 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
   const median=values=>{const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return null;const middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;};
   const metricRows=(state,field,date,days)=>{
     const end=new Date(`${dateKey(date)}T12:00:00Z`).getTime(),start=end-days*DAY;
-    return (state.sleepLogs||[]).filter(row=>{const time=new Date(`${dateKey(row.date)}T12:00:00Z`).getTime(),value=Number(row[field]);return time<end&&time>=start&&Number.isFinite(value)&&value>0;}).map(row=>Number(row[field]));
+    return (state.sleepLogs||[]).filter(row=>{if(!row?.date)return false;const time=new Date(`${dateKey(row.date)}T12:00:00Z`).getTime(),value=Number(row[field]);return Number.isFinite(time)&&time<end&&time>=start&&Number.isFinite(value)&&value>0;}).map(row=>Number(row[field]));
   };
   function baseline(state,field,date=dateKey(),days=28){
     const values=metricRows(state,field,date,days),center=median(values);

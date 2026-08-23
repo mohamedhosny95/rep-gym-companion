@@ -42,7 +42,7 @@ test("health navigation stays in document flow and synchronization uses a verifi
 
 test("durable state is split into IndexedDB and optional assets load on demand",async()=>{
   const storage=await read("dist/client/storage.js"),enhancements=await read("dist/client/enhancements.js");
-  assert.match(storage,/indexedDB\.open/);assert.match(storage,/syncQueue/);assert.match(storage,/foodEntries/);assert.match(storage,/pagehide/);
+  assert.match(storage,/indexedDB\.open/);assert.match(storage,/syncQueue/);assert.match(storage,/outbox/);assert.match(storage,/foodEntries/);assert.match(storage,/pagehide/);
   assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/REP_BUILD_VERSION/);
 });
 
