@@ -182,12 +182,129 @@
     return {question:String(question||"").trim(),title,summary,bullets,confidence:conf,evidence:evidence.filter(Boolean),boundary:"Local association and trend analysis only; no diagnosis or proof of cause."};
   }
 
+  const EXERCISE_SUBSTITUTIONS = {
+    "Chest Press": ["Incline Dumbbell Press", "Dumbbell Bench Press", "Push-ups", "Dips", "Machine Chest Fly"],
+    "Leg Press": ["Barbell Back Squat", "Goblet Squat", "Bulgarian Split Squat", "Leg Extension"],
+    "Lat Pulldown": ["Pull-ups", "Single-Arm Dumbbell Row", "Resistance Band Pulldown"],
+    "Seated Cable Row": ["Barbell Bent-Over Row", "Chest-Supported Row", "Inverted Row"],
+    "Back Extension": ["Romanian Deadlift (RDL)", "Good Mornings", "Single-Leg RDL"],
+    "Hip Thrust Machine": ["Barbell Hip Thrust", "Glute Bridges", "Cable Pull-Through"],
+    "Glute Bridges": ["Hip Thrust Machine", "Single-Leg Glute Bridge", "Step-ups"],
+    "Bird-Dog": ["Deadbug", "Plank", "Pallof Press"],
+    "Plank": ["Ab Wheel Rollout", "Hollow Body Hold", "Deadbug"],
+    "Hand Grip": ["Farmer's Walk", "Wrist Curls", "Dead Hang"]
+  };
+
+  function progressionAdvice(exerciseName, state, nowKey = dateKey()){
+    const strengthData = strength(state, nowKey);
+    const item = strengthData.exercises.find(e => e.exercise.toLowerCase() === String(exerciseName||"").toLowerCase());
+    if(!item || item.records.length < 2){
+      return { status: "initial", deltaKg: 0, badge: "🌱 Baseline", message: "Log 2+ sessions to unlock progression recommendations." };
+    }
+    const recentSessions = item.records.slice(-2);
+    const s1Id = recentSessions[0].sessionId, s2Id = recentSessions[1].sessionId;
+    const s1Rows = strengthData.rows.filter(r => r.sessionId === s1Id && r.exercise === item.exercise);
+    const s2Rows = strengthData.rows.filter(r => r.sessionId === s2Id && r.exercise === item.exercise);
+
+    const latestWeight = s2Rows.length ? Math.max(...s2Rows.map(r => r.weight)) : (item.records.at(-1)?.bestE1rm || 0);
+    const isLower = ["Leg Press", "Hip Thrust Machine", "Glute Bridges", "Back Extension"].some(n => item.exercise.includes(n));
+    const stepKg = isLower ? 2.5 : 1.25;
+
+    const s1AvgReps = s1Rows.length ? (average(s1Rows.map(r => r.reps))||0) : 0;
+    const s2AvgReps = s2Rows.length ? (average(s2Rows.map(r => r.reps))||0) : 0;
+    const repsSolid = s1AvgReps >= 10 && s2AvgReps >= 10;
+    const rpeLow = (recentSessions[1].meanRpe === null || recentSessions[1].meanRpe <= 8) && (recentSessions[0].meanRpe === null || recentSessions[0].meanRpe <= 8);
+    const e1rmImproving = recentSessions[1].bestE1rm >= recentSessions[0].bestE1rm;
+
+    if(repsSolid && rpeLow && e1rmImproving){
+      return {
+        status: "bump",
+        deltaKg: stepKg,
+        suggestedWeight: round(latestWeight + stepKg, 1),
+        badge: `🚀 +${stepKg}kg Micro-load`,
+        message: `Target reps hit at RPE ≤ 8 across last 2 sessions. Ready to bump weight to ${round(latestWeight + stepKg, 1)} kg.`
+      };
+    }
+
+    const rpeHigh = recentSessions[1].meanRpe >= 9.5 && recentSessions[0].meanRpe >= 9.5;
+    const repsDropping = s2AvgReps < s1AvgReps - 2;
+    if((rpeHigh || repsDropping) && item.plateau){
+      return {
+        status: "deload",
+        deltaKg: -round(latestWeight * 0.15, 1),
+        suggestedWeight: round(latestWeight * 0.85, 1),
+        badge: "🛡️ Auto-Deload",
+        message: `High accumulated fatigue detected. Consider a deload session at ${round(latestWeight * 0.85, 1)} kg (15% reduction).`
+      };
+    }
+
+    return {
+      status: "hold",
+      deltaKg: 0,
+      suggestedWeight: latestWeight,
+      badge: "🎯 Hold & Build",
+      message: `Hold ${latestWeight} kg and build clean reps toward the top of the rep target.`
+    };
+  }
+
+  function muscleVolumeHeatmap(state, nowKey = dateKey()){
+    const history = safeArray(state?.history);
+    const end = nowKey;
+    const volumeByMuscle = {
+      Chest: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Chest" },
+      Back: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Back" },
+      Quads: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Quads" },
+      Hamstrings: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Hamstrings" },
+      Glutes: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Glutes" },
+      Shoulders: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Shoulders" },
+      Arms: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Arms" },
+      Core: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Core" }
+    };
+
+    for(const workout of history){
+      if(!inWindow(workout.date, end, 7)) continue;
+      const loads = workout.loads || {};
+      for(const [exercise, rawSets] of Object.entries(loads)){
+        const muscles = MUSCLES[exercise] || (exercise.includes("Press") ? ["Chest"] : exercise.includes("Row") || exercise.includes("Pull") ? ["Back"] : exercise.includes("Squat") ? ["Quads"] : ["Core"]);
+        const rows = setRows(workout, exercise);
+        for(const row of rows){
+          const w = Number(row.weight) || 0, r = Number(row.reps) || 0;
+          for(const m of muscles){
+            if(volumeByMuscle[m]){
+              volumeByMuscle[m].sets += 1;
+              volumeByMuscle[m].volumeKg += w * r;
+            }
+          }
+        }
+      }
+    }
+
+    for(const [, data] of Object.entries(volumeByMuscle)){
+      data.volumeKg = round(data.volumeKg, 0);
+      if(data.sets < 6){
+        data.status = "recovered";
+        data.statusLabel = "Recovered / Primed";
+        data.color = "#4ade80";
+      } else if(data.sets <= 16){
+        data.status = "optimal";
+        data.statusLabel = "Optimal Stimulus";
+        data.color = "#2dd4bf";
+      } else {
+        data.status = "fatigued";
+        data.statusLabel = "High Volume";
+        data.color = "#f87171";
+      }
+    }
+
+    return volumeByMuscle;
+  }
+
   function analyze(state,options={}){
     const nowKey=dateKey(options.now)||dateKey();
     const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),deps={strengthData,nutritionData};
     const quality=dataQuality(state,nowKey,deps);
-    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality})};
+    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality}),muscleVolume:muscleVolumeHeatmap(state,nowKey)};
   }
 
-  return {GOAL_TYPES,MUSCLES,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze};
+  return {GOAL_TYPES,MUSCLES,EXERCISE_SUBSTITUTIONS,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze,progressionAdvice,muscleVolumeHeatmap};
 });

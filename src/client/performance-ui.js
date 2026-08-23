@@ -42,11 +42,19 @@
     </section>`;
   }
 
+  function sparklineSvg(records){
+    if(!records||records.length<2)return "";
+    const values=records.map(r=>Number(r.bestE1rm)||0),min=Math.min(...values),max=Math.max(...values),range=(max-min)||1,width=80,height=22,pad=3;
+    const pts=values.map((v,i)=>{const x=Math.round(pad+(i/(values.length-1))*(width-2*pad)),y=Math.round(height-pad-((v-min)/range)*(height-2*pad));return `${x},${y}`;}).join(" ");
+    const lastPt=pts.split(" ").at(-1).split(",");
+    return `<svg class="lift-sparkline" viewBox="0 0 ${width} ${height}" aria-hidden="true"><polyline fill="none" stroke="var(--acid)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/><circle cx="${lastPt[0]}" cy="${lastPt[1]}" r="2.5" fill="var(--acid)"/></svg>`;
+  }
+
   function strengthPanel(model,ar){
     const data=model.strength,items=data.exercises.slice(0,6),muscles=Object.entries(data.muscleSets).sort((a,b)=>b[1]-a[1]);
     return `<details class="performance-card" open><summary><span><small>${tr(ar,"STRENGTH INTELLIGENCE","تحليلات القوة")}</small><strong>${tr(ar,"Progress, volume, and plateaus","التقدم والحجم والثبات")}</strong></span><b>${data.exercises.length}</b></summary>
       <div class="analytics-summary-grid"><span><small>${tr(ar,"7D VOLUME LOAD","حمل 7 أيام")}</small><strong>${Math.round(data.totalVolume).toLocaleString()} kg</strong><em>${data.volumeChange===null?tr(ar,"Needs prior week","يحتاج أسبوعاً سابقاً"):`${signed(data.volumeChange)}%`}</em></span><span><small>${tr(ar,"RECENT PRs","أرقام حديثة")}</small><strong>${data.prs.length}</strong><em>${confidence(data.confidence,ar)}</em></span><span><small>${tr(ar,"PLATEAU FLAGS","إشارات الثبات")}</small><strong>${data.plateaus.length}</strong><em>${tr(ar,"Rule-based","بقواعد واضحة")}</em></span></div>
-      ${items.length?`<div class="lift-insight-list">${items.map(item=>`<article><div><strong>${esc(item.exercise)}</strong><span>${item.sessionCount} ${tr(ar,"sessions","حصص")} · ${confidence(item.confidence,ar)}</span></div><b>${item.currentE1rm} <small>kg e1RM</small></b><div class="lift-flags"><span class="${item.change28d!==null&&item.change28d<0?"warn":""}">${item.change28d===null?tr(ar,"28d calibrating","28 يوم قيد المعايرة"):`${signed(item.change28d)}% / 28d`}</span>${item.plateau?`<span class="warn">${tr(ar,"Plateau","ثبات")}</span>`:""}<span>${tr(ar,item.recommendation==="progress"?"Progress":"Hold",item.recommendation==="progress"?"تقدم":"ثبّت")}</span></div></article>`).join("")}</div>`:`<p class="analytics-empty">${tr(ar,"Complete weighted sets with reps to unlock estimated 1RM trends.","أكمل مجموعات بأوزان وتكرارات لعرض اتجاه القوة التقديري.")}</p>`}
+      ${items.length?`<div class="lift-insight-list">${items.map(item=>`<article><div><strong>${esc(item.exercise)}</strong><span>${item.sessionCount} ${tr(ar,"sessions","حصص")} · ${confidence(item.confidence,ar)}</span></div><div class="lift-metric-row"><b>${item.currentE1rm} <small>kg e1RM</small></b>${sparklineSvg(item.records)}</div><div class="lift-flags"><span class="${item.change28d!==null&&item.change28d<0?"warn":""}">${item.change28d===null?tr(ar,"28d calibrating","28 يوم قيد المعايرة"):`${signed(item.change28d)}% / 28d`}</span>${item.plateau?`<span class="warn">${tr(ar,"Plateau","ثبات")}</span>`:""}<span>${tr(ar,item.recommendation==="progress"?"Progress":"Hold",item.recommendation==="progress"?"تقدم":"ثبّت")}</span></div></article>`).join("")}</div>`:`<p class="analytics-empty">${tr(ar,"Complete weighted sets with reps to unlock estimated 1RM trends.","أكمل مجموعات بأوزان وتكرارات لعرض اتجاه القوة التقديري.")}</p>`}
       ${muscles.length?`<div class="muscle-volume"><small>${tr(ar,"HARD SETS BY MUSCLE · 7 DAYS","المجموعات الجادة حسب العضلة · 7 أيام")}</small>${muscles.map(([name,count])=>`<span><b>${esc(name)}</b><i style="--value:${Math.min(100,count/16*100)}%"></i><em>${count}</em></span>`).join("")}</div>`:""}
       <p class="analytics-boundary">${tr(ar,"e1RM uses the Epley estimate with reps capped at 15. It is a trend tool, not a maximal-lift instruction.","يستخدم e1RM معادلة Epley مع حد 15 تكراراً. هو أداة اتجاه وليس توجيهاً لاختبار أقصى حمل.")}</p>
     </details>`;
@@ -92,14 +100,108 @@
     return `<article class="data-answer"><div><small>${confidence(answer.confidence,ar)}</small><h3>${esc(answer.title)}</h3><p>${esc(answer.summary)}</p></div>${answer.bullets.length?`<ul>${answer.bullets.map(item=>`<li>${esc(item)}</li>`).join("")}</ul>`:""}<details><summary>${tr(ar,"Evidence used","الأدلة المستخدمة")}</summary>${answer.evidence.length?answer.evidence.map(item=>`<span>${esc(item)}</span>`).join(""):`<span>${tr(ar,"No sufficient records","لا توجد سجلات كافية")}</span>`}</details><small class="analytics-boundary">${esc(answer.boundary)}</small></article>`;
   }
 
+  function thisWeekExecutivePanel(model, ar){
+    const weekAgo=Date.now()-7*86400000;
+    const history7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo);
+    const ready=window.health?.readiness ? window.health.readiness(state, (window.REP_HEALTH_COVERAGE?.dayKey()||new Date().toISOString().slice(0,10)), state.healthProfile) : {score:null,confidence:"medium"};
+    const n7=model.nutrition?.adherence7||{protein:null};
+    const slope=model.nutrition?.weightSlopePerWeek;
+    const slopeText=slope===null?"—":`${slope>0?"+":""}${slope} kg/${tr(ar,"wk","أسبوع")}`;
+
+    return `<section class="this-week-card" aria-label="${tr(ar,"This week at a glance","نظرة سريعة على أسبوعك")}">
+      <div class="this-week-head">
+        <small>${tr(ar,"THIS WEEK AT A GLANCE","نظرة شاملة على أسبوعك")}</small>
+        <strong>${tr(ar,"Consistency & Trajectory","الاستمرارية والاتجاه العام")}</strong>
+      </div>
+      <div class="this-week-grid">
+        <div>
+          <small>${tr(ar,"TRAINING","التدريب")}</small>
+          <strong>${history7.length} ${tr(ar,"done","حصص")}</strong>
+          <span>${tr(ar,"Target: 3/wk","الهدف: 3/أسبوع")}</span>
+        </div>
+        <div>
+          <small>${tr(ar,"READINESS","الاستعداد")}</small>
+          <strong style="color:var(--acid);">${ready.score!==null?`${ready.score}%`:"—"}</strong>
+          <span>${confidence(ready.confidence,ar)}</span>
+        </div>
+        <div>
+          <small>${tr(ar,"PROTEIN","البروتين")}</small>
+          <strong>${n7.protein!==null?`${Math.round(n7.protein)}%`:"—"}</strong>
+          <span>${tr(ar,"Target hit","نسبة الهدف")}</span>
+        </div>
+        <div>
+          <small>${tr(ar,"WEIGHT RATE","معدل الوزن")}</small>
+          <strong>${slopeText}</strong>
+          <span>${tr(ar,"Robust slope","اتجاه متين")}</span>
+        </div>
+      </div>
+    </section>`;
+  }
+
   function askPanel(ar){
-    const answer=state.analyticsLastQuestion?engine.ask(state,state.analyticsLastQuestion):null,recent=(state.analyticsQuestions||[]).slice(0,3);
-    return `<section class="performance-card ask-data"><div class="performance-head"><div><small>${tr(ar,"ASK YOUR DATA · LOCAL","اسأل بياناتك · محلي")}</small><h2>${tr(ar,"Answers grounded in your records","إجابات مبنية على سجلاتك")}</h2></div><span class="local-only">${tr(ar,"No upload","بدون رفع")}</span></div><form data-ask-data><label for="askDataQuestion">${tr(ar,"Question","السؤال")}</label><div><input id="askDataQuestion" name="question" maxlength="180" value="${esc(state.analyticsLastQuestion||"")}" placeholder="${tr(ar,"Why has my Leg Press stalled?","لماذا ثبت تقدم Leg Press؟")}" required><button>${tr(ar,"Analyze","حلّل")}</button></div></form>${recent.length?`<div class="recent-questions">${recent.map(item=>`<button data-ask-example="${esc(item)}">${esc(item)}</button>`).join("")}</div>`:""}<div data-ask-answer aria-live="polite">${answerMarkup(answer,ar)}</div></section>`;
+    const answer=state.analyticsLastQuestion?engine.ask(state,state.analyticsLastQuestion):null;
+    const recent=(state.analyticsQuestions||[]).slice(0,3);
+    const suggestedChips=[
+      tr(ar,"Why has my Chest Press stalled?","لماذا ثبت تقدم Chest Press؟"),
+      tr(ar,"How did sleep below 7h affect my training?","كيف أثر النوم أقل من 7س على تماريني؟"),
+      tr(ar,"How consistent is my protein intake?","ما مدى انتظامي في البروتين؟"),
+      tr(ar,"What is my estimated maintenance calories?","ما هي سعرات الصيانة التقديرية؟")
+    ];
+    return `<section class="performance-card ask-data">
+      <div class="performance-head">
+        <div>
+          <small>${tr(ar,"ASK YOUR DATA · LOCAL","اسأل بياناتك · محلي")}</small>
+          <h2>${tr(ar,"Answers grounded in your records","إجابات مبنية على سجلاتك")}</h2>
+        </div>
+        <span class="local-only">${tr(ar,"No upload","بدون رفع")}</span>
+      </div>
+      <form data-ask-data>
+        <label for="askDataQuestion">${tr(ar,"Question","السؤال")}</label>
+        <div>
+          <input id="askDataQuestion" name="question" maxlength="180" value="${esc(state.analyticsLastQuestion||"")}" placeholder="${tr(ar,"Why has my Leg Press stalled?","لماذا ثبت تقدم Leg Press؟")}" required>
+          <button>${tr(ar,"Analyze","حلّل")}</button>
+        </div>
+      </form>
+      <div class="prompt-chips-wrap" aria-label="${tr(ar,"Suggested questions","أسئلة مقترحة")}">
+        ${suggestedChips.map(chip=>`<button type="button" class="prompt-chip" data-ask-chip="${esc(chip)}">${esc(chip)}</button>`).join("")}
+      </div>
+      ${recent.length?`<div class="recent-questions">${recent.map(item=>`<button type="button" data-ask-example="${esc(item)}">${esc(item)}</button>`).join("")}</div>`:""}
+      <div data-ask-answer aria-live="polite">${answerMarkup(answer,ar)}</div>
+    </section>`;
+  }
+
+  function muscleHeatmapPanel(model,ar){
+    const heatmap=model.muscleVolume||engine.muscleVolumeHeatmap(state);
+    const muscles=Object.entries(heatmap);
+    return `<section class="performance-card muscle-heatmap-card">
+      <div class="performance-head">
+        <div>
+          <small>${tr(ar,"WEEKLY MUSCLE RECOVERY & VOLUME","استشفاء وحجم العضلات الأسبوعي")}</small>
+          <h2>${tr(ar,"7-Day Muscle Group Stimulus","مستوى تحفيز المجموعات العضلية خلال 7 أيام")}</h2>
+        </div>
+        <span class="confidence-pill tone-high">${tr(ar,"Adaptive MEV/MRV","حسابات الحجم التكيفي")}</span>
+      </div>
+      <div class="muscle-heatmap-grid">
+        ${muscles.map(([name,data])=>`
+          <div class="muscle-heatmap-cell status-${data.status}" style="--tone-color:${data.color}">
+            <div class="cell-head">
+              <strong>${tr(ar,name,{"Chest":"الصدر","Back":"الظهر","Quads":"الأفخاذ الأمامية","Hamstrings":"الأفخاذ الخلفية","Glutes":"المؤخرة","Shoulders":"الأكتاف","Arms":"الذراعين","Core":"عضلات البطن"}[name]||name)}</strong>
+              <span class="status-badge" style="color:${data.color}">${tr(ar,data.statusLabel,{"Recovered / Primed":"مستشفى / مهيأ","Optimal Stimulus":"تحفيز مثالي","High Volume":"حجم مرتفع"}[data.statusLabel]||data.statusLabel)}</span>
+            </div>
+            <div class="cell-body">
+              <span><b>${data.sets}</b> ${tr(ar,"sets","مجموعات")}</span>
+              <small>${data.volumeKg.toLocaleString()} kg</small>
+            </div>
+            <div class="volume-bar-bg"><div class="volume-bar-fill" style="width:${Math.min(100,(data.sets/20)*100)}%;background-color:${data.color}"></div></div>
+          </div>
+        `).join("")}
+      </div>
+    </section>`;
   }
 
   function renderPerformance(){
     const ar=state.lang==="ar",model=engine.analyze(state),anchor=document.querySelector(".weekly-health-review")||document.querySelector(".health-subnav")||document.querySelector(".module-head");if(!anchor)return;
-    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${goalPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`;anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
+    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${thisWeekExecutivePanel(model,ar)}${window.REP_RECOVERY_MAP?.renderRecoveryMap(state)||""}${goalPanel(model,ar)}${muscleHeatmapPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`;anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
   }
 
   function bindPerformance(ar){
@@ -111,6 +213,7 @@
     document.querySelector("[data-insight-restore]")?.addEventListener("click",()=>{state.insightControls={dismissed:{},snoozed:{}};persist();renderInsights();});
     const askForm=document.querySelector("[data-ask-data]");askForm?.addEventListener("submit",event=>{event.preventDefault();const question=String(new FormData(event.currentTarget).get("question")||"").trim();if(!question)return;state.analyticsLastQuestion=question;state.analyticsQuestions=[question,...(state.analyticsQuestions||[]).filter(item=>item!==question)].slice(0,5);persist();const output=document.querySelector("[data-ask-answer]");if(output)output.innerHTML=answerMarkup(engine.ask(state,question),ar);});
     document.querySelectorAll("[data-ask-example]").forEach(button=>button.onclick=()=>{const input=document.querySelector("#askDataQuestion");if(input){input.value=button.dataset.askExample;askForm?.requestSubmit();}});
+    document.querySelectorAll("[data-ask-chip]").forEach(button=>button.onclick=()=>{const input=document.querySelector("#askDataQuestion");if(input){input.value=button.dataset.askChip;askForm?.requestSubmit();}});
   }
 
   const baseInsights=renderInsights;

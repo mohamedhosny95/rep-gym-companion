@@ -7,9 +7,9 @@ import {dirname,join} from "node:path";
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
 const read=path=>readFile(join(root,path),"utf8");
 
-test("the mobile shell exposes four primary tabs",async()=>{
+test("the mobile shell exposes five primary tabs",async()=>{
   const html=await read("dist/client/index.html"),tabs=[...html.matchAll(/data-app-tab="([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(tabs,["home","train","food","health"]);
+  assert.deepEqual(tabs,["home","train","food","health","insights"]);
 });
 
 test("every local script in the document exists",async()=>{
@@ -70,7 +70,7 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
 
 test("deployment client is deterministically built from source",async()=>{
   const meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version);
-  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","bootstrap.js","app.js","sync-outbox.js","telemetry.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","performance-insights.js","training-session.js","health-ui.js","performance-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","store.js","importer.js","report-card.js","command-palette.js","recovery-map.js","plate-calculator.js","heart-rate-monitor.js","audio-coach.js","barcode-scanner.js","muscle-heatmap.js","custom-workouts.js","bootstrap.js","training-session.js","app.js","sync-outbox.js","telemetry.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","performance-insights.js","offline-nutrition.js","health-ui.js","performance-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }

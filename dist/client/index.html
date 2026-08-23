@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0d0c">
-  <meta name="description" content="A fast, offline Health OS for daily training, nutrition, and care.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="format-detection" content="telephone=no">
   <meta property="og:title" content="Health OS">
   <meta property="og:description" content="Training, nutrition, recovery, and daily health in one private mobile companion.">
   <meta property="og:image" content="rep-social-preview.png">
@@ -18,18 +19,21 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Health OS">
-  <link rel="stylesheet" href="styles.css?v=53248b358803">
+  <meta name="theme-color" content="#070908">
+  <link rel="stylesheet" href="styles.css?v=cc96513db6d9">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <button class="brand" id="homeButton" aria-label="Back to sessions">
+      <button class="brand" id="homeButton" aria-label="Today">
         <span class="brand-mark" aria-hidden="true">H</span>
         <span>HEALTH OS</span>
       </button>
       <div class="top-actions">
         <span class="offline-pill" id="networkStatus"><i></i> Offline ready</span>
-      <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
+        <button class="icon-button" id="previewModeButton" aria-label="Toggle Preview / Sandbox Mode" title="Preview Mode (No changes saved)">🔬</button>
+        <button class="icon-button" id="commandPaletteButton" aria-label="Open Command Palette (Cmd+K)" title="Command Palette (Cmd+K)">🔍</button>
+        <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
         <button class="icon-button sync-shortcut" id="syncButton" aria-label="Sync everything" title="Sync everything"><span data-sync-icon aria-hidden="true">↻</span><span data-sync-badge hidden></span></button>
         <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
         <button class="icon-button" id="wakeButton" aria-label="Keep screen awake" aria-pressed="false">☼</button>
@@ -43,12 +47,13 @@
       <button data-app-tab="train"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="9" width="3" height="6" rx="1"/><rect x="4.5" y="7" width="3" height="10" rx="1"/><line x1="7.5" y1="12" x2="16.5" y2="12"/><rect x="16.5" y="7" width="3" height="10" rx="1"/><rect x="20" y="9" width="3" height="6" rx="1"/></svg></i><span>Training</span></button>
       <button data-app-tab="food"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></i><span>Nutrition</span></button>
       <button data-app-tab="health"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-10-9.5C.5 7.5 3 4 6.5 4c2 0 3.5 1.2 4.5 2.8C12 5.2 13.5 4 15.5 4 19 4 21.5 7.5 20 11.5 17.5 16.4 12 21 12 21z"/><polyline points="6,13 9,13 10.5,10 12.5,16 14,13 18,13"/></svg></i><span>Health</span></button>
+      <button data-app-tab="insights"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></i><span>Insights</span></button>
     </nav>
   </div>
 
   <div class="quick-log" id="quickLog"></div>
 
-  <div class="timer-dock is-hidden" id="timerDock" role="timer" aria-live="assertive">
+  <div class="timer-dock is-hidden" id="timerDock" role="timer" aria-live="assertive" inert>
     <div class="timer-ring" id="timerRing"><span id="timerValue">1:30</span></div>
     <div class="timer-copy">
       <strong>REST</strong>
@@ -59,18 +64,18 @@
     <button id="timerSkip" class="timer-skip">Skip</button>
   </div>
 
-  <script src="build-meta.js?v=53248b358803" defer></script>
-  <script src="auth.js?v=53248b358803" defer></script>
-  <script src="storage.js?v=53248b358803" defer></script>
-  <script src="ui-state.js?v=53248b358803" defer></script>
-  <script src="ui-shell.js?v=53248b358803" defer></script>
-  <script src="health-data.js?v=53248b358803" defer></script>
-  <script src="i18n.js?v=53248b358803" defer></script>
-  <script src="features.js?v=53248b358803" defer></script>
-  <script src="health-engine.js?v=53248b358803" defer></script>
-  <script src="health-coverage.js?v=53248b358803" defer></script>
-  <script src="performance-insights.js?v=53248b358803" defer></script>
-  <script src="training-session.js?v=53248b358803" defer></script>
-  <script src="bootstrap.js?v=53248b358803" defer></script>
+  <script src="build-meta.js?v=cc96513db6d9" defer></script>
+  <script src="auth.js?v=cc96513db6d9" defer></script>
+  <script src="storage.js?v=cc96513db6d9" defer></script>
+  <script src="ui-state.js?v=cc96513db6d9" defer></script>
+  <script src="ui-shell.js?v=cc96513db6d9" defer></script>
+  <script src="health-data.js?v=cc96513db6d9" defer></script>
+  <script src="i18n.js?v=cc96513db6d9" defer></script>
+  <script src="features.js?v=cc96513db6d9" defer></script>
+  <script src="health-engine.js?v=cc96513db6d9" defer></script>
+  <script src="health-coverage.js?v=cc96513db6d9" defer></script>
+  <script src="performance-insights.js?v=cc96513db6d9" defer></script>
+  <script src="training-session.js?v=cc96513db6d9" defer></script>
+  <script src="bootstrap.js?v=cc96513db6d9" defer></script>
 </body>
 </html>

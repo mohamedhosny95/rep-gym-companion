@@ -51,7 +51,10 @@ async function assertAxe(page,label){
 await new Promise(resolve => server.listen(port, resolve));
 const baseUrl = `http://localhost:${port}`;
 
-const browser = await chromium.launch({ args: ["--no-sandbox"] });
+const browser = await chromium.launch({
+  channel: existsSync("/Applications/Google Chrome.app") ? "chrome" : undefined,
+  args: ["--no-sandbox"]
+});
 const consoleErrors = [];
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
@@ -75,7 +78,8 @@ try {
   const backupCheck=await page.evaluate(async()=>{const sample={app:"Rep Gym Companion",data:{foodEntries:[{id:"recovery-drill"}]}},encrypted=await window.REP_FEATURES.encryptExport(sample,"recovery-drill-passphrase"),restored=await window.REP_FEATURES.decryptExport(encrypted,"recovery-drill-passphrase");let tamperRejected=false;try{await window.REP_FEATURES.decryptExport({...encrypted,format:"older-format"},"recovery-drill-passphrase");}catch{tamperRejected=true;}return {roundTrip:JSON.stringify(sample)===JSON.stringify(restored),schema:encrypted.schema,tamperRejected};});
   assertTrue(backupCheck.roundTrip&&backupCheck.schema===5,"Schema-5 encrypted backup completes a recovery round trip");
   assertTrue(backupCheck.tamperRejected,"Encrypted backup rejects a tampered version header");
-  assertTrue(await page.locator("[data-habit-id]").count() >= 10, "Today shows the requested daily habits");
+  const expectedHabits = new Date().getDay() === 5 ? 12 : 11;
+  assertTrue(await page.locator("[data-habit-id]").count() === expectedHabits, `Today shows the requested daily habits (${expectedHabits})`);
   await page.click('[data-habit-id="sleep"]');
   assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "A habit can be checked off");
   await page.evaluate(()=>window.REP_STORE.flush());
@@ -118,26 +122,31 @@ try {
   assertTrue(await page.evaluate(() => document.body.classList.contains("workout-mode")), "Start workout enters the player");
 
   // Regression guard: the rest-timer dock must not block Next/Previous.
-  const setButtons = await page.locator("[data-set]").all();
-  for (const b of setButtons) { await b.click().catch(() => {}); await page.waitForTimeout(30); }
-  await page.waitForTimeout(200);
+  while (await page.locator(".set-button:not(.is-done)").count() > 0) {
+    await page.locator(".set-button:not(.is-done)").first().click().catch(() => {});
+    await page.waitForTimeout(30);
+  }
+  await page.waitForTimeout(100);
   const nextBtn = page.locator("[data-next]");
   let nextClickable = true;
   try { await nextBtn.click({ timeout: 3000 }); } catch { nextClickable = false; }
   assertTrue(nextClickable, "Next exercise button is reachable while the rest timer is active");
 
   // finish the rest of the session
-  for (let i = 0; i < 8; i++) {
-    const btns = await page.locator("[data-set]").all();
-    for (const b of btns) { await b.click().catch(() => {}); await page.waitForTimeout(20); }
+  for (let i = 0; i < 10; i++) {
+    if (await page.locator(".complete").count() > 0) break;
+    while (await page.locator(".set-button:not(.is-done)").count() > 0) {
+      await page.locator(".set-button:not(.is-done)").first().click().catch(() => {});
+      await page.waitForTimeout(30);
+    }
     const btn = page.locator("[data-next]");
     if (!(await btn.count())) break;
     const label = await btn.textContent();
     await btn.click().catch(() => {});
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(100);
     if (/finish/i.test(label || "")) break;
   }
-  await page.waitForTimeout(300);
+  await page.waitForSelector(".complete", { timeout: 8000 }).catch(() => {});
   assertTrue(await page.locator(".complete").count() > 0, "Session completes and shows the completion screen");
   await page.click("[data-home]").catch(() => {});
   await page.waitForTimeout(300);
@@ -280,7 +289,7 @@ try {
   }
 
   await context.setOffline(false);
-  for(const [tab,label] of [["home","Today"],["train","Training"],["food","Nutrition"],["health","Health"]]){
+  for(const [tab,label] of [["home","Today"],["train","Training"],["food","Nutrition"],["health","Health"],["insights","Insights"]]){
     await page.click(`[data-app-tab="${tab}"]`);await page.waitForTimeout(300);await assertAxe(page,label);
   }
   const vitals=await page.evaluate(()=>window.__repVitals);
@@ -298,7 +307,7 @@ try {
   // proxy for the entire phone range.
   for(const width of [320,360,375,390,414,430]){
     await page.setViewportSize({width,height:900});
-    for(const tab of ["home","train","food","health"]){
+    for(const tab of ["home","train","food","health","insights"]){
       await page.click(`[data-app-tab="${tab}"]`);
       await page.waitForTimeout(80);
       const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...document.querySelectorAll(".app-tabs button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)}));

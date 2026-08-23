@@ -169,14 +169,34 @@ export class DeviceCoordinator extends DurableObject<Env> {
     const zone=row.timezone||row.timezone_offset,today = localDateAt(Date.now(), zone);
     if (row.last_sent_date === today) { await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone)); return; }
     const message = row.lang === "ar"
-      ? { title: "Health OS", body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم." }
-      : { title: "Health OS", body: "Time to log your day — a workout, a meal, or your sleep." };
+      ? {
+          title: "Health OS",
+          body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم.",
+          data: { url: "/?quick=home" },
+          actions: [
+            { action: "open-habits", title: "العادات" },
+            { action: "log-meal", title: "وجبة" },
+            { action: "log-sleep", title: "نوم" }
+          ]
+        }
+      : {
+          title: "Health OS",
+          body: "Time to log your day — a workout, a meal, or your sleep.",
+          data: { url: "/?quick=home" },
+          actions: [
+            { action: "open-habits", title: "Habits" },
+            { action: "log-meal", title: "Meal" },
+            { action: "log-sleep", title: "Sleep" }
+          ]
+        };
     try {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) { await this.clearPush(); return; }
       if (!response.ok) throw new Error(`Push provider returned ${response.status}.`);
+      // Commit last_sent_date the instant the send succeeds, before anything else that
+      // could throw. A native alarm retry re-enters this function and, because the guard
+      // above already sees today's date, reschedules without resending the notification.
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
-      await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -184,5 +204,6 @@ export class DeviceCoordinator extends DurableObject<Env> {
       if ((alarmInfo?.retryCount ?? 0) >= 5) { await this.ctx.storage.setAlarm(Date.now() + 30 * 60_000); return; }
       throw error;
     }
+    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
   }
 }

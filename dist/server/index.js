@@ -335,7 +335,25 @@ var DeviceCoordinator = class extends DurableObject {
       await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
       return;
     }
-    const message = row.lang === "ar" ? { title: "Health OS", body: "\u062D\u0627\u0646 \u0648\u0642\u062A \u062A\u0633\u062C\u064A\u0644 \u064A\u0648\u0645\u0643 \u2014 \u062A\u0645\u0631\u064A\u0646\u060C \u0637\u0639\u0627\u0645\u060C \u0623\u0648 \u0646\u0648\u0645." } : { title: "Health OS", body: "Time to log your day \u2014 a workout, a meal, or your sleep." };
+    const message = row.lang === "ar" ? {
+      title: "Health OS",
+      body: "\u062D\u0627\u0646 \u0648\u0642\u062A \u062A\u0633\u062C\u064A\u0644 \u064A\u0648\u0645\u0643 \u2014 \u062A\u0645\u0631\u064A\u0646\u060C \u0637\u0639\u0627\u0645\u060C \u0623\u0648 \u0646\u0648\u0645.",
+      data: { url: "/?quick=home" },
+      actions: [
+        { action: "open-habits", title: "\u0627\u0644\u0639\u0627\u062F\u0627\u062A" },
+        { action: "log-meal", title: "\u0648\u062C\u0628\u0629" },
+        { action: "log-sleep", title: "\u0646\u0648\u0645" }
+      ]
+    } : {
+      title: "Health OS",
+      body: "Time to log your day \u2014 a workout, a meal, or your sleep.",
+      data: { url: "/?quick=home" },
+      actions: [
+        { action: "open-habits", title: "Habits" },
+        { action: "log-meal", title: "Meal" },
+        { action: "log-sleep", title: "Sleep" }
+      ]
+    };
     try {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) {
@@ -344,7 +362,6 @@ var DeviceCoordinator = class extends DurableObject {
       }
       if (!response.ok) throw new Error(`Push provider returned ${response.status}.`);
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
-      await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -355,6 +372,7 @@ var DeviceCoordinator = class extends DurableObject {
       }
       throw error;
     }
+    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
   }
 };
 
@@ -410,6 +428,11 @@ var HEALTH_DATA_SOURCES = {
   habit: "e4ed7261-0722-43be-84b7-a0fffc414a11",
   food: "97671c61-586a-4443-aea6-00b1d9f835a7"
 };
+function requireDataSource(env, configured, fallback, label) {
+  if (configured) return configured;
+  if (env.ENVIRONMENT === "staging") throw Error(`No ${label} Notion data source is configured for the staging environment.`);
+  return fallback;
+}
 var FOOD_DESTINATION = {
   name: "View of Food Entries",
   databaseId: "6433f54c-687e-4813-869a-aadeaf3acaab",
@@ -899,7 +922,7 @@ async function verifyNotionPage(env, pageId, expectedSource) {
   return notionPageReceipt(page, expectedSource);
 }
 async function existingEntries(env, workoutId) {
-  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
+  const source = requireDataSource(env, env.NOTION_DATA_SOURCE_ID, WORKOUT_DATA_SOURCE, "workout");
   const titles = /* @__PURE__ */ new Set();
   let cursor;
   for (let page = 0; page < 5; page++) {
@@ -947,7 +970,7 @@ async function syncWorkoutBody(env, body) {
   if (!env.NOTION_TOKEN || !env.REP_SYNC_KEY) {
     return json({ ok: false, error: "Sync is not configured on the server." }, 503);
   }
-  const source = env.NOTION_DATA_SOURCE_ID || WORKOUT_DATA_SOURCE;
+  const source = requireDataSource(env, env.NOTION_DATA_SOURCE_ID, WORKOUT_DATA_SOURCE, "workout");
   const workout = body?.workout;
   if (!workout || !safeText(workout.id) || !safeText(workout.date) || !Array.isArray(workout.entries)) {
     return json({ ok: false, error: "Invalid workout payload." }, 400);
@@ -955,28 +978,37 @@ async function syncWorkoutBody(env, body) {
   if (workout.entries.length > 100) return json({ ok: false, error: "Workout is too large." }, 413);
   let created = 0, skipped = 0;
   const existing = await existingEntries(env, workout.id);
-  let receipt = { verified: true };
+  const toCreate = [];
   for (const row of workout.entries) {
     if (!row?.entry || !row?.exercise) continue;
     if (existing.has(safeText(row.entry, 200))) {
       skipped++;
-      continue;
+    } else {
+      toCreate.push(row);
     }
-    const page = await notionRequest(env, "/pages", {
-      method: "POST",
-      body: JSON.stringify({
-        parent: { type: "data_source_id", data_source_id: source },
-        properties: notionProperties(workout, row)
-      })
-    });
-    receipt = await verifyNotionPage(env, page.id, source);
-    created++;
+  }
+  let receipt = { verified: true };
+  const CONCURRENCY = 3;
+  for (let i = 0; i < toCreate.length; i += CONCURRENCY) {
+    const chunk = toCreate.slice(i, i + CONCURRENCY);
+    const chunkReceipts = await Promise.all(chunk.map(async (row) => {
+      const page = await notionRequest(env, "/pages", {
+        method: "POST",
+        body: JSON.stringify({
+          parent: { type: "data_source_id", data_source_id: source },
+          properties: notionProperties(workout, row)
+        })
+      });
+      return verifyNotionPage(env, page.id, source);
+    }));
+    created += chunk.length;
+    if (chunkReceipts.length) receipt = chunkReceipts[chunkReceipts.length - 1];
   }
   return json({ ok: true, ...receipt, kind: "workout", created, skipped });
 }
 function healthSource(env, kind) {
   const names = { recovery: "NOTION_RECOVERY_DATA_SOURCE_ID", sleep: "NOTION_RECOVERY_DATA_SOURCE_ID", nutrition: "NOTION_NUTRITION_DATA_SOURCE_ID", hygiene: "NOTION_HYGIENE_DATA_SOURCE_ID", habit: "NOTION_HABIT_DATA_SOURCE_ID", food: "NOTION_FOOD_DATA_SOURCE_ID" };
-  return env[names[kind]] || HEALTH_DATA_SOURCES[kind];
+  return requireDataSource(env, env[names[kind]], HEALTH_DATA_SOURCES[kind], kind);
 }
 async function existingHealthPage(env, dataSourceId, date) {
   const result = await notionRequest(env, `/data_sources/${dataSourceId}/query`, { method: "POST", body: JSON.stringify({ page_size: 1, filter: { property: "Date", date: { equals: safeText(date, 10) } } }) });
@@ -1109,8 +1141,103 @@ async function syncHealthBody(env, body) {
 async function executeSyncBody(env, body) {
   return body?.workout ? syncWorkoutBody(env, body) : syncHealthBody(env, body);
 }
+async function pullNotionUpdates(request, env) {
+  if (await rateLimited(request, "notion-pull", 30, 60, env)) return rateLimitResponse();
+  if (!await paired(request, env)) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
+  if (!env.NOTION_TOKEN) return json({ ok: false, error: "Notion is not configured on the server." }, 503);
+  const body = await request.json().catch(() => ({}));
+  const since = safeText(body?.since, 50);
+  const kinds = Array.isArray(body?.kinds) ? body.kinds : ["food", "habit"];
+  const result = { ok: true, syncedAt: (/* @__PURE__ */ new Date()).toISOString(), foodEntries: [], habits: [], workouts: [] };
+  try {
+    if (kinds.includes("food")) {
+      const source = healthSource(env, "food");
+      const queryBody = { page_size: 50, sorts: [{ timestamp: "last_edited_time", direction: "descending" }] };
+      if (since) queryBody.filter = { timestamp: "last_edited_time", last_edited_time: { after: since } };
+      const foodRes = await notionRequest(env, `/data_sources/${source}/query`, {
+        method: "POST",
+        body: JSON.stringify(queryBody)
+      }).catch(() => null);
+      if (foodRes?.results) {
+        for (const page of foodRes.results) {
+          const props = page.properties || {};
+          const foodName = (props.Name?.title || []).map((p) => p.plain_text || "").join("") || "Meal";
+          const date = props.Date?.date?.start || page.created_time || (/* @__PURE__ */ new Date()).toISOString();
+          const calories = Number(props.Calories?.number) || 0;
+          const protein_g = Number(props.Protein?.number) || 0;
+          const carbs_g = Number(props.Carbs?.number) || 0;
+          const fat_g = Number(props.Fat?.number) || 0;
+          const fiber_g = Number(props.Fiber?.number) || 0;
+          const sugar_g = Number(props.Sugar?.number) || 0;
+          const sodium_mg = Number(props.Sodium?.number) || 0;
+          const portion_size = (props["Portion Size"]?.rich_text || []).map((p) => p.plain_text || "").join("") || "";
+          const mealType = props["Meal Type"]?.select?.name || "Meal";
+          const logMethod = props["Log Method"]?.select?.name || "Note";
+          const notes = (props.Notes?.rich_text || []).map((p) => p.plain_text || "").join("") || "";
+          result.foodEntries.push({
+            id: `food-notion-${page.id}`,
+            date,
+            food_name: foodName,
+            rawNote: notes || foodName,
+            mealType,
+            logMethod,
+            calories,
+            protein_g,
+            carbs_g,
+            fat_g,
+            fiber_g,
+            sugar_g,
+            sodium_mg,
+            portion_size,
+            notionSync: "synced",
+            notionUrl: page.url || `https://www.notion.so/${page.id.replace(/-/g, "")}`,
+            notionPageId: page.id,
+            notionSyncedAt: page.last_edited_time
+          });
+        }
+      }
+    }
+    if (kinds.includes("habit")) {
+      const source = healthSource(env, "habit");
+      const habitQueryBody = { page_size: 50, sorts: [{ timestamp: "last_edited_time", direction: "descending" }] };
+      if (since) habitQueryBody.filter = { timestamp: "last_edited_time", last_edited_time: { after: since } };
+      const habitRes = await notionRequest(env, `/data_sources/${source}/query`, {
+        method: "POST",
+        body: JSON.stringify(habitQueryBody)
+      }).catch(() => null);
+      if (habitRes?.results) {
+        for (const page of habitRes.results) {
+          const props = page.properties || {};
+          const date = props.Date?.date?.start;
+          const habitId = (props["Habit ID"]?.rich_text || []).map((p) => p.plain_text || "").join("");
+          const completed = Boolean(props.Completed?.checkbox);
+          const streak = Number(props.Streak?.number) || 0;
+          if (date && habitId) {
+            result.habits.push({
+              date,
+              id: habitId,
+              completed,
+              streak,
+              updatedAt: page.last_edited_time
+            });
+          }
+        }
+      }
+    }
+    return json(result);
+  } catch (error) {
+    return json({ ok: false, error: safeText(error?.message || "Failed to pull Notion updates.", 200) }, 502);
+  }
+}
 async function notionHealth(env) {
-  const configured = Boolean(env.NOTION_TOKEN), destination = foodDestination(env), source = destination.sourceId;
+  const configured = Boolean(env.NOTION_TOKEN);
+  let destination;
+  try {
+    destination = foodDestination(env);
+  } catch (error) {
+    return { configured, healthy: false, destination: FOOD_DESTINATION, sourceId: null, schema: { valid: false, missing: [], incompatible: [] }, error: error.message };
+  }
+  const source = destination.sourceId;
   if (!configured) return { configured: false, healthy: false, destination, error: "NOTION_TOKEN is not configured." };
   const started = Date.now();
   try {
@@ -1609,6 +1736,11 @@ ${raw}`)))) : "";
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
+  if (url.pathname === "/api/notion-pull") {
+    if (request.method === "POST") return pullNotionUpdates(request, env);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+    return json({ ok: false, error: "Method not allowed." }, 405);
+  }
   if (url.pathname === "/api/sync-status") {
     if (request.method !== "GET") return request.method === "OPTIONS" ? new Response(null, { status: 204 }) : json({ ok: false, error: "Method not allowed." }, 405);
     return json({ ok: false, error: "Sync jobs were removed in v67. Send data directly to /api/notion-sync." }, 410);
@@ -1634,6 +1766,7 @@ ${raw}`)))) : "";
   }
   if (url.pathname === "/api/security/csp-report") {
     if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
+    if (await rateLimited(request, "csp-report", 60, 60, env)) return rateLimitResponse();
     if (requestTooLarge(request, 16384)) return new Response(null, { status: 413 });
     const report = await request.json().catch(() => null), body = report?.["csp-report"] || report?.body || {};
     const blocked = body["blocked-uri"] || body.blockedURL || "", source = body["source-file"] || body.sourceFile || "";

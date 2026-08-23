@@ -68,3 +68,26 @@ test("Ask Your Data returns evidence and explicit analytical boundaries",()=>{
   assert.match(answer.title,/Nutrition/);assert.ok(answer.evidence.length>=2);assert.match(answer.boundary,/no diagnosis|no proof/i);
   assert.match(engine.ask(populatedState(),"ما مدى انتظام البروتين؟",now).title,/Nutrition/);
 });
+
+test("progressionAdvice recommends micro-loading on consecutive solid sessions",()=>{
+  const state=populatedState();
+  state.history=[
+    {id:"s1",date:`${now}T10:00:00Z`,session:"gym",entries:[{exercise:"Chest Press",set:1,weight:60,reps:12,rpe:7},{exercise:"Chest Press",set:2,weight:60,reps:12,rpe:7.5}],loads:{}},
+    {id:"s2",date:`${day(-3)}T10:00:00Z`,session:"gym",entries:[{exercise:"Chest Press",set:1,weight:60,reps:12,rpe:7},{exercise:"Chest Press",set:2,weight:60,reps:12,rpe:7}],loads:{}}
+  ];
+  const advice=engine.progressionAdvice("Chest Press",state,now);
+  assert.equal(advice.status,"bump");
+  assert.equal(advice.deltaKg,1.25);
+  assert.equal(advice.suggestedWeight,61.3);
+  assert.match(advice.badge,/Micro-load/);
+});
+
+test("muscleVolumeHeatmap aggregates 7-day sets and categorizes recovery state",()=>{
+  const state=populatedState();
+  const heatmap=engine.muscleVolumeHeatmap(state,now);
+  assert.ok(heatmap.Chest);
+  assert.ok(heatmap.Back);
+  assert.ok(heatmap.Quads);
+  assert.ok(["recovered","optimal","fatigued"].includes(heatmap.Chest.status));
+  assert.ok(engine.EXERCISE_SUBSTITUTIONS["Chest Press"].includes("Incline Dumbbell Press"));
+});

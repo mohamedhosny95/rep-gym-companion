@@ -288,3 +288,38 @@ test("client telemetry accepts only paired, bounded web-vital samples",async()=>
   const unauthorized=await read(await call(environment,"/api/telemetry",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(sample)}));
   assert.equal(unauthorized.status,401);
 });
+
+test("notion-pull requires pairing and returns normalized remote entries",async()=>{
+  const environment={...env(),NOTION_TOKEN:"secret"},originalFetch=globalThis.fetch;
+  const mockFoodResponse={
+    results:[{
+      id:"page-123",
+      created_time:"2026-08-20T12:00:00.000Z",
+      last_edited_time:"2026-08-20T12:30:00.000Z",
+      url:"https://www.notion.so/page-123",
+      properties:{
+        Name:{title:[{plain_text:"Chicken and rice"}]},
+        Calories:{number:500},
+        Protein:{number:45},
+        Carbs:{number:50},
+        Fat:{number:10}
+      }
+    }]
+  };
+  globalThis.fetch=async()=>new Response(JSON.stringify(mockFoodResponse),{status:200,headers:{"content-type":"application/json"}});
+  try{
+    const unauthorized=await read(await call(environment,"/api/notion-pull",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({})}));
+    assert.equal(unauthorized.status,401);
+
+    const authorized=await read(await call(environment,"/api/notion-pull",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY},body:JSON.stringify({kinds:["food"]})}));
+    assert.equal(authorized.status,200);
+    assert.equal(authorized.body.ok,true);
+    assert.equal(authorized.body.foodEntries.length,1);
+    assert.equal(authorized.body.foodEntries[0].food_name,"Chicken and rice");
+    assert.equal(authorized.body.foodEntries[0].calories,500);
+    assert.equal(authorized.body.foodEntries[0].protein_g,45);
+    assert.equal(authorized.body.foodEntries[0].notionSync,"synced");
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});

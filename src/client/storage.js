@@ -24,11 +24,13 @@
   }
   async function writeDurable(values){
     const changed=[];
-    for(const [key,value] of Object.entries(values||{})){const next=JSON.stringify(value);if(serialized.get(key)!==next){serialized.set(key,next);changed.push([key,value]);}}
+    for(const [key,value] of Object.entries(values||{})){const next=JSON.stringify(value);if(serialized.get(key)!==next)changed.push([key,value,next]);}
     if(!changed.length)return;
     const db=await open();
-    await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);for(const [key,value] of changed)store.put(value,`state:${key}`);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
-    db.close();
+    try{
+      await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);for(const [key,value] of changed)store.put(value,`state:${key}`);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    }finally{db.close();}
+    for(const [key,,next] of changed)serialized.set(key,next);
   }
   function split(payload){
     const local={...payload},durable={};
