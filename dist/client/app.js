@@ -622,7 +622,7 @@ function renderOverview(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="home-overview";state.activeTab="home";persist();updatePrimaryTabs();
   const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore(),bedtime=computeBedtimeSuggestion();
   const items=buildInsights(),note=items[0];
-  const resume=state.session&&sessions[state.session]&&state.index<sessions[state.session].exercises.length;
+  const resume=REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
   app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}${day==="Friday"?(ar?" · يوم سورة الكهف":" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
@@ -650,7 +650,7 @@ function renderHome() {
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view = "home";state.activeTab="train";persist();updatePrimaryTabs();
   const day = currentDay(),u=U();
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
-  const resume = state.session && sessions[state.session] && state.index < sessions[state.session].exercises.length;
+  const resume = REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
   const streak=computeStreak();
   app.innerHTML = `
     <section class="hero">
@@ -664,7 +664,7 @@ function renderHome() {
     ${healthStatusStrip()}
     ${reminderStrip("train")}
     <section class="session-grid" aria-label="Choose a session">
-      ${Object.entries(sessions).filter(([id])=>!["bad","gymLite"].includes(id)).map(([id,s]) => sessionCard(id,s,resume && state.session===id)).join("")}
+      ${Object.entries(sessions).filter(([id])=>!["bad","gymLite"].includes(id)).map(([id,s]) => sessionCard(id,s,REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id))).join("")}
       <button class="session-card" data-log-activity style="--card-accent:#ffd36a"><span><small>${state.lang==="ar"?"بادل · كرة قدم · المزيد":"PADEL · FOOTBALL · MORE"}</small><h2>${state.lang==="ar"?"تسجيل نشاط":"Log an activity"}</h2></span><span class="session-icon">${ICONS.plus}</span><p>${state.lang==="ar"?"رياضات غير منظمة: المدة والسعرات المحروقة من ساعة أبل.":"Unstructured sports — duration and calories burned from your Apple Watch."}</p><small>${state.lang==="ar"?"سجّل الآن ←":"Log now →"}</small></button>
     </section>
     ${window.REP_CUSTOM_WORKOUTS ? window.REP_CUSTOM_WORKOUTS.renderRoutinesSection(state.lang==="ar") : ""}
@@ -682,7 +682,7 @@ function renderHome() {
     </section>`;
   document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.session;
-    const continuing = state.session === id && state.index > 0 && state.index < sessions[id].exercises.length && state.sessionStartedAt;
+    const continuing = REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
     continuing ? startSession(id) : showSessionPreview(id);
   }));
   document.querySelector("[data-create-new-routine]")?.addEventListener("click", () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal());
@@ -716,7 +716,7 @@ function sessionCard(id, s, resume) {
 // or expanding rows here has zero effect on what counts as an active session.
 function showSessionPreview(id,openIndices=new Set()){
   const s=sessions[id],ar=state.lang==="ar",ls=sessionText(id,s),u=U();
-  state.previewSession=id;state.view="preview";state.activeTab="train";document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
+  REP_TRAINING_SESSION.previewWorkout(state,id);document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
   const rows=s.exercises.map((base,i)=>{
     const item=currentItem(base);
     return `<details class="preview-row" ${openIndices.has(i)?"open":""}><summary><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></summary>
@@ -736,10 +736,8 @@ function showSessionPreview(id,openIndices=new Set()){
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
 }
 function startSession(id) {
-  state.activeTab="train";updatePrimaryTabs();
-  const continuing=state.session===id&&state.index>0&&state.index<sessions[id].exercises.length&&state.sessionStartedAt;
-  if (state.session !== id || state.index >= sessions[id].exercises.length) state.index = 0;
-  state.session = id;if(!continuing)state.sessionStartedAt=Date.now(); state.view = "player";document.body.classList.add("workout-mode");persist(); renderExercise();startSessionClock();
+  REP_TRAINING_SESSION.startWorkout(state,id,sessions);
+  updatePrimaryTabs();document.body.classList.add("workout-mode");persist();renderExercise();startSessionClock();
 }
 
 function currentItem(base){
@@ -749,37 +747,10 @@ function currentItem(base){
 }
 function isLoadExercise(item){return ["legpress","hinge","floor","chestpress","row","pulldown"].includes(item.motion)&&["gym","gymLite"].includes(state.session);}
 function exerciseId(base){return base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;}
-function normalizedLog(id,sets=3){
-  const old=state.logs[id]||{};
-  if(!Array.isArray(old.sets)) old.sets=Array.from({length:sets},(_,i)=>i===0&&old.current?{weight:old.current.weight||"",reps:old.current.reps||"",rpe:"",note:""}:{weight:"",reps:"",rpe:"",note:""});
-  while(old.sets.length<sets)old.sets.push({weight:"",reps:"",rpe:"",note:""});
-  old.previousSets=old.previousSets||(old.previous?[{weight:old.previous.weight||"",reps:old.previous.reps||"",rpe:"",note:""}]:[]);
-  state.logs[id]=old;return old;
-}
-function setsFromLog(log){
-  if(Array.isArray(log?.sets))return log.sets;
-  if(log?.current)return [{...log.current,rpe:"",note:""}];
-  return [];
-}
-function progressionAdvice(id){
-  const recent=state.history.filter(h=>h.session==="gym"&&h.loads?.[id]).slice(0,3).map(h=>setsFromLog(h.loads[id])).filter(Boolean);
-  const current=setsFromLog(state.logs[id]);const sample=current.some(s=>s.reps)?current:(recent[0]||[]);
-  if(!sample.length)return state.lang==="ar"?"سجّل التكرارات وRPE للحصول على اقتراح تلقائي.":"Log reps and RPE to unlock an automatic recommendation.";
-  const valid=sample.filter(s=>Number(s.reps)>0),avgRpe=valid.reduce((n,s)=>n+(Number(s.rpe)||7),0)/(valid.length||1),minReps=Math.min(...valid.map(s=>Number(s.reps)||0));
-  const allTop=valid.length>=2&&valid.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5);
-  const twoWins=allTop&&recent.slice(0,2).length===2&&recent.slice(0,2).every(a=>a.length>=2&&a.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5));
-  const gate=recoveryGate();if(gate.hold)return state.lang==="ar"?`${gate.flags} علامات استشفاء حمراء: ثبّت الحمل وخذ يوماً خفيفاً إضافياً.`:`${gate.flags} recovery red flags: hold the load and take an extra light day.`;
-  if(avgRpe>=9||minReps<8)return state.lang==="ar"?"خفّض 5% أو ثبّت الوزن حتى تعود التقنية والتكرارات.":"Reduce about 5% or hold until form and reps recover.";
-  if(allTop){const jump=["Leg Press","Back Extension","Hip Thrust Machine"].includes(id)?5:2.5;return state.lang==="ar"?`${twoWins?"تقدّم مؤكد:":"جاهز للتقدم:"} زد ${jump} كجم في الحصة القادمة.`:`${twoWins?"Progression confirmed:":"Ready to progress:"} add ${jump} kg next session.`;}
-  return state.lang==="ar"?"ثبّت الوزن؛ ارفع جودة التكرارات أو أكمل 12 تكراراً عند RPE ≤ 7.5.":"Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
-}
-function progressionCode(id,sets){
-  if(!sets?.length)return state.session==="gym"?"Hold":"Recovery";
-  const valid=sets.filter(s=>Number(s.reps)>0),avg=valid.reduce((n,s)=>n+(Number(s.rpe)||7),0)/(valid.length||1),min=Math.min(...valid.map(s=>Number(s.reps)||0));
-  if(avg>=9||min<8)return "Reduce";
-  if(valid.length>=2&&valid.every(s=>Number(s.reps)>=12&&(Number(s.rpe)||7)<=7.5))return "Increase";
-  return state.session==="gym"?"Hold":"Recovery";
-}
+function normalizedLog(id,sets=3){return REP_TRAINING_SESSION.normalizedLog(state.logs,id,sets);}
+function setsFromLog(log){return REP_TRAINING_SESSION.setsFromLog(log);}
+function progressionAdvice(id){return REP_TRAINING_SESSION.progressionAdvice({logs:state.logs,history:state.history,id,lang:state.lang,recoveryGate:recoveryGate()});}
+function progressionCode(id,sets){return REP_TRAINING_SESSION.progressionCode(id,sets,state.session);}
 function loadPanel(base,item){
   if(!isLoadExercise(item))return "";
   const u=U(), ar=state.lang==="ar", id=exerciseId(base), log=normalizedLog(id,item.sets);
@@ -860,7 +831,7 @@ function cardioPanel(item){
   if(state.session!=="cardio"||item.motion!=="inclinewalk")return "";const d=state.cardioDraft,advice=cardioAdvice();
   return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
 }
-function cardioAdvice(){const recent=state.history.filter(h=>h.session==="cardio"&&h.cardio).slice(0,6),easy=recent.filter(h=>Number(h.cardio.minutes)>=25&&Number(h.cardio.rpe)<=6);if(easy.length<3)return state.lang==="ar"?`ثبّت الإعدادات: ${easy.length}/3 حصص كاملة وسهلة.`:`Hold settings: ${easy.length}/3 full, easy sessions.`;const span=(new Date(easy[0].date)-new Date(easy[easy.length-1].date))/86400000;if(span<21)return state.lang==="ar"?"الأداء جيد، لكن أكمل 3 أسابيع قبل زيادة الميل أو السرعة.":"Performance is good; complete three weeks before raising incline or pace.";return state.lang==="ar"?"جاهز: زد الميل أو السرعة قليلاً، وليس المدة.":"Ready: raise incline or pace slightly, not duration.";}
+function cardioAdvice(){return REP_TRAINING_SESSION.cardioAdvice(state.history,state.lang);}
 function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
 
 function showSwapModal(exerciseName){
@@ -975,7 +946,7 @@ function startVoiceSetLogger(base,item){
 function renderExercise() {
   const session = sessions[state.session];
   if (!session) return renderHome();
-  if (state.index >= session.exercises.length) return renderComplete();
+  if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
@@ -1071,6 +1042,7 @@ function renderExercise() {
       }
     }
   }, {passive:true});
+  updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
   if(action==="play")state.paused=!state.paused;
@@ -1178,12 +1150,49 @@ function playChime(kind="end"){
     }
   }catch{}
 }
+function playCountdownBeep(freq=520,duration=0.08){
+  if(state.muted)return;
+  const ctx=ensureAudioContext();if(!ctx)return;
+  try{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=freq;
+    g.gain.setValueAtTime(0.08,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+    o.start();
+    o.stop(ctx.currentTime+duration);
+  }catch{}
+}
 function signalEnd(){
   vibrateGym("timer");
   if(!state.muted){
     playChime("end");
     if(state.voice) speak(state.lang==="ar"?"انتهى وقت الراحة":"Rest over, time to lift!");
   }
+}
+function updateMediaSession(action="idle",detail={}){
+  if(!("mediaSession" in navigator))return;
+  try{
+    if(action==="idle"){
+      navigator.mediaSession.metadata=null;
+      navigator.mediaSession.playbackState="none";
+      return;
+    }
+    const isRest=action==="rest",session=sessions[state.session],exercise=detail.exercise||session?.exercises[state.index]?.name||"Training";
+    const setInfo=detail.set!==undefined?`Set ${detail.set+1}`:"";
+    navigator.mediaSession.metadata=new MediaMetadata({
+      title:isRest?`Rest: ${detail.time||"Next Set"}`:exercise,
+      artist:"Health OS",
+      album:isRest?`${exercise} · ${setInfo}`:(session?.title||"Workout"),
+      artwork:[
+        {src:"icon-192.png",sizes:"192x192",type:"image/png"},
+        {src:"icon-512.png",sizes:"512x512",type:"image/png"}
+      ]
+    });
+    navigator.mediaSession.playbackState=isRest&&state.timer?.paused?"paused":"playing";
+    navigator.mediaSession.setActionHandler("nexttrack",()=>{if(state.view==="player")next();});
+    navigator.mediaSession.setActionHandler("previoustrack",()=>{if(state.view==="player")prev();});
+  }catch{}
 }
 function toggleSet(setIndex) {
   const key = `${state.session}-${state.index}`;
@@ -1210,10 +1219,15 @@ function toggleSet(setIndex) {
   renderExercise();
   if(!already&&!item.rest&&allSetsDone)setTimeout(()=>{if(state.view==="player")next();},650);
 }
-function prev(){ stopExerciseClock();if(state.index>0){state.index--;persist();renderExercise();} }
-function next(){ stopExerciseClock();const s=sessions[state.session];if(state.index===s.exercises.length-1){recordSession();if(state.session==="gym")promoteLogs();}state.index++;persist();renderExercise(); }
+function prev(){ stopExerciseClock();if(REP_TRAINING_SESSION.previousExercise(state).moved){persist();renderExercise();} }
+function next(){
+  stopExerciseClock();
+  const res=REP_TRAINING_SESSION.advanceExercise(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
+  if(res.completed&&res.record)queueWorkout(res.record);
+  persist();renderExercise();
+}
 function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
-function promoteLogs(){Object.values(state.logs).forEach(log=>{if(log.sets?.some(s=>s.weight||s.reps))log.previousSets=log.sets.map(s=>({...s}));});}
+function promoteLogs(){REP_TRAINING_SESSION.promoteLogs(state.logs);}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
 function stopSessionClock(){if(state.sessionClock)clearInterval(state.sessionClock);state.sessionClock=null;}
 function updateSessionClock(){const el=document.querySelector("#sessionElapsed");if(el&&state.sessionStartedAt)el.textContent=formatClock(Math.floor((Date.now()-state.sessionStartedAt)/1000));}
@@ -1221,8 +1235,7 @@ function updateSessionClock(){const el=document.querySelector("#sessionElapsed")
 // forever - otherwise Home keeps offering to resume a session the user
 // explicitly left, even after just opening an exercise to look around.
 function abandonSession(){
-  Object.keys(state.completed).filter(k=>k.startsWith(`${state.session}-`)).forEach(k=>delete state.completed[k]);
-  state.index=0;state.sessionStartedAt=null;
+  REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
   if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`;document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
@@ -1244,13 +1257,9 @@ function logActivity(type,customName,minutes,calories,notes){
   queueWorkout(record);persist();return true;
 }
 function recordSession(){
-  const sets=Object.entries(state.completed).filter(([k])=>k.startsWith(`${state.session}-`)).reduce((n,[,v])=>n+v.length,0);
-  const duration=Math.max(0,Math.floor((Date.now()-(state.sessionStartedAt||Date.now()))/1000));
-  const record={id:Date.now(),date:new Date().toISOString(),session:state.session,duration,calories:estimateCalories(state.session,duration),sets,loads:JSON.parse(JSON.stringify(state.logs)),entries:[],cardio:state.session==="cardio"?JSON.parse(JSON.stringify(state.cardioDraft)):null};
-  const priorBest={};state.history.forEach(h=>Object.entries(h.loads||{}).forEach(([name,log])=>setsFromLog(log).forEach(s=>{priorBest[name]=Math.max(priorBest[name]||0,Number(s.weight)||0);}))); 
-  sessions[state.session].exercises.forEach((base,index)=>{const completed=state.completed[`${state.session}-${index}`]||[],id=base.name==="Back Extension"&&state.swaps.backExtension?"Hip Thrust Machine":base.name,logged=setsFromLog(state.logs[id]);completed.forEach(setIndex=>{const set=logged[setIndex]||{},weight=Number(set.weight)||0;record.entries.push({entry:`${id} · Set ${setIndex+1}`,exercise:id,set:setIndex+1,weight:set.weight||"",reps:set.reps||"",rpe:set.rpe||"",note:set.note||"",duration:!set.reps&&!set.weight?(motionGuide[base.motion]?.[2]||""):"",rest:base.rest||"",progression:progressionCode(id,logged),personalBest:Boolean(weight&&weight>(priorBest[id]||0))});});});
-  if(record.cardio){const main=record.entries.find(e=>e.exercise==="Incline Treadmill Walk");if(main){main.duration=Number(record.cardio.minutes||0)*60;main.rpe=record.cardio.rpe||"";main.note=`Incline ${record.cardio.incline||"—"}% · Pace ${record.cardio.pace||"—"} km/h`;main.progression=cardioAdvice().startsWith("Ready")?"Increase":"Hold";}}
-  state.history.unshift(record);state.history=state.history.slice(0,60);queueWorkout(record);state.sessionStartedAt=null;
+  const {record}=REP_TRAINING_SESSION.completeWorkout(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
+  if(record)queueWorkout(record);
+  return record;
 }
 
 function queueWorkout(record){
@@ -1369,7 +1378,7 @@ function renderComplete() {
   const calorieLine=last?.calories?`<p class="complete-calories">${ar?`~${last.calories} سعرة حرارية (تقدير)`:`~${last.calories} kcal burned (estimate)`}</p>`:"";
   app.innerHTML = `<section class="complete"><div><div class="complete-badge">✓</div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p>${ls.name} ${u.completeSub}</p>${calorieLine}<button class="nav-button primary" data-home>${u.backSessions}</button><button class="nav-button" data-reset>${u.reset}</button></div></section>`;
   document.querySelector("[data-home]").addEventListener("click", renderHome);
-  document.querySelector("[data-reset]").addEventListener("click", () => { Object.keys(state.completed).filter(k=>k.startsWith(`${state.session}-`)).forEach(k=>delete state.completed[k]); state.index=0; persist(); renderExercise(); });
+  document.querySelector("[data-reset]").addEventListener("click", () => { REP_TRAINING_SESSION.resetWorkout(state); persist(); renderExercise(); });
 }
 
 function renderRecovery() {
@@ -2132,20 +2141,25 @@ function startTimer(seconds, setIndex) {
   if (state.timer?.interval) clearInterval(state.timer.interval);
   state.timer={remaining:seconds,total:seconds,paused:false,set:setIndex}; timerDock.classList.remove("is-hidden");timerDock.removeAttribute("inert");
   timerDock.querySelector("strong").textContent=U().restTitle;document.querySelector("#timerSkip").textContent=U().skip;document.querySelector("#timerPause").textContent=U().pause;
+  updateMediaSession("rest", {set: setIndex, time: formatClock(seconds)});
   updateTimer(); state.timer.interval=setInterval(()=>{if(!state.timer.paused){state.timer.remaining--;updateTimer();if(state.timer.remaining<=0)finishTimer();}},1000);
 }
 function updateTimer(){
   const t=state.timer;if(!t)return; const min=Math.floor(t.remaining/60),sec=String(t.remaining%60).padStart(2,"0");
   document.querySelector("#timerValue").textContent=`${min}:${sec}`; document.querySelector("#timerRing").style.setProperty("--progress",`${Math.max(0,t.remaining/t.total*100)}%`);
   document.querySelector("#timerNext").textContent=`${U().set} ${t.set+1} · ${U().breatheReset}`;
-  updateMediaSessionRest(t.remaining, t.set);
+  updateMediaSession("rest", {set: t.set, time: `${min}:${sec}`});
+  if(!t.paused && (t.remaining === 3 || t.remaining === 2 || t.remaining === 1)){
+    playCountdownBeep(520, 0.08);
+    if(navigator.vibrate)navigator.vibrate(40);
+  }
   if(window.REP_AUDIO_COACH?.announceRestCountdown) {
     window.REP_AUDIO_COACH.announceRestCountdown(t.remaining);
   }
 }
 function finishTimer(){
   if(!state.timer)return;clearInterval(state.timer.interval);signalEnd();timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");state.timer=null;
-  if("mediaSession" in navigator)navigator.mediaSession.metadata=null;
+  updateMediaSession("exercise");
   const item=sessions[state.session]?.exercises[state.index],key=`${state.session}-${state.index}`,allDone=item&&(state.completed[key]||[]).length===item.sets;
   if(allDone)setTimeout(()=>{if(state.view==="player")next();},800);else document.querySelector(`.set-button:not(.is-done)`)?.classList.add("is-next");
 }
@@ -2204,7 +2218,7 @@ if(document.readyState==="complete")registerServiceWorker().catch(()=>{});else a
 // hidden) for the three things that otherwise require navigating to a
 // specific tab first. Each action reuses the exact same handlers a manual
 // tap would hit - no parallel logging path.
-function continuingSession(){return Boolean(state.session&&sessions[state.session]&&state.index>0&&state.index<sessions[state.session].exercises.length&&state.sessionStartedAt);}
+function continuingSession(){return REP_TRAINING_SESSION.isResumableWorkout(state,sessions);}
 function renderQuickLog(){
   const container=document.querySelector("#quickLog");if(!container)return;
   const ar=state.lang==="ar";

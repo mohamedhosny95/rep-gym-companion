@@ -1,0 +1,39 @@
+name: iOS Companion
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-swift:
+    name: Validate Swift Companion
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer || true
+
+      - name: Validate Swift syntax
+        run: |
+          set -e
+          echo "Validating Swift companion files..."
+          find ios -name "*.swift" | while read -r file; do
+            echo "Checking $file"
+            swiftc -parse "$file"
+          done
+          echo "All Swift companion files passed syntax check."

@@ -1,5 +1,5 @@
 (function(){
-  const DB_NAME="health-os-state-v1",STORE="records",LARGE_KEYS=["history","foodEntries","sleepLogs","recoveryCheckins","bodyWeights","bodyMeasurements","syncQueue","daily","logs","completed","healthMetrics"];
+  const DB_NAME="health-os-state-v1",STORE="records",LARGE_KEYS=["history","foodEntries","sleepLogs","recoveryCheckins","bodyWeights","bodyMeasurements","syncQueue","outbox","daily","logs","completed","healthMetrics"];
   const serialized=new Map();
   let pendingTimer=null,pendingWrite=null;
 

@@ -1,0 +1,46 @@
+name: Feature Request
+description: Suggest an idea, metric enhancement, UI improvement, or integration
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest enhancements for health metrics, workout tracking, visualizations, or offline capabilities.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: Is your feature request related to a problem or missing metric?
+      placeholder: I am always frustrated when... / It would be great to track...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Feature Behavior
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Impacted Component
+      options:
+        - Workout / Exercise Tracking
+        - Nutrition & Notion Food Logging
+        - Body Composition & Biometrics
+        - Habits & Consistency Engine
+        - PWA UI Shell & Offline Experience
+        - Cloudflare Worker & Sync Engine
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or Context
+      description: Describe any alternative solutions, mockups, or related tools you've considered.

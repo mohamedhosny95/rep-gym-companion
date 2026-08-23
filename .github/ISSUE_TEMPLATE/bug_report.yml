@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a defect, unexpected behavior, or UI rendering issue
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Rep Gym Companion / Health OS!
+        Please check if the issue is reproducible in an incognito/clean profile before reporting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps To Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Open Rep Gym Companion
+        2. Go to '...'
+        3. Tap/Click '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Client Platform & Environment
+      options:
+        - iOS Safari (PWA / Standalone)
+        - iOS Safari (Browser Tab)
+        - macOS Safari
+        - macOS Chrome / Chromium
+        - Windows / Linux Chromium
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: state_flags
+    attributes:
+      label: State & Network Condition
+      options:
+        - label: Issue occurs while completely offline
+        - label: Issue persists after hard reload / Service Worker update
+        - label: Error observed in Browser DevTools Console
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs / Error Snippets
+      description: Please paste any browser console errors or telemetry logs (ensure no private tokens/keys are included).
+      render: shell

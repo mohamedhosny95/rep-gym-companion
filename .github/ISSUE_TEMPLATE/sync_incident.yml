@@ -1,0 +1,50 @@
+name: Sync or Notion Integration Incident
+description: Report an issue with Notion schema sync, device outbox, or Worker synchronization
+title: "[Sync Incident]: "
+labels: ["sync", "integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Notion & Outbox Sync Issue Report
+        Please verify your connection status and ensure that `REP_SYNC_KEY` or `NOTION_TOKEN` secrets are configured correctly before submitting.
+        **NEVER share actual tokens, integration keys, or private database payloads in this issue.**
+
+  - type: dropdown
+    id: sync_type
+    attributes:
+      label: Incident Category
+      options:
+        - Notion Schema Validation / Drift
+        - Device Outbox Queue Stuck / Pending Entries
+        - Receipt Verification Failure
+        - Worker Pairing / Device Authorization
+        - Push Notification / VAPID Alarm Failure
+        - Telemetry / Diagnostic Endpoint Failure
+    validations:
+      required: true
+
+  - type: textarea
+    id: incident_details
+    attributes:
+      label: Incident Description
+      description: Explain the sync failure, error messages, and affected data type (e.g. Food entries, workouts, body metrics).
+      placeholder: Notion reported a schema mismatch for field '...' / Outbox retries fail with status 4xx/5xx...
+    validations:
+      required: true
+
+  - type: input
+    id: system_health_status
+    attributes:
+      label: Output of /api/system-health (if accessible)
+      description: Status returned by the worker health check endpoint (redact sensitive URLs).
+      placeholder: '{"status": "ok", "environment": "production", ...}'
+
+  - type: checkboxes
+    id: recovery_checks
+    attributes:
+      label: Recovery Steps Checked
+      options:
+        - label: Checked that Notion parent database / data source is not in Trash
+        - label: Checked that property names and property types match the expected schema
+        - label: Preserved device outbox without manually wiping IndexedDB storage

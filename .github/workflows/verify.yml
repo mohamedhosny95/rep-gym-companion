@@ -5,7 +5,7 @@ permissions:
 
 concurrency:
   group: verify-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Catches syntax errors, dist/outputs drift, and functional regressions (via
 # a headless Playwright smoke test) on every push. The verify and e2e jobs
@@ -26,9 +26,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
@@ -36,13 +36,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Syntax-check all JavaScript
-        run: |
-          set -e
-          find src dist/server scripts -type f \( -name "*.js" -o -name "*.mjs" \) | while read -r file; do
-            echo "checking $file"
-            node --check "$file"
-          done
+      - name: Static typecheck and lint
+        run: npm run check
 
       - name: Validate JSON files parse
         run: |
@@ -50,15 +45,17 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('dist/client/manifest.webmanifest','utf8'))"
           node -e "JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))"
 
-      - name: Typecheck and lint the Worker
-        run: npm run check
-
       - name: Run Worker and state regression tests
         run: npm test
 
+      - name: Cloudflare Worker dry-run validation
+        run: |
+          npm run deploy:dry-run
+          npm run deploy:staging:dry-run
+
       - name: Upload deployable client
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: health-os-client-${{ github.sha }}
           path: dist/client
@@ -80,11 +77,12 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -102,11 +100,15 @@ jobs:
       NOTION_TEST_TOKEN: ${{ secrets.NOTION_TEST_TOKEN }}
       NOTION_TEST_DATA_SOURCE_ID: ${{ secrets.NOTION_TEST_DATA_SOURCE_ID }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Verify real Notion schema, write, receipt, and cleanup
         run: npm run test:notion-live
@@ -122,8 +124,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm

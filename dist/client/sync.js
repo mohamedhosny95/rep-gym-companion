@@ -29,7 +29,7 @@
     const nutrition=nutritionItem();if(nutrition)items.push(nutrition);return [...new Map(items.map(item=>[item.id,item])).values()];
   }
   function markFood(item,status,error=""){
-    if(item.kind!=="food")return;const entry=state.foodEntries.find(food=>food.id===item.payload?.id);if(!entry)return;
+    if(item.kind!=="food")return;const entry=(state.foodEntries||[]).find(food=>food.id===item.payload?.id);if(!entry)return;
     entry.notionSync=status;entry.notionError=error||undefined;
   }
   function enqueue(item,{force=false}={}){
@@ -54,7 +54,7 @@
     const data=await response.json().catch(()=>({})),receiptMatches=data.verified===true&&(item.kind==="workout"||Boolean(data.notionPageId))&&(item.kind==="workout"||data.kind===item.kind)&&(item.kind!=="food"||data.entryId===item.payload?.id);
     if(!response.ok||!data.ok||!receiptMatches)throw Object.assign(Error(data.error||"Notion did not return a verified save receipt."),{auth:response.status===401,permanent:response.status>=400&&response.status<500&&![408,409,425,429].includes(response.status)});
     known[item.id]=serialized;saveSignatures(known);state.syncQueue=outbox.remove(state.syncQueue,item.id);
-    if(item.kind==="food"){const entry=state.foodEntries.find(food=>food.id===item.payload.id);if(entry){entry.notionSync="synced";entry.notionUrl=data.notionUrl||"";entry.notionPageId=data.notionPageId;entry.notionSyncedAt=new Date().toISOString();delete entry.notionError;}}
+    if(item.kind==="food"){const entry=(state.foodEntries||[]).find(food=>food.id===item.payload?.id);if(entry){entry.notionSync="synced";entry.notionUrl=data.notionUrl||"";entry.notionPageId=data.notionPageId;entry.notionSyncedAt=new Date().toISOString();delete entry.notionError;}}
     state.lastSyncedAt=new Date().toISOString();record(item,"synced",{notionUrl:data.notionUrl||"",updatedAt:state.lastSyncedAt,error:""});persist();return data;
   }
   function markFailure(entry,error){

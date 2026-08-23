@@ -1706,7 +1706,14 @@ async function route(request, env, ctx) {
       const deviceAuth = await authInfo(request, env);
       if (!deviceAuth) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
       try {
-        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), raw = await request.text(), body = validateSyncBody(JSON.parse(raw));
+        const idempotency = safeText(request.headers.get("x-rep-idempotency-key"), 180), raw = await request.text();
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          return json({ ok: false, error: "Invalid JSON format." }, 400);
+        }
+        const body = validateSyncBody(parsed);
         if (!body) return json({ ok: false, error: "Invalid sync payload." }, 400);
         const digest = idempotency ? b64urlEncode2(new Uint8Array(await crypto.subtle.digest("SHA-256", credentialEncoder.encode(`${idempotency}
 ${raw}`)))) : "";
