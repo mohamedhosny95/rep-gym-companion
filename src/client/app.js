@@ -138,7 +138,7 @@ function shiftDateKey(key,days){const [year,month,date]=String(key).slice(0,10).
 const storageKey = "rep-gym-companion-v1";
 const saved = window.REP_HYDRATED_STATE || JSON.parse(localStorage.getItem(storageKey) || "{}");
 const state = {
-  view: "home", activeTab:saved.activeTab||"train", session: saved.session || null, index: saved.index || 0,
+  view: "home", activeTab:saved.activeTab||"home", session: saved.session || null, index: saved.index || 0,
   completed: saved.completed || {}, muted: saved.muted || false, lang:saved.lang||"en",
   speed:saved.speed||1, paused:saved.paused||false, muscles:saved.muscles!==false, viewMode:saved.viewMode||"side",
   logs:saved.logs||{}, swaps:saved.swaps||{}, history:saved.history||[], sessionStartedAt:saved.sessionStartedAt||null,
@@ -159,7 +159,16 @@ const state = {
 const syncKeyStorage="rep-notion-pairing-key-v1";
 const repAuth=window.REP_AUTH;
 const app = document.querySelector("#app");
-new MutationObserver(()=>{app.classList.remove("view-enter");void app.offsetWidth;app.classList.add("view-enter");}).observe(app,{childList:true});
+let enterRaf = null;
+new MutationObserver(()=>{
+  if(enterRaf) return;
+  enterRaf = requestAnimationFrame(()=>{
+    enterRaf = null;
+    app.classList.remove("view-enter");
+    void app.offsetWidth;
+    app.classList.add("view-enter");
+  });
+}).observe(app,{childList:true});
 const timerDock = document.querySelector("#timerDock");
 
 let previewSnapshot = null;
@@ -331,9 +340,10 @@ function buildInsights(){
   }
   const recent=state.recoveryCheckins.slice(0,3),flagged=recent.filter(c=>recoveryFlags(c)>=2).length;
   if(recent.length>=2&&flagged>=2)out.push({tone:"warn",text:ar?"آخر مراجعتين للاستشفاء تحملان علامات خطر. خفّف الحمل قبل زيادة الأوزان.":"Two of your recent recovery check-ins carried red flags. Ease the load before adding weight."});
-  const weekAgo=Date.now()-7*86400000,sessions7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo).length;
+  const weekAgoStr=shiftDateKey(isoDay(),-7);
+  const sessions7=state.history.filter(h=>String(h.date||"").slice(0,10)>=weekAgoStr).length;
   if(state.history.length)out.push({tone:sessions7>=3?"good":"flat",text:ar?`${sessions7} حصص خلال 7 أيام.`:`${sessions7} session${sessions7===1?"":"s"} in the last 7 days.`});
-  const days=[...new Set(state.foodEntries.map(e=>String(e.date).slice(0,10)))].filter(d=>new Date(d).getTime()>=weekAgo).length;
+  const days=new Set(state.foodEntries.slice(0,100).filter(e=>String(e.date||"").slice(0,10)>=weekAgoStr).map(e=>String(e.date).slice(0,10))).size;
   if(days)out.push({tone:days>=5?"good":"flat",text:ar?`سجّلت الطعام في ${days} من آخر 7 أيام.`:`Food logged on ${days} of the last 7 days.`});
   if(weights.length>=3&&sessions7>=3&&state.history.length){
     const change=Math.round((weights[0].kg-weights[2].kg)*10)/10;
@@ -1525,26 +1535,28 @@ function saveSleepLog(bedtime,wake,hrv,rhr,resp){
 }
 function deleteSleepLog(date){state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);persist();}
 function recentSleepAvg(days=7,beforeDate=null){
-  const endTime=beforeDate?new Date(beforeDate).getTime():Date.now(),cutoff=endTime-days*86400000;
-  const recent=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t>=cutoff&&t<endTime;});
+  const endStr=beforeDate?String(beforeDate).slice(0,10):isoDay(),startStr=shiftDateKey(endStr,-days);
+  const recent=state.sleepLogs.filter(s=>{const d=String(s.date||"").slice(0,10);return d>=startStr&&d<endStr&&Number.isFinite(s.hours)&&s.hours>0;});
   return recent.length?Math.round(recent.reduce((n,s)=>n+s.hours,0)/recent.length*10)/10:null;
 }
-function dayHasActivity(dateStr){
-  if(state.history.some(h=>String(h.date).slice(0,10)===dateStr))return true;
-  if(state.foodEntries.some(e=>String(e.date).slice(0,10)===dateStr))return true;
-  if(state.sleepLogs.some(s=>s.date===dateStr))return true;
-  if(state.recoveryCheckins.some(c=>String(c.date).slice(0,10)===dateStr))return true;
-  const hygiene=state.daily?.hygiene?.[dateStr],nutrition=state.daily?.nutrition?.[dateStr];
-  if(hygiene && Object.values(hygiene.checked||{}).some(Boolean))return true;
-  if(nutrition && Object.values(nutrition.checked||{}).some(Boolean))return true;
-  return false;
-}
 function computeStreak(){
+  const activeDates=new Set();
+  for(const h of state.history||[])if(h.date)activeDates.add(String(h.date).slice(0,10));
+  for(const e of state.foodEntries||[])if(e.date)activeDates.add(String(e.date).slice(0,10));
+  for(const s of state.sleepLogs||[])if(s.date)activeDates.add(String(s.date).slice(0,10));
+  for(const c of state.recoveryCheckins||[])if(c.date)activeDates.add(String(c.date).slice(0,10));
+  if(state.daily){
+    for(const k of ["hygiene","nutrition","journal"]){
+      for(const [dateStr,item] of Object.entries(state.daily[k]||{})){
+        if(Object.values(item.checked||{}).some(Boolean))activeDates.add(dateStr);
+      }
+    }
+  }
   const todayStr=isoDay();
-  let streak=0,offset=dayHasActivity(todayStr)?0:1;
-  while(true){
+  let streak=0,offset=activeDates.has(todayStr)?0:1;
+  while(streak<3650){
     const d=shiftLocalDay(-(offset+streak));
-    if(!dayHasActivity(d))break;
+    if(!activeDates.has(d))break;
     streak++;
   }
   return streak;
@@ -1555,20 +1567,16 @@ function computeStreak(){
 // match a real wearable's continuous sensor data. It's directionally useful,
 // not clinically precise.
 function metricBaseline(field,days=30,beforeDate=null){
-  const endTime=beforeDate?new Date(beforeDate).getTime():Date.now(),cutoffTime=endTime-days*86400000;
-  const recent=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t>=cutoffTime&&t<endTime&&Number.isFinite(s[field])&&s[field]>0;});
+  const endStr=beforeDate?String(beforeDate).slice(0,10):isoDay(),startStr=shiftDateKey(endStr,-days);
+  const recent=state.sleepLogs.filter(s=>{const d=String(s.date||"").slice(0,10);return d>=startStr&&d<endStr&&Number.isFinite(s[field])&&s[field]>0;});
   return recent.length>=3?Math.round(recent.reduce((n,s)=>n+s[field],0)/recent.length*10)/10:null;
 }
-// Sleep Need mirrors Whoop's model at a level a manually-logged PWA can
-// actually support: a personalized baseline (rolling 14-day average, not a
-// fixed number), plus extra need from yesterday's training strain, plus a
-// capped debt carried from recent short nights.
 function computeSleepNeed(dateStr=isoDay()){
   const rollingAvg=recentSleepAvg(14,dateStr),baseline=rollingAvg??REP_HEALTH_GUIDE.rules.minimumSleepHours;
   const prevDate=shiftDateKey(dateStr,-1);
   const strainDebt=Math.round((computeStrainScore(prevDate)/21)*10)/10;
-  const cutoffTime=new Date(dateStr).getTime();
-  const recentNights=state.sleepLogs.filter(s=>{const t=new Date(s.date).getTime();return t<cutoffTime&&t>=cutoffTime-7*86400000;});
+  const endStr=String(dateStr).slice(0,10),startStr=shiftDateKey(endStr,-7);
+  const recentNights=state.sleepLogs.filter(s=>{const d=String(s.date||"").slice(0,10);return d<endStr&&d>=startStr;});
   const shortfall=recentNights.reduce((sum,s)=>sum+Math.max(0,baseline-(s.hours||0)),0);
   const sleepDebt=Math.min(Math.round(shortfall*10)/10,3);
   return {baseline:Math.round(baseline*10)/10,strainDebt,sleepDebt,need:Math.round((baseline+strainDebt+sleepDebt)*10)/10,estimatedBaseline:rollingAvg===null};
@@ -1579,10 +1587,6 @@ function computeSleepPerformance(dateStr=isoDay()){
   const need=computeSleepNeed(dateStr);
   return {...need,actual:entry.hours,performance:Math.max(0,Math.round(entry.hours/need.need*100))};
 }
-// A Sleep Coach-style proactive nudge, not a retrospective grade: works
-// backward from tomorrow's Sleep Need (which already factors in today's
-// strain and any recent sleep debt) and your usual wake time to say when
-// to actually go to bed tonight.
 function computeBedtimeSuggestion(){
   const tomorrow=shiftLocalDay(1);
   const need=computeSleepNeed(tomorrow),wakeTime=REP_HEALTH_GUIDE.rules.wakeTime;
@@ -1591,9 +1595,6 @@ function computeBedtimeSuggestion(){
   const time=`${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
   return {time,wakeTime,need:need.need};
 }
-// A small, low-friction set of behavior factors rather than WHOOP's ~100 -
-// journal compliance drops fast past a handful of daily toggles, and a
-// correlation is only worth showing once enough days exist either way.
 const JOURNAL_FACTORS=[
   {key:"caffeineLate",en:"Caffeine after 2pm",ar:"كافيين بعد الساعة 2 ظهراً"},
   {key:"screenLate",en:"Screen right before bed",ar:"شاشة قبل النوم مباشرة"},
@@ -1602,8 +1603,11 @@ const JOURNAL_FACTORS=[
 ];
 function journalCorrelations(){
   const byFactor=JOURNAL_FACTORS.map(f=>({...f,with:[],without:[]}));
-  for(const [date,day] of Object.entries(state.daily?.journal||{})){
-    const rec=computeRecoveryScore(date);
+  const entries=Object.entries(state.daily?.journal||{}).slice(-60);
+  const cache=new Map();
+  const getRec=(d)=>{if(cache.has(d))return cache.get(d);const r=computeRecoveryScore(d);cache.set(d,r);return r;};
+  for(const [date,day] of entries){
+    const rec=getRec(date);
     if(!rec||rec.calibrating)continue;
     for(const f of byFactor)(day.checked?.[f.key]?f.with:f.without).push(rec.score);
   }
@@ -1973,10 +1977,10 @@ function macroDonutRing(totals, profile, ar){
 }
 
 function frequentMealsTray(ar){
-  const allEntries = Object.values(state.foodEntries||{}).flat();
+  const allEntries = (Array.isArray(state.foodEntries)?state.foodEntries:Object.values(state.foodEntries||{}).flat()).slice(0, 100);
   const freqMap = {};
   allEntries.forEach(e => {
-    const text = (e.text||e.description||"").trim();
+    const text = String(e.food_name||e.text||e.description||"").trim();
     if(text.length >= 3 && text.length <= 70) {
       freqMap[text] = (freqMap[text] || 0) + 1;
     }

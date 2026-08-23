@@ -9,25 +9,30 @@
   });
   try{
     window.REP_HYDRATED_STATE=await window.REP_STORE?.hydrate("rep-gym-companion-v1");
-    await load("store.js");
-    await load("offline-nutrition.js");
-    await load("importer.js");
-    await load("report-card.js");
-    await load("command-palette.js");
+    await Promise.all([
+      load("store.js"),
+      load("offline-nutrition.js"),
+      load("importer.js"),
+      load("report-card.js"),
+      load("command-palette.js"),
+      load("sync-outbox.js"),
+      load("telemetry.js"),
+      load("recovery-map.js"),
+      load("plate-calculator.js"),
+      load("heart-rate-monitor.js"),
+      load("audio-coach.js"),
+      load("barcode-scanner.js"),
+      load("muscle-heatmap.js")
+    ]);
     await load("app.js");
-    await load("sync-outbox.js");
-    await load("telemetry.js");
-    await Promise.all([load("sync.js"),load("sync-center.js")]);
+    await Promise.all([
+      load("sync.js"),
+      load("sync-center.js"),
+      load("custom-workouts.js")
+    ]);
     await load("enhancements.js");
     await load("habits.js");
     await load("health-ui.js");
-    await load("recovery-map.js");
-    await load("plate-calculator.js");
-    await load("heart-rate-monitor.js");
-    await load("audio-coach.js");
-    await load("barcode-scanner.js");
-    await load("muscle-heatmap.js");
-    await load("custom-workouts.js");
     await load("performance-ui.js");
     document.querySelector("#commandPaletteButton")?.addEventListener("click",()=>window.REP_COMMAND_PALETTE?.open());
     document.documentElement.dataset.appReady="true";

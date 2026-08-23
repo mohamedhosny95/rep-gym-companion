@@ -64,21 +64,43 @@
   }
 
   function theilSen(points){
+    if(!points||points.length<2)return null;
+    const pts=points.length>12?points.slice(-12):points;
+    const parsed=pts.map(p=>{
+      const [y,m,d]=String(p.date||"").split("-").map(Number);
+      return {time:Date.UTC(y,(m||1)-1,d||1),val:Number(p.value)};
+    });
     const slopes=[];
-    for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++){const weeks=(atNoon(points[j].date)-atNoon(points[i].date))/WEEK;if(weeks>0)slopes.push((Number(points[j].value)-Number(points[i].value))/weeks);}
+    for(let i=0;i<parsed.length;i++){
+      for(let j=i+1;j<parsed.length;j++){
+        const weeks=(parsed[j].time-parsed[i].time)/WEEK;
+        if(weeks>0)slopes.push((parsed[j].val-parsed[i].val)/weeks);
+      }
+    }
     return median(slopes);
   }
 
   function strength(state,nowKey=dateKey()){
-    const rows=setRows(state),sessions=sessionPerformance(rows),byExercise={};
+    const rows=setRows(state),sessions=sessionPerformance(rows),byExercise={},rowsByExercise=new Map(),rowsBySessionExercise=new Map();
+    for(const row of rows){
+      let list=rowsByExercise.get(row.exercise);
+      if(!list){list=[];rowsByExercise.set(row.exercise,list);}
+      list.push(row);
+      const seId=`${row.sessionId}|${row.exercise}`;
+      let seList=rowsBySessionExercise.get(seId);
+      if(!seList){seList=[];rowsBySessionExercise.set(seId,seList);}
+      seList.push(row);
+    }
     for(const row of sessions)(byExercise[row.exercise]||(byExercise[row.exercise]=[])).push(row);
     const exercises=Object.entries(byExercise).map(([exercise,records])=>{
       const latest=records.at(-1),current=Math.max(...records.map(row=>row.bestE1rm)),bestRecord=records.find(row=>row.bestE1rm===current)||latest;
       const recent=records.filter(row=>inWindow(row.date,nowKey,28)),first=recent[0],last=recent.at(-1),change=recent.length>=2?round((last.bestE1rm-first.bestE1rm)/first.bestE1rm*100,1):null;
       const slope=theilSen(records.slice(-8).map(row=>({date:row.date,value:row.bestE1rm}))),latestThree=records.slice(-3),daysObserved=records.length>1?daysBetween(records[0].date,records.at(-1).date):0;
       const plateau=latestThree.length>=3&&daysObserved>=14&&Math.max(...latestThree.map(row=>row.bestE1rm))<=Math.max(...records.slice(0,-2).map(row=>row.bestE1rm),0)*1.005;
-      const recommendation=latest.meanRpe&&latest.meanRpe>9?"reduce":latest.bestE1rm>=current*.995&&latest.meanRpe<=8.5&&average(rows.filter(row=>row.sessionId===latest.sessionId&&row.exercise===exercise).map(row=>row.reps))>=10?"progress":"hold";
-      return {exercise,currentE1rm:round(current,1),bestDate:bestRecord.date,latestE1rm:latest.bestE1rm,latestDate:latest.date,change28d:change,slopePerWeek:slope===null?null:round(slope,2),sessionCount:records.length,setCount:rows.filter(row=>row.exercise===exercise).length,plateau,recommendation,confidence:confidence(records.length,Math.min(1,daysObserved/42)),records};
+      const latestRows=rowsBySessionExercise.get(`${latest.sessionId}|${exercise}`)||[];
+      const recommendation=latest.meanRpe&&latest.meanRpe>9?"reduce":latest.bestE1rm>=current*.995&&latest.meanRpe<=8.5&&average(latestRows.map(row=>row.reps))>=10?"progress":"hold";
+      const exRows=rowsByExercise.get(exercise)||[];
+      return {exercise,currentE1rm:round(current,1),bestDate:bestRecord.date,latestE1rm:latest.bestE1rm,latestDate:latest.date,change28d:change,slopePerWeek:slope===null?null:round(slope,2),sessionCount:records.length,setCount:exRows.length,plateau,recommendation,confidence:confidence(records.length,Math.min(1,daysObserved/42)),records};
     }).sort((a,b)=>b.currentE1rm-a.currentE1rm);
     const recentRows=rows.filter(row=>inWindow(row.date,nowKey,7)),previousRows=rows.filter(row=>{const age=daysBetween(row.date,nowKey);return age>=7&&age<14;});
     const muscleSets={};for(const row of recentRows){if(row.rpe!==null&&row.rpe<7)continue;for(const muscle of MUSCLES[row.exercise]||["Other"]){muscleSets[muscle]=(muscleSets[muscle]||0)+1;}}
@@ -263,16 +285,29 @@
 
     for(const workout of history){
       if(!inWindow(workout.date, end, 7)) continue;
-      const loads = workout.loads || {};
-      for(const [exercise, rawSets] of Object.entries(loads)){
-        const muscles = MUSCLES[exercise] || (exercise.includes("Press") ? ["Chest"] : exercise.includes("Row") || exercise.includes("Pull") ? ["Back"] : exercise.includes("Squat") ? ["Quads"] : ["Core"]);
-        const rows = setRows(workout, exercise);
-        for(const row of rows){
-          const w = Number(row.weight) || 0, r = Number(row.reps) || 0;
+      if(Array.isArray(workout.entries)){
+        for(const entry of workout.entries){
+          const w = Number(entry.weight) || 0, r = Number(entry.reps) || 0;
+          const muscles = MUSCLES[entry.exercise] || (entry.exercise?.includes("Press") ? ["Chest"] : entry.exercise?.includes("Row") || entry.exercise?.includes("Pull") ? ["Back"] : entry.exercise?.includes("Squat") || entry.exercise?.includes("Leg") ? ["Quads"] : ["Core"]);
           for(const m of muscles){
             if(volumeByMuscle[m]){
               volumeByMuscle[m].sets += 1;
               volumeByMuscle[m].volumeKg += w * r;
+            }
+          }
+        }
+      } else {
+        const loads = workout.loads || {};
+        for(const [exercise, rawSets] of Object.entries(loads)){
+          const muscles = MUSCLES[exercise] || (exercise.includes("Press") ? ["Chest"] : exercise.includes("Row") || exercise.includes("Pull") ? ["Back"] : exercise.includes("Squat") ? ["Quads"] : ["Core"]);
+          const sets = Array.isArray(rawSets) ? rawSets : (Array.isArray(rawSets?.sets) ? rawSets.sets : []);
+          for(const s of sets){
+            const w = Number(s?.weight) || 0, r = Number(s?.reps) || 0;
+            for(const m of muscles){
+              if(volumeByMuscle[m]){
+                volumeByMuscle[m].sets += 1;
+                volumeByMuscle[m].volumeKg += w * r;
+              }
             }
           }
         }

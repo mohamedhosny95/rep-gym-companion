@@ -6,9 +6,21 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
   const dayKey=value=>{const date=value instanceof Date?value:new Date(value||Date.now());return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;};
   const shift=(key,amount)=>{const [year,month,date]=String(key).split("-").map(Number),value=new Date(year,month-1,date);value.setDate(value.getDate()+amount);return dayKey(value);};
   const finite=value=>Number.isFinite(Number(value));
-  const sleepFor=(state,key)=>(state.sleepLogs||[]).find(row=>String(row.date||"").slice(0,10)===key)||{};
+  const getSleepMap=state=>{
+    if(!state._sleepMap){
+      state._sleepMap=new Map((state.sleepLogs||[]).map(r=>[String(r.date||"").slice(0,10),r]));
+    }
+    return state._sleepMap;
+  };
+  const getCheckinMap=state=>{
+    if(!state._checkinMap){
+      state._checkinMap=new Map((state.recoveryCheckins||[]).map(r=>[String(r.date||"").slice(0,10),r]));
+    }
+    return state._checkinMap;
+  };
+  const sleepFor=(state,key)=>getSleepMap(state).get(key)||{};
   const metricsFor=(state,key)=>state.healthMetrics?.[key]||{};
-  const checkinFor=(state,key)=>(state.recoveryCheckins||[]).find(row=>String(row.date||"").slice(0,10)===key)||null;
+  const checkinFor=(state,key)=>getCheckinMap(state).get(key)||null;
   const weightFor=(state,key)=>(state.bodyWeights||[]).find(row=>String(row.date||"").slice(0,10)===key)||null;
   const metricValue=(state,key,name)=>{
     const sleep=sleepFor(state,key),metrics=metricsFor(state,key);
@@ -48,17 +60,21 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
   };
   const average=values=>values.length?values.reduce((sum,row)=>sum+row.value,0)/values.length:null;
   const trend=(state,name,key=dayKey())=>{
-    const seven=series(state,name,key,7),twentyEight=series(state,name,key,28),ninety=series(state,name,key,90);
+    const ninety=series(state,name,key,90),twentyEight=ninety.slice(-28),seven=ninety.slice(-7);
     const current=seven.length?seven[seven.length-1].value:null,baseline=average(twentyEight.slice(0,-1));
     const delta=current===null||baseline===null?null:current-baseline;
     return {name,current,delta,average7:average(seven),average28:average(twentyEight),average90:average(ninety),count7:seven.length,count28:twentyEight.length,count90:ninety.length,mature:twentyEight.length>=14};
   };
   const longTerm=(state,key=dayKey())=>{
+    if(!state._longTermCache) state._longTermCache = new Map();
+    if(state._longTermCache.has(key)) return state._longTermCache.get(key);
     const metrics=["sleep","hrv","rhr","resp","vo2"].map(name=>trend(state,name,key));
     const weights=(state.bodyWeights||[]).filter(row=>finite(row.kg??row.weight)&&String(row.date||"").slice(0,10)<=key).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-90);
     const weightValues=weights.map(row=>({date:String(row.date).slice(0,10),value:Number(row.kg??row.weight)}));
     const waist=(state.bodyMeasurements||[]).filter(row=>finite(row.waist_cm)&&String(row.date||"").slice(0,10)<=key).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-1)[0]||null;
-    return {date:key,metrics,weight:{current:weightValues.at(-1)?.value??null,average7:average(weightValues.slice(-7)),average28:average(weightValues.slice(-28)),count:weightValues.length},waistCm:waist?Number(waist.waist_cm):null};
+    const res = {date:key,metrics,weight:{current:weightValues.at(-1)?.value??null,average7:average(weightValues.slice(-7)),average28:average(weightValues.slice(-28)),count:weightValues.length},waistCm:waist?Number(waist.waist_cm):null};
+    state._longTermCache.set(key, res);
+    return res;
   };
   const chargingAdvice=(state,key=dayKey())=>{
     const battery=metricValue(state,key,"battery");

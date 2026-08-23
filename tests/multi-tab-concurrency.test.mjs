@@ -1,5 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import vm from "node:vm";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const storageCode = readFileSync(join(root, "src/client/storage.js"), "utf8");
 
 function createMockIndexedDB(sharedStores = new Map()) {
   return {
@@ -62,103 +69,29 @@ function createMockLocalStorage(sharedMap = new Map()) {
 }
 
 function createTabStorageContext(sharedIDB, sharedLS) {
-  const DB_NAME="health-os-state-v1",STORE="records",LARGE_KEYS=["history","foodEntries","sleepLogs","recoveryCheckins","bodyWeights","bodyMeasurements","syncQueue","outbox","daily","logs","completed","healthMetrics"];
-  const serialized = new Map();
-  let pendingTimer = null, pendingWrite = null;
-
-  function open() {
-    return new Promise((resolve, reject) => {
-      const request = sharedIDB.open(DB_NAME, 1);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async function readDurable() {
-    const db = await open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE), store = tx.objectStore(STORE), result = {};
-      let remaining = LARGE_KEYS.length + 1, legacy = null;
-      const done = () => {
-        if (--remaining) return;
-        if (legacy && typeof legacy === "object") {
-          for (const key of LARGE_KEYS) {
-            if (result[key] === undefined && legacy[key] !== undefined) result[key] = legacy[key];
-          }
-        }
-        db.close();
-        resolve(result);
-      };
-      for (const key of LARGE_KEYS) {
-        const req = store.get(`state:${key}`);
-        req.onsuccess = () => { if (req.result !== undefined) result[key] = req.result; done(); };
-        req.onerror = () => reject(req.error);
-      }
-      const old = store.get("state");
-      old.onsuccess = () => { legacy = old.result; done(); };
-      old.onerror = () => reject(old.error);
-    });
-  }
-
-  async function writeDurable(values) {
-    const changed = [];
-    for (const [key, value] of Object.entries(values || {})) {
-      const next = JSON.stringify(value);
-      if (serialized.get(key) !== next) changed.push([key, value, next]);
-    }
-    if (!changed.length) return;
-    const db = await open();
-    try {
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE);
-        for (const [key, value] of changed) store.put(value, `state:${key}`);
-        tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-      });
-    } finally { db.close(); }
-    for (const [key,, next] of changed) serialized.set(key, next);
-  }
-
-  function split(payload) {
-    const local = { ...payload }, durable = {};
-    for (const key of LARGE_KEYS) {
-      if (key in local) { durable[key] = local[key]; delete local[key]; }
-    }
-    return { local, durable };
-  }
-
-  async function hydrate(storageKey) {
-    let parsed = {};
-    try { parsed = JSON.parse(sharedLS.getItem(storageKey) || "{}"); } catch {}
-    const legacy = split(parsed), indexed = await readDurable().catch(() => ({})), durable = { ...legacy.durable, ...indexed };
-    for (const [key, value] of Object.entries(durable)) serialized.set(key, JSON.stringify(value));
-    sharedLS.setItem(storageKey, JSON.stringify(legacy.local));
-    return { ...legacy.local, ...durable };
-  }
-
-  function persist(storageKey, payload) {
-    const { local, durable } = split(payload);
-    sharedLS.setItem(storageKey, JSON.stringify(local));
-    pendingWrite = { ...(pendingWrite || {}), ...durable };
-    clearTimeout(pendingTimer);
-    pendingTimer = setTimeout(async () => {
-      const next = pendingWrite;
-      pendingWrite = null;
-      if (next) await writeDurable(next).catch(() => {});
-    }, 0);
-  }
-
-  async function flush() {
-    clearTimeout(pendingTimer);
-    const next = pendingWrite;
-    pendingWrite = null;
-    if (next) await writeDurable(next).catch(() => {});
-  }
-
-  return { hydrate, persist, flush, readDurable, serialized };
+  const sandbox = {
+    indexedDB: sharedIDB,
+    localStorage: sharedLS,
+    document: { addEventListener: () => {}, visibilityState: "visible" },
+    addEventListener: () => {},
+    clearTimeout,
+    setTimeout,
+    JSON,
+    Map,
+    Promise,
+    Error,
+    Object,
+    Array,
+    Date,
+    window: {}
+  };
+  sandbox.window = sandbox;
+  const context = vm.createContext(sandbox);
+  vm.runInContext(storageCode, context);
+  return sandbox.window.REP_STORE;
 }
 
-test("Multi-tab concurrency: Independent tabs modifying disjoint LARGE_KEYS do not clobber each other in IndexedDB", async () => {
+test("Multi-tab concurrency: Independent tabs modifying disjoint LARGE_KEYS do not clobber each other in IndexedDB (using real storage.js)", async () => {
   const sharedStores = new Map();
   const sharedLSMap = new Map();
   const sharedIDB = createMockIndexedDB(sharedStores);
@@ -194,7 +127,7 @@ test("Multi-tab concurrency: Independent tabs modifying disjoint LARGE_KEYS do n
   assert.equal(state3.daily.habits["2026-08-23"].water, true);
 });
 
-test("Multi-tab concurrency: Concurrent writes to the same key follow last-write-wins without corruption", async () => {
+test("Multi-tab concurrency: Concurrent writes to the same key follow last-write-wins without corruption (using real storage.js)", async () => {
   const sharedStores = new Map();
   const sharedLSMap = new Map();
   const sharedIDB = createMockIndexedDB(sharedStores);

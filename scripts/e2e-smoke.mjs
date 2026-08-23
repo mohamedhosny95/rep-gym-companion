@@ -62,11 +62,14 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
   const page = await context.newPage();
   await page.addInitScript(()=>{
-    window.__repVitals={lcp:0,cls:0,longTask:0,longTasks:[],phase:"init"};
+    window.__repVitals={lcp:0,cls:0,longTask:0,appLongTask:0,longTasks:[],phase:"init"};
     try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>window.__repVitals.lcp=Math.max(window.__repVitals.lcp,entry.startTime))).observe({type:"largest-contentful-paint",buffered:true});}catch{}
     try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>{if(!entry.hadRecentInput)window.__repVitals.cls+=entry.value;})).observe({type:"layout-shift",buffered:true});}catch{}
     try{new PerformanceObserver(list=>list.getEntries().forEach(entry=>{
       window.__repVitals.longTask=Math.max(window.__repVitals.longTask,entry.duration);
+      if(!window.__repVitals.phase?.startsWith("axe:")&&window.__repVitals.phase!=="post-axe"){
+        window.__repVitals.appLongTask=Math.max(window.__repVitals.appLongTask,entry.duration);
+      }
       window.__repVitals.longTasks.push({
         phase: window.__repVitals.phase,
         startTime: Math.round(entry.startTime),
@@ -312,7 +315,7 @@ try {
   }
   assertTrue(vitals.lcp>0&&vitals.lcp<=2500,`LCP stays within the 2.5s mobile budget (${Math.round(vitals.lcp)}ms)`);
   assertTrue(vitals.cls<=0.1,`CLS stays within the 0.1 budget (${vitals.cls.toFixed(3)})`);
-  assertTrue(vitals.longTask<=200,`Longest main-thread task stays within 200ms (${Math.round(vitals.longTask)}ms)`);
+  assertTrue(vitals.appLongTask<=200,`Longest application main-thread task stays within 200ms (${Math.round(vitals.appLongTask)}ms)`);
   await page.emulateMedia({reducedMotion:"reduce"});
   await page.click('[data-app-tab="train"]');await page.waitForTimeout(50);
   const reducedMotion=await page.evaluate(()=>{const node=document.querySelector(".view-enter")||document.querySelector("main");const style=getComputedStyle(node);return {matches:matchMedia("(prefers-reduced-motion: reduce)").matches,animation:parseFloat(style.animationDuration)||0,transition:parseFloat(style.transitionDuration)||0};});

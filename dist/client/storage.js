@@ -40,7 +40,6 @@
   async function hydrate(storageKey){
     let parsed={};try{parsed=JSON.parse(localStorage.getItem(storageKey)||"{}");}catch{}
     const legacy=split(parsed),indexed=await readDurable().catch(()=>({})),durable={...legacy.durable,...indexed};
-    for(const [key,value] of Object.entries(durable))serialized.set(key,JSON.stringify(value));
     localStorage.setItem(storageKey,JSON.stringify(legacy.local));
     if(Object.keys(legacy.durable).length)writeDurable(legacy.durable).catch(()=>{});
     return {...legacy.local,...durable};
