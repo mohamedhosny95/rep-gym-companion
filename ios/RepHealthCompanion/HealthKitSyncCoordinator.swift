@@ -90,22 +90,32 @@ final class HealthKitSyncCoordinator: ObservableObject {
         async let oxygen = average(.oxygenSaturation, unit: .percent(), interval)
         async let temperature = average(.appleSleepingWristTemperature, unit: .degreeCelsius(), interval)
         async let heartCoverage = heartCoverage(interval)
-        async let workoutSamples = workoutHeartRateCount(interval)
-        async let sleep = sleepSummary(interval)
-        let sleepResult = try await sleep
+        let sleepResult = (try? await sleep) ?? (nil, nil, nil, nil, nil)
+        let coverageResult = (try? await heartCoverage) ?? (0, nil)
+        let hrvVal = (try? await hrv) ?? nil
+        let rhrVal = (try? await rhr) ?? nil
+        let respVal = (try? await respiratory) ?? nil
+        let energyVal = (try? await energy) ?? nil
+        let stepsVal = (try? await steps) ?? nil
+        let exerciseVal = (try? await exercise) ?? nil
+        let standVal = (try? await stand) ?? nil
+        let vo2Val = (try? await vo2) ?? nil
+        let oxygenVal = (try? await oxygen) ?? nil
+        let tempVal = (try? await temperature) ?? nil
+        let workoutVal = (try? await workoutSamples) ?? 0
+        
         let formatter = DateFormatter(); formatter.calendar = .current; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
-        let coverageResult = try await heartCoverage
         let batteryPct: Double? = Calendar.current.isDateInToday(day) ? currentBatteryPercentage() : nil
-        return try await RepDailyVitals(
+        return RepDailyVitals(
             date: formatter.string(from: day), sleep_hours: sleepResult.total,
             bedtime: sleepResult.start, wake_time: sleepResult.end,
-            hrv_ms: hrv, resting_hr_bpm: rhr, respiratory_rate_bpm: respiratory,
-            active_energy_kcal: energy, steps: steps, exercise_minutes: exercise,
-            stand_minutes: stand, vo2_max: vo2,
-            oxygen_saturation_pct: oxygen.map { $0 * 100 },
-            wrist_temperature_c: temperature, sleep_deep_hours: sleepResult.deep,
+            hrv_ms: hrvVal, resting_hr_bpm: rhrVal, respiratory_rate_bpm: respVal,
+            active_energy_kcal: energyVal, steps: stepsVal, exercise_minutes: exerciseVal,
+            stand_minutes: standVal, vo2_max: vo2Val,
+            oxygen_saturation_pct: oxygenVal.map { $0 * 100 },
+            wrist_temperature_c: tempVal, sleep_deep_hours: sleepResult.deep,
             sleep_rem_hours: sleepResult.rem, coverage_minutes: coverageResult.minutes,
-            heart_rate_samples: Double(coverageResult.count), workout_hr_samples: Double(workoutSamples),
+            heart_rate_samples: Double(coverageResult.count), workout_hr_samples: Double(workoutVal),
             watch_battery_pct: batteryPct, source: "Rep HealthKit Companion"
         )
     }
