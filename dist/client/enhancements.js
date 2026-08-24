@@ -64,6 +64,7 @@
   function weightToKg(value){const n=Number(value);return state.preferences.weightUnit==="lb"?n/2.2046226:n;}
   function waterDisplay(ml){return state.preferences.waterUnit==="oz"?`${Math.round(Number(ml||0)/2.95735)/10} fl oz`:`${Math.round(Number(ml)||0)} ml`;}
   function waterToMl(value){return state.preferences.waterUnit==="oz"?Number(value)*29.5735:Number(value);}
+  window.weightLabel=weightLabel;window.weightInput=weightInput;window.weightToKg=weightToKg;window.waterDisplay=waterDisplay;window.waterToMl=waterToMl;
 
   saveLog=function(base,item){const id=exerciseId(base),log=normalizedLog(id,item.sets);document.querySelectorAll("[data-log-set]").forEach(input=>{const i=Number(input.dataset.logSet),field=input.dataset.log;log.sets[i][field]=field==="weight"&&state.preferences.weightUnit==="lb"?(input.value===""?"":String(Math.round(weightToKg(input.value)*100)/100)):input.value;});persistDebounced();};
 
@@ -375,7 +376,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(ar?`أحدث نقطة: ${new Date(dates[0]).toLocaleString("ar-EG")}`:`Latest: ${new Date(dates[0]).toLocaleString()}`):(ar?"ستُنشأ نقطة بعد التغيير التالي.":"A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(ar?"ar-EG":undefined)}</button>`).join("");history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"bb9a8101b481"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"c841e3094821"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!repAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await repAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair Health OS",url});else await navigator.clipboard.writeText(url);showToast(state.lang==="ar"?"تم نسخ الرابط.":"Pairing link copied.");}catch{showToast(state.lang==="ar"?"تعذر مشاركة الرابط.":"Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt(state.lang==="ar"?"اكتب عبارة مرور من 8 أحرف على الأقل:":"Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"Rep Gym Companion",schema:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload()},payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`health-os-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast(state.lang==="ar"?"تم تنزيل النسخة المشفرة.":"Encrypted backup downloaded.");}catch(error){showToast(String(error.message||error));}}
@@ -420,14 +421,15 @@
     element.dataset.dialogReady="true";element.setAttribute("role","dialog");element.setAttribute("aria-modal","true");element.tabIndex=-1;
     const focusable=()=>[...element.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(node=>!node.disabled);
     element.addEventListener("keydown",event=>{
-      if(event.key==="Escape"){element.querySelector("[data-timed-close],[data-close-diagnostics],.timed-close,.install-help>button,[data-stay]")?.click();return;}
+      if(event.key==="Escape"){element.querySelector("[data-timed-close],[data-close-diagnostics],.timed-close,.install-help>button,[data-stay],.dialog-close,[data-builder-close],[data-hr-close],[data-barcode-close],.sheet-close")?.click();return;}
       if(event.key!=="Tab")return;const items=focusable();if(!items.length){event.preventDefault();return;}const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     });
     requestAnimationFrame(()=>focusable()[0]?.focus());
   }
-  const dialogObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.(".timed-mode,.exit-confirm,.install-help"))prepareDialog(node);node.querySelectorAll?.(".timed-mode,.exit-confirm,.install-help").forEach(prepareDialog);}});
+  const DIALOG_SELECTORS=".timed-mode,.exit-confirm,.install-help,.rep-modal-backdrop,.plate-calc-backdrop";
+  const dialogObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.(DIALOG_SELECTORS))prepareDialog(node);node.querySelectorAll?.(DIALOG_SELECTORS).forEach(prepareDialog);}});
   dialogObserver.observe(document.body,{childList:true,subtree:true});
-  document.querySelectorAll(".timed-mode,.exit-confirm,.install-help").forEach(prepareDialog);
+  document.querySelectorAll(DIALOG_SELECTORS).forEach(prepareDialog);
   updatePrimaryTabs();updateSyncPanel();claimPairFromUrl();refreshCapabilities();setInterval(()=>probeSystemHealth(state.view==="settings"&&state.settingsSection==="sync"),5*60*1000);
   if(state.view==="home-overview")renderOverview();
 })();

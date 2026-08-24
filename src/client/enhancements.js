@@ -64,6 +64,7 @@
   function weightToKg(value){const n=Number(value);return state.preferences.weightUnit==="lb"?n/2.2046226:n;}
   function waterDisplay(ml){return state.preferences.waterUnit==="oz"?`${Math.round(Number(ml||0)/2.95735)/10} fl oz`:`${Math.round(Number(ml)||0)} ml`;}
   function waterToMl(value){return state.preferences.waterUnit==="oz"?Number(value)*29.5735:Number(value);}
+  window.weightLabel=weightLabel;window.weightInput=weightInput;window.weightToKg=weightToKg;window.waterDisplay=waterDisplay;window.waterToMl=waterToMl;
 
   saveLog=function(base,item){const id=exerciseId(base),log=normalizedLog(id,item.sets);document.querySelectorAll("[data-log-set]").forEach(input=>{const i=Number(input.dataset.logSet),field=input.dataset.log;log.sets[i][field]=field==="weight"&&state.preferences.weightUnit==="lb"?(input.value===""?"":String(Math.round(weightToKg(input.value)*100)/100)):input.value;});persistDebounced();};
 
@@ -420,14 +421,15 @@
     element.dataset.dialogReady="true";element.setAttribute("role","dialog");element.setAttribute("aria-modal","true");element.tabIndex=-1;
     const focusable=()=>[...element.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(node=>!node.disabled);
     element.addEventListener("keydown",event=>{
-      if(event.key==="Escape"){element.querySelector("[data-timed-close],[data-close-diagnostics],.timed-close,.install-help>button,[data-stay]")?.click();return;}
+      if(event.key==="Escape"){element.querySelector("[data-timed-close],[data-close-diagnostics],.timed-close,.install-help>button,[data-stay],.dialog-close,[data-builder-close],[data-hr-close],[data-barcode-close],.sheet-close")?.click();return;}
       if(event.key!=="Tab")return;const items=focusable();if(!items.length){event.preventDefault();return;}const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     });
     requestAnimationFrame(()=>focusable()[0]?.focus());
   }
-  const dialogObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.(".timed-mode,.exit-confirm,.install-help"))prepareDialog(node);node.querySelectorAll?.(".timed-mode,.exit-confirm,.install-help").forEach(prepareDialog);}});
+  const DIALOG_SELECTORS=".timed-mode,.exit-confirm,.install-help,.rep-modal-backdrop,.plate-calc-backdrop";
+  const dialogObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.(DIALOG_SELECTORS))prepareDialog(node);node.querySelectorAll?.(DIALOG_SELECTORS).forEach(prepareDialog);}});
   dialogObserver.observe(document.body,{childList:true,subtree:true});
-  document.querySelectorAll(".timed-mode,.exit-confirm,.install-help").forEach(prepareDialog);
+  document.querySelectorAll(DIALOG_SELECTORS).forEach(prepareDialog);
   updatePrimaryTabs();updateSyncPanel();claimPairFromUrl();refreshCapabilities();setInterval(()=>probeSystemHealth(state.view==="settings"&&state.settingsSection==="sync"),5*60*1000);
   if(state.view==="home-overview")renderOverview();
 })();

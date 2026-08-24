@@ -6,8 +6,8 @@
     const ar = state.lang === "ar";
     return [
       // Navigation
-      { id: "nav-today", title: ar ? "الرئيسية · اليوم" : "Home · Today", category: ar ? "تنقل" : "Navigation", icon: "🏠", action: () => window.setPrimaryTab?.("today") },
-      { id: "nav-training", title: ar ? "التدريب · التمارين" : "Training · Workouts", category: ar ? "تنقل" : "Navigation", icon: "🏋️", action: () => window.setPrimaryTab?.("training") },
+      { id: "nav-today", title: ar ? "الرئيسية · اليوم" : "Home · Today", category: ar ? "تنقل" : "Navigation", icon: "🏠", action: () => window.setPrimaryTab?.("home") },
+      { id: "nav-training", title: ar ? "التدريب · التمارين" : "Training · Workouts", category: ar ? "تنقل" : "Navigation", icon: "🏋️", action: () => window.setPrimaryTab?.("train") },
       { id: "nav-food", title: ar ? "التغذية · متتبع الوجبات" : "Nutrition · Food Tracker", category: ar ? "تنقل" : "Navigation", icon: "🥗", action: () => window.setPrimaryTab?.("food") },
       { id: "nav-vitals", title: ar ? "العلامات الحيوية والنوم" : "Vitals · Recovery & Sleep", category: ar ? "تنقل" : "Navigation", icon: "❤️", action: () => window.setPrimaryTab?.("health") },
       { id: "nav-insights", title: ar ? "التحليلات والذكاء التدريبي" : "Insights · Strength & Habits", category: ar ? "تنقل" : "Navigation", icon: "📈", action: () => window.setPrimaryTab?.("insights") },
