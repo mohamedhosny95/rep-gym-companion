@@ -1,4 +1,4 @@
-const BUILD_VERSION="bb9a8101b481";
+const BUILD_VERSION="c841e3094821";
 const CACHE = `rep-companion-${BUILD_VERSION}`;
 const versioned=path=>`${path}?v=${BUILD_VERSION}`;
 const CORE_ASSETS = ["./", "./index.html", ...["./styles.css","./build-meta.js","./auth.js","./storage.js","./ui-state.js","./ui-shell.js","./health-data.js","./i18n.js","./features.js","./health-engine.js","./health-coverage.js","./performance-insights.js","./training-session.js","./offline-nutrition.js","./store.js","./importer.js","./report-card.js","./command-palette.js","./recovery-map.js","./plate-calculator.js","./heart-rate-monitor.js","./audio-coach.js","./barcode-scanner.js","./muscle-heatmap.js","./custom-workouts.js","./bootstrap.js","./app.js","./sync-outbox.js","./telemetry.js","./sync.js","./sync-center.js","./enhancements.js","./habits.js","./health-ui.js","./performance-ui.js"].map(versioned), "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
@@ -21,7 +21,7 @@ self.addEventListener("fetch", event => {
   // ?since= query, hiding newly imported data.
   if (new URL(event.request.url).pathname.startsWith("/api/")) { event.respondWith(fetch(event.request)); return; }
   if (event.request.mode === "navigate") { event.respondWith(fetch(event.request).then(response => { const copy=response.clone();caches.open(CACHE).then(cache=>cache.put("./index.html",copy));return response; }).catch(()=>caches.match("./index.html"))); return; }
-  event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
+  event.respondWith(caches.match(event.request, { ignoreSearch: true }).then(hit => hit || fetch(event.request).then(response => {
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));}
     return response;
   })).catch(() => new Response("", { status: 408, statusText: "Offline" })));

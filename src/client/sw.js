@@ -21,7 +21,7 @@ self.addEventListener("fetch", event => {
   // ?since= query, hiding newly imported data.
   if (new URL(event.request.url).pathname.startsWith("/api/")) { event.respondWith(fetch(event.request)); return; }
   if (event.request.mode === "navigate") { event.respondWith(fetch(event.request).then(response => { const copy=response.clone();caches.open(CACHE).then(cache=>cache.put("./index.html",copy));return response; }).catch(()=>caches.match("./index.html"))); return; }
-  event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
+  event.respondWith(caches.match(event.request, { ignoreSearch: true }).then(hit => hit || fetch(event.request).then(response => {
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));}
     return response;
   })).catch(() => new Response("", { status: 408, statusText: "Offline" })));

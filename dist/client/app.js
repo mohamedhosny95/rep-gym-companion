@@ -622,7 +622,7 @@ function todayFuelSnippet(ar){
       <div style="padding:8px 10px;border-radius:12px;background:var(--panel-2);">
         <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;margin-bottom:4px;">
           <span>${ar?"الماء":"Water"}</span>
-          <strong style="color:var(--blue);">${water} / ${watGoal} ml</strong>
+          <strong style="color:var(--blue);">${window.waterDisplay ? window.waterDisplay(water) : `${water} ml`}</strong>
         </div>
         <div style="height:5px;width:100%;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;">
           <div style="height:100%;width:${watPct}%;background:var(--blue);border-radius:99px;"></div>
@@ -1014,10 +1014,12 @@ function renderExercise() {
         log.sets[i].reps=log.sets[i-1].reps;
         log.sets[i].rpe=log.sets[i-1].rpe;
         persistDebounced();
+        const isLb=state.preferences?.weightUnit==="lb";
+        const displayWeight=isLb?(window.weightInput?window.weightInput(log.sets[i].weight):log.sets[i].weight):log.sets[i].weight;
         const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
         const repsInput=document.querySelector(`input[data-log="reps"][data-log-set="${i}"]`);
         const rpeInput=document.querySelector(`input[data-log="rpe"][data-log-set="${i}"]`);
-        if(weightInput) weightInput.value=log.sets[i].weight;
+        if(weightInput) weightInput.value=String(displayWeight||"");
         if(repsInput) repsInput.value=log.sets[i].reps;
         if(rpeInput) rpeInput.value=log.sets[i].rpe;
         if(window.vibrateGym) window.vibrateGym("set");
@@ -1027,12 +1029,15 @@ function renderExercise() {
   document.querySelectorAll("[data-step-set]").forEach(btn=>{
     btn.onclick=()=>{
       const i=Number(btn.dataset.stepSet), delta=Number(btn.dataset.stepVal), id=exerciseId(base), log=normalizedLog(id,item.sets);
-      const cur=Number(log.sets[i].weight||(i>0?log.sets[i-1]?.weight:60))||60;
-      const nextVal=String(Math.max(0, Math.round((cur+delta)*10)/10));
-      log.sets[i].weight=nextVal;
+      const isLb=state.preferences?.weightUnit==="lb";
+      const rawStoredKg=Number(log.sets[i].weight||(i>0?log.sets[i-1]?.weight:60))||60;
+      const curDisplay=isLb?Math.round(rawStoredKg*22.046226)/10:rawStoredKg;
+      const nextDisplay=Math.max(0, Math.round((curDisplay+delta)*10)/10);
+      const nextStoredKg=isLb?Math.round((nextDisplay/2.2046226)*100)/100:nextDisplay;
+      log.sets[i].weight=String(nextStoredKg);
       persistDebounced();
       const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
-      if(weightInput) weightInput.value=nextVal;
+      if(weightInput) weightInput.value=String(nextDisplay);
       if(window.vibrateGym) window.vibrateGym("set");
     };
   });
@@ -1391,7 +1396,13 @@ function renderComplete() {
   const calorieLine=last?.calories?`<p class="complete-calories">${ar?`~${last.calories} سعرة حرارية (تقدير)`:`~${last.calories} kcal burned (estimate)`}</p>`:"";
   app.innerHTML = `<section class="complete"><div><div class="complete-badge">✓</div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p>${ls.name} ${u.completeSub}</p>${calorieLine}<button class="nav-button primary" data-home>${u.backSessions}</button><button class="nav-button" data-reset>${u.reset}</button></div></section>`;
   document.querySelector("[data-home]").addEventListener("click", renderHome);
-  document.querySelector("[data-reset]").addEventListener("click", () => { REP_TRAINING_SESSION.resetWorkout(state); persist(); renderExercise(); });
+  document.querySelector("[data-reset]").addEventListener("click", () => {
+    REP_TRAINING_SESSION.resetWorkout(state);
+    state.sessionStartedAt = Date.now();
+    startSessionClock();
+    persist();
+    renderExercise();
+  });
 }
 
 function renderRecovery() {
@@ -1959,9 +1970,9 @@ function macroDonutRing(totals, profile, ar){
         <span style="color:var(--orange);">F ${fPct}%</span>
       </div>
       <div style="display:flex;gap:4px;align-items:center;margin-top:8px;">
-        <div style="height:6px;width:${Math.max(16,pPct*1.4)}px;background:var(--acid);border-radius:3px;" title="Protein ${pPct}%"></div>
-        <div style="height:6px;width:${Math.max(16,cPct*1.4)}px;background:var(--blue);border-radius:3px;" title="Carbs ${cPct}%"></div>
-        <div style="height:6px;width:${Math.max(16,fPct*1.4)}px;background:var(--orange);border-radius:3px;" title="Fat ${fPct}%"></div>
+        <div style="height:6px;width:${tot > 1 ? Math.max(8, pPct*1.4) : 0}px;background:var(--acid);border-radius:3px;" title="Protein ${pPct}%"></div>
+        <div style="height:6px;width:${tot > 1 ? Math.max(8, cPct*1.4) : 0}px;background:var(--blue);border-radius:3px;" title="Carbs ${cPct}%"></div>
+        <div style="height:6px;width:${tot > 1 ? Math.max(8, fPct*1.4) : 0}px;background:var(--orange);border-radius:3px;" title="Fat ${fPct}%"></div>
       </div>
     </div>
     <div style="position:relative;width:60px;height:60px;flex:none;display:grid;place-items:center;">
@@ -2146,10 +2157,22 @@ function updateMediaSessionRest(remaining,setIndex){
 
 function startTimer(seconds, setIndex) {
   if (state.timer?.interval) clearInterval(state.timer.interval);
-  state.timer={remaining:seconds,total:seconds,paused:false,set:setIndex}; timerDock.classList.remove("is-hidden");timerDock.removeAttribute("inert");
-  timerDock.querySelector("strong").textContent=U().restTitle;document.querySelector("#timerSkip").textContent=U().skip;document.querySelector("#timerPause").textContent=U().pause;
-  updateMediaSession("rest", {set: setIndex, time: formatClock(seconds)});
-  updateTimer(); state.timer.interval=setInterval(()=>{if(!state.timer.paused){state.timer.remaining--;updateTimer();if(state.timer.remaining<=0)finishTimer();}},1000);
+  const now = Date.now();
+  state.timer = { remaining: seconds, total: seconds, paused: false, set: setIndex, targetEndTime: now + seconds * 1000 };
+  timerDock.classList.remove("is-hidden"); timerDock.removeAttribute("inert");
+  timerDock.querySelector("strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  updateMediaSession("rest", { set: setIndex, time: formatClock(seconds) });
+  updateTimer();
+  state.timer.interval = setInterval(() => {
+    if (!state.timer) return;
+    if (!state.timer.paused) {
+      state.timer.remaining = Math.max(0, Math.ceil((state.timer.targetEndTime - Date.now()) / 1000));
+      updateTimer();
+      if (state.timer.remaining <= 0) finishTimer();
+    } else {
+      state.timer.targetEndTime = Date.now() + state.timer.remaining * 1000;
+    }
+  }, 500);
 }
 function updateTimer(){
   const t=state.timer;if(!t)return; const min=Math.floor(t.remaining/60),sec=String(t.remaining%60).padStart(2,"0");
@@ -2171,8 +2194,20 @@ function finishTimer(){
   if(allDone)setTimeout(()=>{if(state.view==="player")next();},800);else document.querySelector(`.set-button:not(.is-done)`)?.classList.add("is-next");
 }
 document.querySelector("#timerSkip").addEventListener("click",finishTimer);
-document.querySelector("#timerPause").addEventListener("click",()=>{if(!state.timer)return;state.timer.paused=!state.timer.paused;document.querySelector("#timerPause").textContent=state.timer.paused?U().resume:U().pause;});
-document.querySelector("#timerAdd").addEventListener("click",()=>{if(!state.timer)return;state.timer.remaining+=15;state.timer.total+=15;updateTimer();});
+document.querySelector("#timerPause").addEventListener("click",()=>{
+  if(!state.timer)return;
+  state.timer.paused=!state.timer.paused;
+  if(!state.timer.paused){state.timer.targetEndTime=Date.now()+state.timer.remaining*1000;}
+  document.querySelector("#timerPause").textContent=state.timer.paused?U().resume:U().pause;
+  updateTimer();
+});
+document.querySelector("#timerAdd").addEventListener("click",()=>{
+  if(!state.timer)return;
+  state.timer.remaining+=15;
+  state.timer.total+=15;
+  state.timer.targetEndTime=Date.now()+state.timer.remaining*1000;
+  updateTimer();
+});
 document.querySelector("#homeButton").addEventListener("click",()=>setPrimaryTab("home"));
 document.querySelector("#previewModeButton")?.addEventListener("click",togglePreviewMode);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
@@ -2197,7 +2232,7 @@ async function toggleWakeLock(){
   if(state.wakeLock){await state.wakeLock.release();state.wakeLock=null;button.setAttribute("aria-pressed","false");button.classList.remove("is-active");return;}
   try{state.wakeLock=await navigator.wakeLock.request("screen");button.setAttribute("aria-pressed","true");button.classList.add("is-active");state.wakeLock.addEventListener("release",()=>{state.wakeLock=null;button.classList.remove("is-active");});}catch{showToast(state.lang==="ar"?"تعذّر إبقاء الشاشة مضاءة على هذا المتصفح.":"Couldn't keep the screen awake on this browser.");}
 }
-document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="visible"&&document.querySelector("#wakeButton").classList.contains("is-active")&&!state.wakeLock)try{state.wakeLock=await navigator.wakeLock.request("screen");}catch{}});
+document.addEventListener("visibilitychange",async()=>{if("wakeLock" in navigator&&document.visibilityState==="visible"&&document.querySelector("#wakeButton")?.classList.contains("is-active")&&!state.wakeLock)try{state.wakeLock=await navigator.wakeLock.request("screen");}catch{}});
 let installPrompt=null;
 addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
 async function installApp(){
