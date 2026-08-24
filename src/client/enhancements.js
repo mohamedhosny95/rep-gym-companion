@@ -89,13 +89,11 @@
   function removeFavorite(id){const index=state.savedMeals.findIndex(item=>item.id===id),removed=state.savedMeals[index];if(!removed)return;state.savedMeals.splice(index,1);persist();renderNutrition();showUndo(state.lang==="ar"?"تمت إزالة المفضلة.":"Favorite removed.",()=>{state.savedMeals.splice(index,0,removed);persist();renderNutrition();});}
   const baseRenderNutrition=renderNutrition;
   renderNutrition=function(){
-    const t0=window.performance.now();
     baseRenderNutrition();
-    const t1=window.performance.now();
     const ar=state.lang==="ar",recent=recentMeals(),anchor=document.querySelector(".food-log")?.previousElementSibling;
     const sections=[];
-    if(state.savedMeals.length)sections.push(`<div class="food-section-head"><h2>${ar?"الوجبات المفضلة":"Favorite meals"}</h2><span>${ar?"عدّل الحصة ثم سجّل":"adjust portion, then log"}</span></div><section class="quick-meals">${state.savedMeals.map(item=>quickMealCard(item,true)).join("")}</section>`);
-    if(recent.length)sections.push(`<div class="food-section-head"><h2>${ar?"الوجبات الحديثة":"Recent meals"}</h2><span>${ar?"إعادة تسجيل أسرع":"quick re-log"}</span></div><section class="quick-meals">${recent.map(item=>quickMealCard(item,false)).join("")}</section>`);
+    if(state.savedMeals.length)sections.push(`<div class="food-section-head" data-nutrition-section="log"><h2>${ar?"الوجبات المفضلة":"Favorite meals"}</h2><span>${ar?"عدّل الحصة ثم سجّل":"adjust portion, then log"}</span></div><section class="quick-meals">${state.savedMeals.map(item=>quickMealCard(item,true)).join("")}</section>`);
+    if(recent.length)sections.push(`<div class="food-section-head" data-nutrition-section="log"><h2>${ar?"الوجبات الحديثة":"Recent meals"}</h2><span>${ar?"إعادة تسجيل أسرع":"quick re-log"}</span></div><section class="quick-meals">${recent.map(item=>quickMealCard(item,false)).join("")}</section>`);
     if(anchor&&sections.length)anchor.insertAdjacentHTML("beforebegin",sections.join(""));
     const todayEntries=todayFoodEntries(),savedKeys=new Set(state.savedMeals.map(mealKey));
     document.querySelectorAll(".food-entry").forEach((card,index)=>{
@@ -122,11 +120,15 @@
   function organizeNutrition(){
     const ar=state.lang==="ar",profile=document.querySelector(".food-profile"),shell=window.REP_UI_SHELL;if(!profile)return;
     document.querySelector("[data-food-note]")?.setAttribute("aria-label",ar?"وصف الوجبة":"Meal description");
-    const nav=document.createElement("nav");nav.className="module-subnav";nav.setAttribute("aria-label",ar?"أقسام التغذية":"Nutrition sections");nav.innerHTML=[["log",ar?"سجّل":"Log"],["today",ar?"اليوم":"Today"],["plan",ar?"الخطة":"Plan"]].map(([id,label])=>`<button data-nutrition-view="${id}" class="${state.nutritionView===id?"is-active":""}">${label}</button>`).join("");profile.insertAdjacentElement("afterend",nav);
-    const mark=(element,view)=>{if(element)element.dataset.nutritionSection=view;};
-    mark(document.querySelector(".macro-dashboard"),"today");mark(document.querySelector(".meal-composer"),"log");mark(document.querySelector(".analysis-card"),"log");mark(document.querySelector(".supplement-card"),"today");mark(document.querySelector(".water-card"),"today");mark(document.querySelector(".weight-card"),"plan");mark(document.querySelector(".food-log"),"today");mark(document.querySelector(".nutrition-plan-note"),"plan");
-    document.querySelectorAll(".food-section-head").forEach(head=>{const text=head.querySelector("h2")?.textContent||"";const view=/template|قوالب|Favorite|Recent|المفضلة|الحديثة/i.test(text)?"log":/tracker|متتبعات|entries|وجبات اليوم/i.test(text)?"today":null;if(!view)return;mark(head,view);let next=head.nextElementSibling;while(next&&!next.classList.contains("food-section-head")){if(next.matches(".food-log,.supplement-card,.weight-card,.water-card"))break;mark(next,view);next=next.nextElementSibling;}});
-    const reminder=document.querySelector(".reminder-strip");mark(reminder,"today");
+    let nav=document.querySelector(".module-subnav[data-nav-for='nutrition']");
+    if(!nav){
+      nav=document.createElement("nav");nav.className="module-subnav";nav.dataset.navFor="nutrition";nav.setAttribute("aria-label",ar?"أقسام التغذية":"Nutrition sections");nav.innerHTML=[["log",ar?"سجّل":"Log"],["today",ar?"اليوم":"Today"],["plan",ar?"الخطة":"Plan"]].map(([id,label])=>`<button data-nutrition-view="${id}" class="${state.nutritionView===id?"is-active":""}">${label}</button>`).join("");profile.insertAdjacentElement("afterend",nav);
+      nav.querySelectorAll("[data-nutrition-view]").forEach(button=>button.onclick=()=>{state.nutritionView=button.dataset.nutritionView;persist();renderNutrition();});
+    }
+    const mark=(selector,view)=>document.querySelectorAll(selector).forEach(el=>{if(el)el.dataset.nutritionSection=view;});
+    mark(".macro-dashboard, .supplement-card, .water-card, .food-log, .reminder-strip, .food-section-head", "today");
+    mark(".meal-composer, .analysis-card, .meal-templates, .quick-meals", "log");
+    mark(".weight-card, .nutrition-plan-note, .food-connect", "plan");
     const connection=document.querySelector(".food-connect");if(connection){connection.dataset.nutritionSection="plan";connection.hidden=state.nutritionView!=="plan"&&!state.foodPendingPayload;}
     document.querySelectorAll("[data-nutrition-section]").forEach(element=>{if(element!==connection)element.hidden=element.dataset.nutritionSection!==state.nutritionView;});
     const header=document.querySelector(".food-head"),disclosure=header?.querySelector(".integration-disclosure");if(disclosure){const details=shell?.disclose(disclosure,{label:ar?"كيف تعمل تقديرات التغذية والذكاء الاصطناعي":"How nutrition estimates and AI work",className:"nutrition-disclosure"});const guide=header.querySelector(".guide-version");if(details&&guide)details.insertBefore(guide,disclosure);}

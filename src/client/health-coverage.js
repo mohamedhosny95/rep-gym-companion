@@ -59,19 +59,38 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
     return values;
   };
   const average=values=>values.length?values.reduce((sum,row)=>sum+row.value,0)/values.length:null;
-  const trend=(state,name,key=dayKey())=>{
-    const ninety=series(state,name,key,90),twentyEight=ninety.slice(-28),seven=ninety.slice(-7);
+  const multiSeries=(state,key,days)=>{
+    const sleepMap=getSleepMap(state),metricsMap=state.healthMetrics||{},dayMs=86400000,[y,m,d]=String(key).split("-").map(Number),startTime=Date.UTC(y,m-1,d,12);
+    const data={sleep:[],hrv:[],rhr:[],resp:[],vo2:[]};
+    for(let offset=days-1;offset>=0;offset--){
+      const dt=new Date(startTime-offset*dayMs),dateStr=[dt.getUTCFullYear(),String(dt.getUTCMonth()+1).padStart(2,"0"),String(dt.getUTCDate()).padStart(2,"0")].join("-");
+      const sleep=sleepMap.get(dateStr)||{},metrics=metricsMap[dateStr]||{};
+      if(finite(sleep.hours))data.sleep.push({date:dateStr,value:Number(sleep.hours)});
+      if(finite(sleep.hrv))data.hrv.push({date:dateStr,value:Number(sleep.hrv)});
+      if(finite(sleep.rhr))data.rhr.push({date:dateStr,value:Number(sleep.rhr)});
+      if(finite(sleep.resp))data.resp.push({date:dateStr,value:Number(sleep.resp)});
+      if(finite(metrics.vo2_max))data.vo2.push({date:dateStr,value:Number(metrics.vo2_max)});
+    }
+    return data;
+  };
+  const trendFromSeries=(name,ninety)=>{
+    const twentyEight=ninety.slice(-28),seven=ninety.slice(-7);
     const current=seven.length?seven[seven.length-1].value:null,baseline=average(twentyEight.slice(0,-1));
     const delta=current===null||baseline===null?null:current-baseline;
     return {name,current,delta,average7:average(seven),average28:average(twentyEight),average90:average(ninety),count7:seven.length,count28:twentyEight.length,count90:ninety.length,mature:twentyEight.length>=14};
   };
+  const trend=(state,name,key=dayKey())=>{
+    const ninety=series(state,name,key,90);
+    return trendFromSeries(name,ninety);
+  };
   const longTerm=(state,key=dayKey())=>{
     if(!state._longTermCache) state._longTermCache = new Map();
     if(state._longTermCache.has(key)) return state._longTermCache.get(key);
-    const metrics=["sleep","hrv","rhr","resp","vo2"].map(name=>trend(state,name,key));
-    const weights=(state.bodyWeights||[]).filter(row=>finite(row.kg??row.weight)&&String(row.date||"").slice(0,10)<=key).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-90);
+    const data90=multiSeries(state,key,90);
+    const metrics=["sleep","hrv","rhr","resp","vo2"].map(name=>trendFromSeries(name,data90[name]||[]));
+    const weights=(state.bodyWeights||[]).filter(row=>finite(row.kg??row.weight)&&String(row.date||"").slice(0,10)<=key).slice(-90);
     const weightValues=weights.map(row=>({date:String(row.date).slice(0,10),value:Number(row.kg??row.weight)}));
-    const waist=(state.bodyMeasurements||[]).filter(row=>finite(row.waist_cm)&&String(row.date||"").slice(0,10)<=key).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-1)[0]||null;
+    const waist=(state.bodyMeasurements||[]).filter(row=>finite(row.waist_cm)&&String(row.date||"").slice(0,10)<=key).slice(-1)[0]||null;
     const res = {date:key,metrics,weight:{current:weightValues.at(-1)?.value??null,average7:average(weightValues.slice(-7)),average28:average(weightValues.slice(-28)),count:weightValues.length},waistCm:waist?Number(waist.waist_cm):null};
     state._longTermCache.set(key, res);
     return res;
