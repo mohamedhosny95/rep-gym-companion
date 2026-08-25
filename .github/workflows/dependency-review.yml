@@ -2,6 +2,7 @@ name: Dependency Review
 
 permissions:
   contents: read
+  pull-requests: write
 
 on:
   pull_request:
@@ -19,7 +20,7 @@ jobs:
     name: Dependency Vulnerability Review
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4

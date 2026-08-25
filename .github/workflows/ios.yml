@@ -23,7 +23,7 @@ jobs:
     name: Validate Swift Companion
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer || true

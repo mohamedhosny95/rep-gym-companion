@@ -205,7 +205,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
     }
 }
 
-enum SyncError: Error { case healthUnavailable, configurationMissing, serverRejected, networkError }
+enum SyncError: Error, Equatable { case healthUnavailable, configurationMissing, serverRejected, networkError }
 
 final class RepVitalsUploader {
     static let shared = RepVitalsUploader()
