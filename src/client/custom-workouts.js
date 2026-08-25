@@ -104,7 +104,7 @@
     overlay.className = "timed-mode routine-builder-modal";
     
     function renderBuilderBody(){
-      overlay.innerHTML = `
+      overlay.innerHTML = REP_SAFE_DOM.sanitize(`
         <div class="workout-preflight-panel" style="max-width:500px;margin:auto;max-height:90vh;overflow-y:auto;padding:16px;">
           <button class="dialog-close" data-builder-close aria-label="Close">×</button>
           <span class="set-log-kicker" style="color:var(--acid);">🛠️ ${ar?"محرر التمارين والروتين":"ROUTINE BUILDER"}</span>
@@ -147,7 +147,7 @@
             </button>
           </div>
         </div>
-      `;
+      `);
       bindEvents();
     }
 

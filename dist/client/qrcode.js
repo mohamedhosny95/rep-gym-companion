@@ -725,7 +725,7 @@ var qrcode = function() {
           context.fillRect(row * cellSize, col * cellSize, cellSize, cellSize);
         }
       }
-    }
+    };
 
     return _this;
   };

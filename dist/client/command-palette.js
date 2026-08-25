@@ -63,7 +63,7 @@
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", ar ? "لوحة الأوامر السريعة" : "Command Palette");
 
-    overlay.innerHTML = `
+    overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="command-palette-modal">
         <div class="palette-input-wrap">
           <span class="palette-search-icon">🔍</span>
@@ -72,7 +72,7 @@
         </div>
         <div class="palette-results-list" role="listbox" aria-label="${ar ? "النتائج" : "Results"}"></div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(overlay);
 
@@ -86,13 +86,13 @@
         : actions;
 
       if(!filtered.length){
-        list.innerHTML = `<div class="palette-empty">${ar ? "لا توجد نتائج مطابقة." : "No matching actions found."}</div>`;
+        list.innerHTML = REP_SAFE_DOM.sanitize(`<div class="palette-empty">${ar ? "لا توجد نتائج مطابقة." : "No matching actions found."}</div>`);
         return;
       }
 
       selectedIdx = Math.max(0, Math.min(selectedIdx, filtered.length - 1));
 
-      list.innerHTML = filtered.map((item, idx) => `
+      list.innerHTML = REP_SAFE_DOM.sanitize(filtered.map((item, idx) => `
         <button type="button" class="palette-item ${idx === selectedIdx ? "is-selected" : ""}" data-idx="${idx}" role="option" aria-selected="${idx === selectedIdx}">
           <span class="palette-item-icon">${item.icon}</span>
           <div class="palette-item-text">
@@ -101,7 +101,7 @@
           </div>
           <span class="palette-item-arrow">↵</span>
         </button>
-      `).join("");
+      `).join(""));
 
       list.querySelectorAll(".palette-item").forEach(el => {
         el.onclick = () => {

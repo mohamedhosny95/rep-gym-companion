@@ -1,8 +1,6 @@
 /* Rep Health Coverage Engine v67.
    Scores measurement completeness separately from wellness readiness. */
 globalThis.REP_HEALTH_COVERAGE=(()=>{
-  const DAY=86400000;
-  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
   const dayKey=value=>{const date=value instanceof Date?value:new Date(value||Date.now());return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;};
   const shift=(key,amount)=>{const [year,month,date]=String(key).split("-").map(Number),value=new Date(year,month-1,date);value.setDate(value.getDate()+amount);return dayKey(value);};
   const finite=value=>Number.isFinite(Number(value));
