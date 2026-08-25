@@ -60,11 +60,11 @@ passed = check("built assets in dist/", () => {
 // 3. Check Secret Configuration & Bindings
 passed = check("Worker secret and environment bindings", () => {
   const secrets = [
-    { name: "NOTION_API_KEY", optional: true, desc: "Notion Integration Token" },
+    { name: "NOTION_TOKEN", optional: true, desc: "Notion Integration Token" },
     { name: "GEMINI_API_KEY", optional: true, desc: "Google Gemini Vision API" },
     { name: "VAPID_PUBLIC_KEY", optional: true, desc: "Web Push Public Key" },
-    { name: "VAPID_PRIVATE_KEY", optional: true, desc: "Web Push Private Key" },
-    { name: "SYNC_SECRET_KEY", optional: true, desc: "Pairing HMAC Secret" }
+    { name: "VAPID_PRIVATE_KEY_JWK", optional: true, desc: "Web Push Private Key" },
+    { name: "REP_SYNC_KEY", optional: true, desc: "Pairing HMAC Secret" }
   ];
   const present = secrets.filter(s => process.env[s.name]);
   return `${present.length}/${secrets.length} local env secrets configured`;
@@ -79,18 +79,19 @@ passed = check("code syntax and TypeScript compilation", () => {
 // 5. Unit Tests
 passed = check("unit test suite execution", () => {
   execSync("npm run test:node", { stdio: "pipe", cwd: root });
-  return "97/97 tests pass";
+  return "Node regression tests passed";
 }) && passed;
 
 // 6. Worker Runtime Tests
 passed = check("Worker runtime execution", () => {
   execSync("npm run test:runtime", { stdio: "pipe", cwd: root });
-  return "9/9 Vitest worker tests pass";
+  return "Workers-runtime tests passed";
 }) && passed;
 
 console.log("\n================================================");
 if (passed) {
-  console.log("🎉 DEPLOYMENT PREFLIGHT PASSED: READY FOR PRODUCTION");
+  console.log("🎉 LOCAL DEPLOYMENT PREFLIGHT PASSED");
+  console.log("Remote secrets, staging contract evidence, and human production approval remain mandatory.");
   process.exit(0);
 } else {
   console.error("❌ DEPLOYMENT PREFLIGHT FAILED: RESOLVE ISSUES BEFORE DEPLOY");

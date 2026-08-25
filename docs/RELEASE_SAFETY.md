@@ -22,6 +22,21 @@ Repository administrators must complete these one-time settings:
    GitHub workflow is the only production deployer.
 6. Use the per-commit `health-os-client-*` artifact to review pull requests.
 
+With a repository-administration token in `GH_TOKEN`, apply and verify the
+idempotent repository settings from a trusted local shell:
+
+```sh
+npm run github:configure
+npm run github:check
+```
+
+The command protects `main`, requires pull requests plus the `verify` and `e2e`
+checks, applies the rules to administrators, blocks force-push/deletion, requires
+linear history and resolved conversations, and creates the reviewed
+`production` environment. It never prints the token. GitHub Actions billing and
+the environment's Cloudflare secrets remain account-level settings and must be
+confirmed by an administrator.
+
 Never configure a feature branch to target the production Worker. If hosted
 preview URLs are added later, they must use a separate Worker, bindings, KV
 namespace, secrets, and Durable Object namespace.

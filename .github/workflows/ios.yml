@@ -37,3 +37,16 @@ jobs:
             swiftc -parse "$file"
           done
           echo "All Swift companion files passed syntax check."
+
+      - name: Typecheck HealthKit companion against the iOS Simulator SDK
+        run: |
+          set -e
+          sdk_path="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+          architecture="$(uname -m)"
+          xcrun --sdk iphonesimulator swiftc \
+            -typecheck \
+            -parse-as-library \
+            -sdk "$sdk_path" \
+            -target "${architecture}-apple-ios17.0-simulator" \
+            ios/RepHealthCompanion/HealthKitSyncCoordinator.swift \
+            ios/RepHealthCompanion/RepHealthCompanionApp.swift

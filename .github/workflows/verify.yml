@@ -93,6 +93,20 @@ jobs:
       - name: Run end-to-end smoke test
         run: npm run test:e2e
 
+      - name: Run encrypted backup recovery drill
+        run: npm run test:recovery
+        env:
+          REP_RECOVERY_REPORT: work/certification/recovery-${{ github.sha }}.json
+
+      - name: Upload automated certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-os-certification-${{ github.sha }}
+          path: work/certification/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
   live-notion:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest

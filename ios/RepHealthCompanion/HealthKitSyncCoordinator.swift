@@ -90,6 +90,8 @@ final class HealthKitSyncCoordinator: ObservableObject {
         async let oxygen = average(.oxygenSaturation, unit: .percent(), interval)
         async let temperature = average(.appleSleepingWristTemperature, unit: .degreeCelsius(), interval)
         async let heartCoverage = heartCoverage(interval)
+        async let workoutSamples = workoutHeartRateCount(interval)
+        async let sleep = sleepSummary(interval)
         let sleepResult = (try? await sleep) ?? (nil, nil, nil, nil, nil)
         let coverageResult = (try? await heartCoverage) ?? (0, nil)
         let hrvVal = (try? await hrv) ?? nil
