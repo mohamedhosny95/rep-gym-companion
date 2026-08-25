@@ -67,6 +67,7 @@
     "staging": {
       "name": "rep-gym-companion-staging",
       "workers_dev": true,
+      "preview_urls": false,
       "vars": { "ENVIRONMENT": "staging" },
       "secrets": {
         "required": [
