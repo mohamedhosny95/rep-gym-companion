@@ -41,7 +41,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
             .oxygenSaturation, .appleExerciseTime, .appleStandTime,
             .appleSleepingWristTemperature
         ]
-        var result = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
+        var result: Set<HKObjectType> = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { result.insert(sleep) }
         if let workout = HKObjectType.workoutType() as HKObjectType? { result.insert(workout) }
         return result
