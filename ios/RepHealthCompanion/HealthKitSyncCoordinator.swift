@@ -92,8 +92,8 @@ final class HealthKitSyncCoordinator: ObservableObject {
         async let heartCoverage = heartCoverage(interval)
         async let workoutSamples = workoutHeartRateCount(interval)
         async let sleep = sleepSummary(interval)
-        let sleepResult = (try? await sleep) ?? (nil, nil, nil, nil, nil)
-        let coverageResult = (try? await heartCoverage) ?? (0, nil)
+        let sleepResult = (try? await sleep) ?? (total: nil, deep: nil, rem: nil, start: nil, end: nil)
+        let coverageResult = (try? await heartCoverage) ?? (count: 0, minutes: nil)
         let hrvVal = (try? await hrv) ?? nil
         let rhrVal = (try? await rhr) ?? nil
         let respVal = (try? await respiratory) ?? nil
