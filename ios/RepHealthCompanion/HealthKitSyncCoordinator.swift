@@ -34,14 +34,14 @@ final class HealthKitSyncCoordinator: ObservableObject {
     @Published private(set) var lastSync: Date?
     @Published private(set) var status = "Not connected"
 
-    private var readTypes: Set<HKObjectType> {
+    private var readTypes: Set<HKSampleType> {
         let quantities: [HKQuantityTypeIdentifier] = [
             .heartRate, .heartRateVariabilitySDNN, .restingHeartRate,
             .respiratoryRate, .activeEnergyBurned, .stepCount, .vo2Max,
             .oxygenSaturation, .appleExerciseTime, .appleStandTime,
             .appleSleepingWristTemperature
         ]
-        var result: Set<HKObjectType> = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
+        var result: Set<HKSampleType> = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { result.insert(sleep) }
         if let workout = HKObjectType.workoutType() as HKObjectType? { result.insert(workout) }
         return result
@@ -49,7 +49,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
 
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else { throw SyncError.healthUnavailable }
-        try await store.requestAuthorization(toShare: [], read: readTypes)
+        try await store.requestAuthorization(toShare: [], read: Set(readTypes.map { $0 as HKObjectType }))
         try await bootstrap()
     }
 
