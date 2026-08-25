@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload deployable client
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: health-os-client-${{ github.sha }}
           path: dist/client
@@ -100,7 +100,7 @@ jobs:
 
       - name: Upload automated certification evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: health-os-certification-${{ github.sha }}
           path: work/certification/*.json
