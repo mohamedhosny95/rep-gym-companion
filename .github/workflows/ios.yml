@@ -60,6 +60,10 @@ jobs:
               sed -n '1,200p' swift-typecheck.log
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::HealthKit companion SDK typecheck failed; diagnostics are in the workflow summary."
+            diagnostic="$(grep -m1 'error:' swift-typecheck.log || tail -n 1 swift-typecheck.log)"
+            diagnostic="${diagnostic//'%'/'%25'}"
+            diagnostic="${diagnostic//$'\r'/'%0D'}"
+            diagnostic="${diagnostic//$'\n'/'%0A'}"
+            echo "::error title=Swift SDK typecheck::$diagnostic"
             exit "$status"
           fi
