@@ -28,7 +28,7 @@ describe("DeviceCoordinator", () => {
     const stub = env.DEVICE_COORDINATOR.getByName(`device:alarm-${crypto.randomUUID()}`);
     await stub.register({ ...record, id: crypto.randomUUID() });
     await stub.setPush({ subscription: { endpoint: "https://push.example/subscription", expirationTime: null, keys: { p256dh: "not-used-by-this-test", auth: "not-used" } }, time: "23:59", timezoneOffsetMinutes: 0, timezone:"UTC", lang: "en" });
-    await runInDurableObject(stub, async (instance: DeviceCoordinator, state) => {
+    await runInDurableObject(stub, async (instance, state) => {
       expect(instance).toBeInstanceOf(DeviceCoordinator);
       expect(await state.storage.getAlarm()).not.toBeNull();
     });

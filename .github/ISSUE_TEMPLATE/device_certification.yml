@@ -1,0 +1,67 @@
+name: Real-device certification
+description: Record the human hardware and accessibility gate for a production build.
+title: "certification: build <build-id>"
+labels: ["certification"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Complete this on physical hardware. Automated evidence is attached to the matching `health-os-certification-*` workflow artifact.
+  - type: input
+    id: build
+    attributes:
+      label: Build ID
+      description: Copy `window.REP_BUILD_VERSION` from the deployed build.
+      placeholder: c841e3094821
+    validations:
+      required: true
+  - type: input
+    id: operator
+    attributes:
+      label: Human operator
+    validations:
+      required: true
+  - type: textarea
+    id: devices
+    attributes:
+      label: Devices and versions
+      description: Record model, OS, browser/app version, and assistive technology version.
+      placeholder: |
+        iPhone — iOS — Safari — VoiceOver
+        Android — Android — Chrome — TalkBack
+        Desktop — OS — Safari/Chrome/Firefox
+    validations:
+      required: true
+  - type: checkboxes
+    id: matrix
+    attributes:
+      label: Required matrix
+      options:
+        - label: iPhone PWA installation, offline cold launch, keyboard, VoiceOver, and HealthKit bridge pass.
+          required: true
+        - label: Android PWA installation, offline cold launch, TalkBack, push permission, and reminder pass.
+          required: true
+        - label: Desktop pairing, encrypted backup import/export, keyboard-only navigation, and 200% zoom pass.
+          required: true
+        - label: RTL Arabic, increased contrast, reduced motion, and text scaling pass.
+          required: true
+        - label: Pairing/revocation between two devices and interrupted-sync recovery pass.
+          required: true
+        - label: Wrong passphrase, tampered backup, expired push permission, and Notion outage recovery pass.
+          required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence links
+      description: Attach or link screenshots/recordings. Do not include health payloads, keys, or push endpoints.
+    validations:
+      required: true
+  - type: dropdown
+    id: decision
+    attributes:
+      label: Certification decision
+      options:
+        - PASS — approved for production
+        - FAIL — production promotion blocked
+    validations:
+      required: true

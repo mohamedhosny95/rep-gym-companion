@@ -26,9 +26,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -77,9 +77,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -93,6 +93,20 @@ jobs:
       - name: Run end-to-end smoke test
         run: npm run test:e2e
 
+      - name: Run encrypted backup recovery drill
+        run: npm run test:recovery
+        env:
+          REP_RECOVERY_REPORT: work/certification/recovery-${{ github.sha }}.json
+
+      - name: Upload automated certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-os-certification-${{ github.sha }}
+          path: work/certification/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
   live-notion:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
@@ -100,9 +114,9 @@ jobs:
       NOTION_TEST_TOKEN: ${{ secrets.NOTION_TEST_TOKEN }}
       NOTION_TEST_DATA_SOURCE_ID: ${{ secrets.NOTION_TEST_DATA_SOURCE_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -124,8 +138,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm

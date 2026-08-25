@@ -1433,7 +1433,7 @@ async function subscribePush(request, env) {
   if (!requestOriginAllowed(request)) return json({ ok: false, error: "Origin is not allowed." }, 403);
   const input = validatePushSchedule(await request.json().catch(() => null));
   if (!input) return json({ ok: false, error: "Invalid subscription payload." }, 400);
-  const { subscription, time, timezoneOffsetMinutes } = input, { endpoint, keys: { p256dh, auth } } = subscription;
+  const { subscription, time } = input, { endpoint, keys: { p256dh, auth } } = subscription;
   let keyShapeValid = false, endpointValid = false;
   try {
     const publicBytes = b64urlDecode2(p256dh), authBytes = b64urlDecode2(auth);

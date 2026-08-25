@@ -6,7 +6,6 @@
   const today=()=>coverage.dayKey();
   const ar=()=>state.lang==="ar";
   const num=(value,digits=0)=>value===null||value===undefined||!Number.isFinite(Number(value))?"—":Number(value).toFixed(digits);
-  const signed=(value,digits=1)=>Number.isFinite(Number(value))?`${Number(value)>0?"+":""}${Number(value).toFixed(digits)}`:"—";
   const labels={sleep:["Sleep","h",1],hrv:["HRV","ms",0],rhr:["Resting HR","bpm",0],resp:["Breathing","/min",1],vo2:["VO₂ max","",1]};
 
   function coverageCard(){
@@ -169,12 +168,12 @@
   }
   function openWorkoutPreflight(proceed){
     document.querySelector(".workout-preflight-panel")?.remove();
-    const panel=document.createElement("div");panel.className="exit-confirm workout-preflight-panel";panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");panel.setAttribute("aria-label",ar()?"فحص ما قبل التمرين":"Workout preflight");panel.innerHTML=`<button class="dialog-close" data-close-preflight aria-label="${ar()?"إغلاق":"Close"}">×</button>${workoutCard()}`;document.body.append(panel);panel.querySelector("[data-close-preflight]").onclick=()=>panel.remove();bind({onWorkoutReady:proceed});panel.querySelector("input,button")?.focus();
+    const panel=document.createElement("div");panel.className="exit-confirm workout-preflight-panel";panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");panel.setAttribute("aria-label",ar()?"فحص ما قبل التمرين":"Workout preflight");panel.innerHTML=REP_SAFE_DOM.sanitize(`<button class="dialog-close" data-close-preflight aria-label="${ar()?"إغلاق":"Close"}">×</button>${workoutCard()}`);document.body.append(panel);panel.querySelector("[data-close-preflight]").onclick=()=>panel.remove();bind({onWorkoutReady:proceed});panel.querySelector("input,button")?.focus();
   }
 
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
-  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`);organizeHealthWorkflow();bind();};
-  renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",trendCard());bind();};
+  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`));organizeHealthWorkflow();bind();};
+  renderInsights=function(){baseInsights();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(trendCard()));bind();};
   renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();
 })();
