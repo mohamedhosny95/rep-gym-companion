@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const requiredSecrets = [
   "REP_SYNC_KEY",
@@ -44,18 +47,16 @@ function run(command, args, options = {}) {
 
 console.log("Validating and provisioning the isolated staging Worker...");
 run("npm", ["run", "check:config"]);
-run("npx", ["wrangler", "deploy", "--env", "staging"]);
-run("npm", ["run", "check:config"]);
-
 const secretPayload = Object.fromEntries(requiredSecrets.map(name => [name, process.env[name]]));
-const upload = spawnSync("npx", ["wrangler", "secret", "bulk", "--env", "staging"], {
-  cwd: process.cwd(),
-  input: JSON.stringify(secretPayload),
-  encoding: "utf8",
-  stdio: ["pipe", "inherit", "inherit"]
-});
-if (upload.error) throw upload.error;
-if (upload.status !== 0) process.exit(upload.status ?? 1);
+const secretDirectory = mkdtempSync(join(tmpdir(), "rep-staging-secrets-"));
+const secretFile = join(secretDirectory, "secrets.json");
+try {
+  writeFileSync(secretFile, JSON.stringify(secretPayload), { mode: 0o600 });
+  run("npx", ["wrangler", "deploy", "--env", "staging", "--secrets-file", secretFile]);
+} finally {
+  rmSync(secretDirectory, { recursive: true, force: true });
+}
+run("npm", ["run", "check:config"]);
 
 run("npx", ["wrangler", "secret", "list", "--env", "staging"]);
 run("npm", ["run", "test:staging"], {
