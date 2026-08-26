@@ -174,8 +174,6 @@ const motionGuide = {
 };
 
 function anatomyVisual(motion) {
-  const [type, muscles] = anatomy[motion] || ["gym", "Active muscles"];
-  const u = REP_I18N[state.lang].ui, guide = motionGuide[motion] || motionGuide.march;
   const isPaused = state.paused ? "is-paused" : "";
   const musclesClass = state.muscles ? "muscles-on" : "muscles-off";
   const speedStyle = `--loop-speed:${3.6 / state.speed}s;`;
@@ -992,8 +990,6 @@ function loadPanel(base,item){
       <div class="set-log-grid">
         ${Array.from({length:item.sets},(_,i)=>{
           const s=log.sets[i]||{};
-          const prevSet=log.previousSets?.[i];
-          const prevText=prevSet?(prevSet.weight?`${isLb?(window.weightLabel?weightLabel(prevSet.weight):prevSet.weight):prevSet.weight}×${prevSet.reps}`:`${prevSet.reps}r`):"—";
           const isDone=done.includes(i);
           const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
           return `<div class="set-card-row ${isDone?"is-completed":""}">
@@ -1121,7 +1117,7 @@ function motionControls(){
 
 function sportDrillPanel(base, item) {
   if (isLoadExercise(item)) return "";
-  const ar = state.lang === "ar", u = U();
+  const ar = state.lang === "ar";
   const session = sessions[state.session] || {};
   const isLast = state.index >= (session.exercises?.length || 1) - 1;
   const nextItem = !isLast ? localizedItem(session.exercises[state.index + 1]) : null;
