@@ -632,7 +632,23 @@ function renderInsights(){
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`);
   document.querySelectorAll("[data-trend-horizon]").forEach(btn=>{btn.onclick=()=>{state.trendHorizon=btn.dataset.trendHorizon;persist();renderInsights();};});
 }
-function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
+function updatePrimaryTabs(){
+  document.querySelectorAll("[data-app-tab]").forEach(button=>{
+    const active=button.dataset.appTab===state.activeTab;
+    button.setAttribute("aria-current",active?"page":"false");
+    const labels={
+      home:state.lang==="ar"?"اليوم":"Home",
+      train:state.lang==="ar"?"التمارين":"Workouts",
+      food:state.lang==="ar"?"النشاط":"Activity",
+      care:state.lang==="ar"?"الملف":"Profile",
+      health:state.lang==="ar"?"الملف":"Profile",
+      insights:state.lang==="ar"?"التقدم":"Progress",
+      vitals:state.lang==="ar"?"الحيوية":"Vitals"
+    };
+    const span=button.querySelector("span");
+    if(span&&labels[button.dataset.appTab])span.textContent=labels[button.dataset.appTab];
+  });
+}
 function focusViewHeading(){
   requestAnimationFrame(()=>{const heading=app.querySelector("h1");if(!heading)return;heading.tabIndex=-1;heading.focus({preventScroll:true});scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
 }
@@ -756,7 +772,7 @@ function setPrimaryTab(tab){
   updatePrimaryTabs();
   if(tab==="home")renderOverview();
   else if(tab==="food")renderNutrition();
-  else if(tab==="care")renderHygiene();
+  else if(tab==="care"||tab==="health")renderHygiene();
   else if(tab==="insights")renderInsights();
   else if(tab==="vitals")renderVitals();
   else renderHome();
@@ -945,76 +961,77 @@ function loadPanel(base,item){
   if(!isLoadExercise(item))return "";
   const u=U(), ar=state.lang==="ar", id=exerciseId(base), log=normalizedLog(id,item.sets);
   const isLb = state.preferences?.weightUnit === "lb";
-  const unitLabel = isLb ? "lb" : "kg";
+  const unitLabel = isLb ? "LBS" : "KG";
   const prev=log.previousSets?.map((s,i)=>`${i+1}: ${isLb?(window.weightLabel?weightLabel(s.weight):`${s.weight||"—"} lb`):`${s.weight||"—"} kg`} × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
   const advice=window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id,state);
   const curWeight=Number(log.sets[0]?.weight||60)||60;
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
 
-  return `<section class="load-panel">
+  return `<section class="load-panel set-logging-card">
     <div class="set-log-head">
       <div>
-        <span class="set-log-kicker">${ar?"تسجيل القوة":"STRENGTH LOG"}</span>
-        <h2>${ar?"سجل المجموعات":"Log Every Set"}</h2>
+        <h2>${ar?"تسجيل المجموعات":"Sets Logging"}</h2>
       </div>
       <div class="set-log-actions">
-        <button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${ar?"الإيقاع":"Tempo"}</button>
         <button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${ar?"الأوزان":"Plates"}</button>
+        <button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${ar?"الإيقاع":"Tempo"}</button>
         <button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${ar?"صوتي":"Voice"}</button>
       </div>
     </div>
 
-    <div class="set-table-header">
-      <span class="col-set">${ar?"مجموعة":"SET"}</span>
-      <span class="col-prev">${ar?"السابق":"PREV"}</span>
-      <span class="col-weight">${u.weight} (${unitLabel})</span>
-      <span class="col-reps">${u.reps}</span>
-      <span class="col-rpe">RPE</span>
-      <span class="col-check">✓</span>
+    <div class="set-table-card">
+      <div class="set-table-header">
+        <span class="col-set">SET</span>
+        <span class="col-weight">${unitLabel}</span>
+        <span class="col-reps">REPS</span>
+        <span class="col-rpe">RPE</span>
+        <span class="col-check">✓</span>
+      </div>
+
+      <div class="set-log-grid">
+        ${Array.from({length:item.sets},(_,i)=>{
+          const s=log.sets[i]||{};
+          const prevSet=log.previousSets?.[i];
+          const prevText=prevSet?(prevSet.weight?`${isLb?(window.weightLabel?weightLabel(prevSet.weight):prevSet.weight):prevSet.weight}×${prevSet.reps}`:`${prevSet.reps}r`):"—";
+          const isDone=done.includes(i);
+          const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
+          return `<div class="set-card-row ${isDone?"is-completed":""}">
+            <div class="set-main-fields">
+              <span class="set-num-label">${i+1}</span>
+              <div class="set-input-wrap">
+                <input data-log="weight" data-log-set="${i}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${wVal}" placeholder="${unitLabel}" aria-label="${u.weight} ${i+1}">
+              </div>
+              <div class="set-input-wrap">
+                <input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}" placeholder="10" aria-label="${u.reps} ${i+1}">
+              </div>
+              <div class="set-input-wrap">
+                <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="8" aria-label="RPE ${i+1}">
+              </div>
+              <button class="set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
+                ${isDone?"✓":"○"}
+              </button>
+            </div>
+            <div class="set-sub-bar">
+              <div class="set-steppers">
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?-5:-2.5}">${isLb?"-5":"-2.5"}</button>
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?5:2.5}">${isLb?"+5":"+2.5"}</button>
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?10:5}">${isLb?"+10":"+5"}</button>
+                ${i>0?`<button class="clone-set-btn" data-clone-set="${i}" type="button">⎘ ${ar?`مثل ${i}`:`Match S${i}`}</button>`:""}
+              </div>
+              <div class="set-note-wrap">
+                <input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${ar?"+ ملاحظة (اختياري)":"+ Note (optional)"}" aria-label="Note ${i+1}">
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
     </div>
 
-    <div class="set-log-grid">
-      ${Array.from({length:item.sets},(_,i)=>{
-        const s=log.sets[i]||{};
-        const prevSet=log.previousSets?.[i];
-        const prevText=prevSet?(prevSet.weight?`${isLb?(window.weightLabel?weightLabel(prevSet.weight):prevSet.weight):prevSet.weight}×${prevSet.reps}`:`${prevSet.reps}r`):"—";
-        const isDone=done.includes(i);
-        const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
-        return `<div class="set-card-row ${isDone?"is-completed":""}">
-          <div class="set-main-fields">
-            <span class="set-badge ${isDone?"is-done":""}">${i+1}</span>
-            <div class="set-prev-cell"><small>${prevText}</small></div>
-            <div class="set-input-wrap">
-              <input data-log="weight" data-log-set="${i}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${wVal}" placeholder="${unitLabel}" aria-label="${u.weight} ${i+1}">
-            </div>
-            <div class="set-input-wrap">
-              <input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}" placeholder="0" aria-label="${u.reps} ${i+1}">
-            </div>
-            <div class="set-input-wrap">
-              <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="7.5" aria-label="RPE ${i+1}">
-            </div>
-            <button class="set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
-              ${isDone?"✓":"○"}
-            </button>
-          </div>
-          <div class="set-sub-bar">
-            <div class="set-steppers">
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?-5:-2.5}">${isLb?"-5":"-2.5"}</button>
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?5:2.5}">${isLb?"+5":"+2.5"}</button>
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?10:5}">${isLb?"+10":"+5"}</button>
-              ${i>0?`<button class="clone-set-btn" data-clone-set="${i}" type="button">⎘ ${ar?`مثل ${i}`:`Match S${i}`}</button>`:""}
-            </div>
-            <div class="set-note-wrap">
-              <input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${ar?"+ ملاحظة (اختياري)":"+ Note (optional)"}" aria-label="Note ${i+1}">
-            </div>
-          </div>
-        </div>`;
-      }).join("")}
+    <div class="set-card-footer">
+      <small style="color:var(--muted);">${u.previousLog}: <strong>${prev}</strong></small>
     </div>
-
-    <p style="margin:10px 0 0;color:var(--muted);font-size:11px;">${u.previousLog}: <strong>${prev}</strong></p>
-    <div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div>
+    ${advice?`<div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div>`:""}
   </section>`;
 }
 function cardioPanel(item){
@@ -1022,7 +1039,68 @@ function cardioPanel(item){
   return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
 }
 function cardioAdvice(){return REP_TRAINING_SESSION.cardioAdvice(state.history,state.lang);}
-function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
+function motionControls(){
+  const ar=state.lang==="ar";
+  return `<div class="motion-controls" aria-label="Animation controls">
+    <button class="motion-control-tile ${state.speed!==1?"is-active":""}" data-motion-action="speed" type="button">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <span class="tile-label">${ar?"السرعة":"Speed"}</span>
+      <span class="tile-value">${state.speed}x</span>
+    </button>
+    <button class="motion-control-tile ${state.paused?"":"is-active"}" data-motion-action="play" type="button" aria-pressed="${!state.paused}">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span class="tile-label">${ar?"تكرار":"Loop"}</span>
+      <span class="tile-value">${state.paused?(ar?"متوقف":"Paused"):(ar?"مستمر":"Playing")}</span>
+    </button>
+    <button class="motion-control-tile" data-motion-action="view" type="button">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+      <span class="tile-label">${ar?"الزاوية":"Angle"}</span>
+      <span class="tile-value">${state.viewMode==="front"?(ar?"أمامي":"Front"):(ar?"جانبي":"Side")}</span>
+    </button>
+    <button class="motion-control-tile ${state.muscles?"is-active muscles-active":""}" data-motion-action="muscles" type="button" aria-pressed="${state.muscles}">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h12M6 14h12M6 10h12M8 6h8"/></svg>
+      <span class="tile-label">${ar?"العضلات":"Muscles"}</span>
+      <span class="tile-value">${state.muscles?(ar?"مفعلة":"ON"):(ar?"معطلة":"OFF")}</span>
+    </button>
+  </div>`;
+}
+
+function sportDrillPanel(base, item) {
+  if (isLoadExercise(item)) return "";
+  const ar = state.lang === "ar", u = U();
+  const session = sessions[state.session] || {};
+  const isLast = state.index >= (session.exercises?.length || 1) - 1;
+  const nextItem = !isLast ? localizedItem(session.exercises[state.index + 1]) : null;
+  const timerSecs = motionGuide[item.motion]?.[2] || 45;
+
+  return `<section class="sport-drill-card">
+    <div class="drill-card-header">
+      <span class="drill-set-tag">SET ${state.index + 1} / ${session.exercises?.length || 1}</span>
+      <div class="drill-dots">
+        ${Array.from({ length: session.exercises?.length || 1 }, (_, i) => `<i class="${i === state.index ? "is-active" : i < state.index ? "is-done" : ""}"></i>`).join("")}
+      </div>
+    </div>
+    <div class="drill-main-row">
+      <div class="drill-timer-ring-wrap" data-exercise-timer>
+        <div class="drill-timer-ring">
+          <strong>${timerSecs}</strong>
+          <small>SEC</small>
+        </div>
+      </div>
+      <div class="drill-meta-info">
+        <h3>${esc(item.name)}</h3>
+        <div class="drill-stat-chips">
+          <span class="drill-chip is-accent">✓ ${esc(item.prescription)}</span>
+          <span class="drill-chip">${esc(item.intensity)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="drill-actions-row">
+      <button class="drill-btn-skip" data-prev type="button" ${state.index === 0 ? "disabled" : ""}>${ar ? "السابق" : "SKIP EXERCISE"}</button>
+      <button class="drill-btn-next" data-next type="button">${isLast ? (ar ? "إنهاء الحصة" : "FINISH SESSION") : (ar ? `التالي: ${nextItem?.name || ""}` : `NEXT: ${nextItem?.name || "Next Move"}`)}</button>
+    </div>
+  </section>`;
+}
 
 function showSwapModal(exerciseName){
   const subs=window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[exerciseName]||[];
@@ -1141,35 +1219,58 @@ function renderExercise() {
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
+  const ar = state.lang === "ar";
   const subs = window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[base.name] || [];
-  const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${state.lang==="ar"?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
+  const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${ar?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
   const nextSetIndex = Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
   const isAllDone = nextSetIndex === undefined;
-  const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(state.lang==="ar"?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
+  const isStrength = isLoadExercise(item);
+
+  const statusBadgeText = state.session === "football"
+    ? `⚽ ${ar ? "ملعب كرة القدم · إحماء" : "FOOTBALL PITCH · WARM-UP"}`
+    : state.session === "padel"
+    ? `🎾 ${ar ? "ملعب بادل · تحضير المباريات" : "PADEL COURT · RALLY PREP"}`
+    : isStrength
+    ? `🏋️ ${ar ? "توجيه بيوميكانيكي · مركب" : "BIOMECHANICAL RIG · COMPOUND"}`
+    : `🧘 ${ar ? "تنشيط واستشفاء" : "MOBILITY & CORE"}`;
+
+  const targetMusclesText = ar
+    ? (REP_I18N.ar.anatomyTarget?.[item.motion] || `${item.category}`)
+    : (REP_I18N.en.anatomyTarget?.[item.motion] || `${item.category}`);
+
+  const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(ar?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
+
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player" data-swipe>
     <div class="player-header">
-      <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
-      <div class="player-progress"><strong>${ls.name}</strong><span>${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
+      <button class="round-button player-back-btn" data-exit aria-label="${ar?"خروج":"Back"}">‹</button>
+      <div class="player-header-badge">
+        <span class="header-status-pill">${statusBadgeText}</span>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(state.lang==="ar") : ""}
-        <button class="round-button" data-exit aria-label="${state.lang==="ar"?"إنهاء الحصة":"Exit session"}">×</button>
+        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(ar) : ""}
+        <button class="round-button" data-exit aria-label="${ar?"إنهاء الحصة":"Exit session"}">×</button>
       </div>
     </div>
     <div class="progress-bar"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
-      <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${anatomyVisual(item.motion)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
-      ${motionControls()}
-      <div class="exercise-info"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${swapBtn}</div><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>
-      <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
-        <span style="font-size:11px;font-weight:900;color:var(--orange);">⚡ ${state.lang==="ar"?"سوبر سيت متاح":"SUPERSET MODE"}</span>
-        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"تبديل مع التالي ↻":"Next Move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"السابق ↺":"Prev Move ↺"}</button>` : "")}
+      <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}">${anatomyVisual(item.motion)}</div>
+      <div class="exercise-info">
+        <div class="exercise-title-row">
+          <h1>${esc(item.name)}</h1>
+          ${swapBtn}
+        </div>
+        <p class="exercise-target-sub">${ar ? `المستهدف: ${targetMusclesText}` : `Target: ${targetMusclesText}`}</p>
       </div>
-      ${motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer>${u.startTimer} · ${formatClock(motionGuide[item.motion][2])}</button>`:""}
+      ${motionControls()}
+      <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
+        <span style="font-size:11px;font-weight:900;color:var(--orange);">⚡ ${ar?"سوبر سيت متاح":"SUPERSET MODE"}</span>
+        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${ar?"تبديل مع التالي ↻":"Next Move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${ar?"السابق ↺":"Prev Move ↺"}</button>` : "")}
+      </div>
+      ${sportDrillPanel(base, item)}
       ${loadPanel(base,item)}
       ${cardioPanel(item)}
-      <div class="set-tracker" aria-label="${state.lang==="ar"?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
-      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
+      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${ar?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
     </article></section>`);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});

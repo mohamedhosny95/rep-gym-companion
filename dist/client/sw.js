@@ -1,4 +1,4 @@
-const BUILD_VERSION="2e1f0dcdf902";
+const BUILD_VERSION="5d242dffd43b";
 const CACHE = `rep-companion-${BUILD_VERSION}`;
 const versioned=path=>`${path}?v=${BUILD_VERSION}`;
 const CORE_ASSETS = ["./", "./index.html", ...["./styles.css","./vendor/dompurify.min.js","./safe-dom.js","./build-meta.js","./auth.js","./storage.js","./ui-state.js","./ui-shell.js","./health-data.js","./i18n.js","./features.js","./health-engine.js","./health-coverage.js","./performance-insights.js","./training-session.js","./offline-nutrition.js","./store.js","./importer.js","./report-card.js","./command-palette.js","./recovery-map.js","./plate-calculator.js","./heart-rate-monitor.js","./audio-coach.js","./barcode-scanner.js","./muscle-heatmap.js","./custom-workouts.js","./bootstrap.js","./app.js","./sync-outbox.js","./telemetry.js","./sync.js","./sync-center.js","./enhancements.js","./habits.js","./health-ui.js","./performance-ui.js"].map(versioned), "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
