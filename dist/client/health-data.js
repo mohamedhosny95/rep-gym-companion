@@ -1,5 +1,5 @@
 window.REP_HEALTH_GUIDE = Object.freeze({
-  version: "2026.08.4",
+  version: "2026.08.5",
   updatedAt: "2026-08-26",
   sources: {
     training: "https://app.notion.com/p/3b6fa9cab09281c9aa03d11732cc200b",
