@@ -1008,7 +1008,7 @@ function loadPanel(base,item){
               <div class="set-input-wrap">
                 <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="8" aria-label="RPE ${i+1}">
               </div>
-              <button class="set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
+              <button class="set-button set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
                 ${isDone?"✓":"○"}
               </button>
             </div>
@@ -1151,7 +1151,7 @@ function sportDrillPanel(base, item) {
     </div>
     <div class="drill-actions-row">
       <button class="drill-btn-skip" data-prev type="button" ${state.index === 0 ? "disabled" : ""}>${ar ? "السابق" : "SKIP EXERCISE"}</button>
-      <button class="drill-btn-next" data-next type="button">${isLast ? (ar ? "إنهاء الحصة" : "FINISH SESSION") : (ar ? `التالي: ${nextItem?.name || ""}` : `NEXT: ${nextItem?.name || "Next Move"}`)}</button>
+      <button class="drill-btn-next" data-drill-next type="button">${isLast ? (ar ? "إنهاء الحصة" : "FINISH SESSION") : (ar ? `التالي: ${nextItem?.name || ""}` : `NEXT: ${nextItem?.name || "Next Move"}`)}</button>
     </div>
   </section>`;
 }
@@ -1330,13 +1330,16 @@ function renderExercise() {
       ${cardioPanel(item)}
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
       <div class="workout-bottom-dock">
-        <button class="primary-workout-cta ${!isStrength ? "is-sport" : ""} ${isAllDone ? "is-completed" : ""}" data-next type="button">
-          ${isAllDone ? (state.index === session.exercises.length - 1 ? (ar ? "✓ إنهاء التمرين وحفظ التقدم" : "✓ FINISH WORKOUT & SAVE") : (ar ? "التمرين التالي ←" : "NEXT EXERCISE →")) : (isStrength ? (ar ? `✓ تسجيل المجموعة ${nextSetIndex + 1} (راحة ${item.rest || 90}ث)` : `✓ COMPLETE SET ${nextSetIndex + 1} (REST ${item.rest || 90}s)`) : (ar ? "✓ الانتقال للحركة التالية" : "✓ COMPLETE DRILL & CONTINUE"))}
-        </button>
+        <div style="display:flex;gap:10px;width:100%;">
+          <button class="player-back-btn" data-prev ${state.index===0?"disabled":""} style="width:54px;height:54px;border-radius:16px;flex:none;display:grid;place-items:center;" aria-label="${u.previous}">‹</button>
+          <button class="primary-workout-cta ${!isStrength ? "is-sport" : ""} ${isAllDone ? "is-completed" : ""}" data-next type="button" style="flex:1;">
+            ${primaryButtonLabel}
+          </button>
+        </div>
       </div>
-      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${ar?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
     </article></section>`);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
+  document.querySelectorAll("[data-drill-next]").forEach(b => b.addEventListener("click", next));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
   document.querySelector("[data-open-hr-modal]")?.addEventListener("click", ()=>window.REP_HEART_RATE?.openHrModal());
