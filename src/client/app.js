@@ -46,9 +46,33 @@ const sessions = {
       ex("Cooldown Stretches", "4 stretches", "20–30 sec / side", 0, "cooldown", "stretch", "Move to open floor or a stable post.", "Quad stretch · Hamstring/calf stretch · Doorway chest stretch · Overhead lat stretch.", "Static holds, easy breathing, no bouncing.", "Forcing range or turning a stretch into pain.", 4)
     ]
   },
+  football: {
+    name: "Football Warm-up & Cooldown", short: "FB", meta: "Monday · Before / after your game", icon: "flame", accent: "#ff5f6d",
+    description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites.",
+    exercises: [
+      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "walk", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
+      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "walk", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
+      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "walk", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
+      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "walk", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
+      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
+    ]
+  },
+  padel: {
+    name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Wednesday · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
+    description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point.",
+    exercises: [
+      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "walk", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
+      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "stretch", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
+      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "walk", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
+      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
+      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
+    ]
+  },
   cardio: {
-    name: "Cardio Session", short: "CARDIO", meta: "Mon / Wed · 30–35 min", icon: "pulse", accent: "#7dc9ff",
-    description: "Weight-bearing stamina work. Progress pace or incline only after the full main block feels easy.",
+    name: "Fallback Cardio", short: "CARDIO", meta: "Mon / Wed · Only if no game that week · 30–35 min", icon: "pulse", accent: "#7dc9ff",
+    description: "Football and padel already provide strong cardio stimulus, so this is a fallback only — use it for a week your game gets cancelled, not alongside it.",
     exercises: [
       ex("Easy Warm-up Walk", "3–5 min", "Easy pace", 0, "warm-up", "walk", "Set the treadmill flat or at a very gentle incline.", "Walk easily and let your stride settle.", "Breathe comfortably; prepare, don't test yourself.", "Jumping straight to main pace."),
       ex("Incline Treadmill Walk", "20–25 min", "RPE 5–6 · 4–6% incline", 0, "main", "inclinewalk", "Start around 4–6% incline at a comfortable walking pace.", "Hold RPE 5–6: short sentences are possible, full conversation is not.", "Brace gently, swing arms naturally, and look forward.", "Overstriding or holding the rails. Progress incline or pace, not duration."),
@@ -269,7 +293,8 @@ function esc(value) { return String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;
 function currentDay() { return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]; }
 function todayPlan(day) {
   if (["Sunday","Tuesday","Thursday"].includes(day)) return state.lang==="ar"?"تنشيط + جيم":"Activation + Gym";
-  if (["Monday","Wednesday"].includes(day)) return state.lang==="ar"?"تنشيط + كارديو":"Activation + Cardio";
+  if (day === "Monday") return state.lang==="ar"?"تنشيط + كرة قدم":"Activation + Football";
+  if (day === "Wednesday") return state.lang==="ar"?"تنشيط + بادل":"Activation + Padel";
   if (day === "Friday") return state.lang==="ar"?"راحة":"Rest";
   return state.lang==="ar"?"استشفاء نشط + سبا":"Active recovery + Spa";
 }
@@ -692,7 +717,7 @@ function renderHome() {
     </section>
     <section class="weekly">
       <div class="section-title"><h2>${u.weekly}</h2><span>${state.lang==="ar"?"الصباح + منتصفه":"AM + mid-morning"}</span></div>
-      <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":["Mon","Wed"].includes(d)?"C":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
+      <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":d==="Mon"?"FB":d==="Wed"?"PDL":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
     </section>`);
   document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.session;

@@ -111,7 +111,7 @@
 
   function nutritionTargetsForDate(state,key){
     const schedule=state?.preferences?.schedule||{},targets=state?.preferences?.targets||{},day=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][atNoon(key).getDay()],focus=schedule[day]?.focus;
-    const profile=focus==="gym"?"gym":focus==="cardio"?"active":"flex";
+    const profile=focus==="gym"?"gym":["cardio","football","padel"].includes(focus)?"active":"flex";
     return targets[profile]||targets.gym||{calories:0,protein:0,water:0};
   }
 

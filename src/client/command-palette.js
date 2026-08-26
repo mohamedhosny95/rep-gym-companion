@@ -27,7 +27,9 @@
 
       // Workouts
       { id: "wo-gym", title: ar ? "بدء حصة الجيم (Full Body Push / Pull)" : "Start Gym Workout (Full Body Push/Pull)", category: ar ? "تمارين" : "Workouts", icon: "⚡", action: () => window.showSessionPreview?.("gym") },
-      { id: "wo-cardio", title: ar ? "بدء حصة الكارديو (Incline Walk)" : "Start Cardio Session (Incline Walk)", category: ar ? "تمارين" : "Workouts", icon: "🏃", action: () => window.showSessionPreview?.("cardio") },
+      { id: "wo-football", title: ar ? "إحماء وتهدئة كرة القدم" : "Football Warm-up & Cooldown", category: ar ? "تمارين" : "Workouts", icon: "⚽", action: () => window.showSessionPreview?.("football") },
+      { id: "wo-padel", title: ar ? "إحماء وتهدئة البادل" : "Padel Warm-up & Cooldown", category: ar ? "تمارين" : "Workouts", icon: "🎾", action: () => window.showSessionPreview?.("padel") },
+      { id: "wo-cardio", title: ar ? "بدء حصة الكارديو الاحتياطية (Incline Walk)" : "Start Fallback Cardio (Incline Walk)", category: ar ? "تمارين" : "Workouts", icon: "🏃", action: () => window.showSessionPreview?.("cardio") },
       { id: "wo-bad", title: ar ? "حصة يوم الإرهاق (Bad Day Active Recovery)" : "Low-Energy Recovery Session", category: ar ? "تمارين" : "Workouts", icon: "🌿", action: () => window.showSessionPreview?.("bad") }
     ];
   }
