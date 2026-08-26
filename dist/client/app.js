@@ -174,6 +174,8 @@ const motionGuide = {
 };
 
 function anatomyVisual(motion) {
+  const u = REP_I18N[state.lang].ui, guide = motionGuide[motion] || motionGuide.march;
+  const muscles = (REP_I18N[state.lang].anatomyTarget?.[motion] || (anatomy[motion]?.[1]) || "Active muscles");
   const isPaused = state.paused ? "is-paused" : "";
   const musclesClass = state.muscles ? "muscles-on" : "muscles-off";
   const speedStyle = `--loop-speed:${3.6 / state.speed}s;`;
