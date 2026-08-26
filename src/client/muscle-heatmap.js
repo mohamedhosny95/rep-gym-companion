@@ -86,41 +86,54 @@
     return { status: "over", label: "Over-reaching (> MRV)", color: "#f43f5e", score: 60 };
   }
 
+  const MUSCLE_LABELS = {
+    "Chest": { en: "Chest", ar: "عضلات الصدر" },
+    "Lats": { en: "Lats & Upper Back", ar: "عضلات الظهر والمجنص" },
+    "Quads": { en: "Quadriceps", ar: "الفخذ الأمامي" },
+    "Hamstrings": { en: "Hamstrings", ar: "الفخذ الخلفي" },
+    "Side Delts": { en: "Side Delts", ar: "الكتف الجانبي" },
+    "Biceps": { en: "Biceps", ar: "عضلات البايسبس" },
+    "Triceps": { en: "Triceps", ar: "عضلات الترايسبس" },
+    "Glutes": { en: "Glutes", ar: "عضلات الألوية" },
+    "Lower Back": { en: "Lower Back", ar: "أسفل الظهر" }
+  };
+
   function renderHeatmapCard(state, ar){
-    const volumes = computeWeeklyVolumes(state.history || []);
+    const volumes = computeWeeklyVolumes(state?.history || []);
     const muscles = ["Chest", "Lats", "Quads", "Hamstrings", "Side Delts", "Biceps", "Triceps", "Glutes", "Lower Back"];
 
     return `
-      <section class="settings-card muscle-heatmap-card" style="padding:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <section class="muscle-heatmap-card">
+        <div class="heatmap-head">
           <div>
-            <span class="set-log-kicker">🔥 ${ar?"توازن وتوزيع الحجم التدريبي":"WEEKLY HYPERTROPHY VOLUME"}</span>
-            <h2 style="margin:2px 0 0;font-size:16px;">${ar?"خريطة إجهاد وبناء العضلات":"Muscle Fatigue & Volume Balance"}</h2>
+            <span class="set-log-kicker">🔥 ${ar ? "توازن وتوزيع الحجم التدريبي" : "WEEKLY HYPERTROPHY VOLUME"}</span>
+            <h2>${ar ? "خريطة إجهاد وبناء العضلات" : "Muscle Fatigue & Volume Balance"}</h2>
           </div>
-          <span style="font-size:11px;color:var(--muted);">${ar?"آخر 7 أيام":"Last 7 days"}</span>
+          <span class="heatmap-range-tag">${ar ? "آخر 7 أيام" : "Last 7 days"}</span>
         </div>
 
-        <div class="muscle-grid-bars" style="display:grid;gap:8px;">
+        <div class="muscle-grid-bars">
           ${muscles.map(m => {
             const v = volumes[m] || { sets: 0, exercises: {} };
             const lm = LANDMARKS[m] || { mev: 6, mav: 14, mrv: 20 };
             const status = getVolumeStatus(m, v.sets);
             const pct = Math.min(100, Math.round((v.sets / lm.mrv) * 100));
+            const label = MUSCLE_LABELS[m]?.[ar ? "ar" : "en"] || m;
             return `
-              <div class="muscle-vol-row" style="background:var(--panel-2);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.05);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px;">
-                  <strong>${m}</strong>
-                  <span style="color:${status.color};font-weight:900;">${v.sets} ${ar?"مجموعات":"sets"} <small style="color:var(--muted);font-weight:normal;">/ ${lm.mav} opt</small></span>
+              <div class="muscle-vol-row status-${status.status}">
+                <div class="muscle-vol-info">
+                  <strong>${label}</strong>
+                  <span class="muscle-vol-count" style="color:${status.color};">${v.sets} ${ar ? "مجموعات" : "sets"} <small>/ ${lm.mav} opt</small></span>
                 </div>
-                <div style="height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;">
-                  <div style="width:${pct}%;height:100%;background:${status.color};border-radius:999px;transition:width .3s ease;"></div>
+                <div class="muscle-vol-track">
+                  <div class="muscle-vol-fill" style="width:${pct}%;background:${status.color};"></div>
                 </div>
               </div>
             `;
           }).join("")}
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:var(--muted);">
+        <div class="heatmap-legend">
           <span style="color:#38bdf8;">● < MEV</span>
           <span style="color:var(--acid);font-weight:900;">● MAV (Optimal)</span>
           <span style="color:#fb923c;">● Near MRV</span>
@@ -130,7 +143,8 @@
     `;
   }
 
-  window.REP_MUSCLE_HEATMAP = {
+  const root = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : this;
+  root.REP_MUSCLE_HEATMAP = {
     computeWeeklyVolumes,
     getVolumeStatus,
     renderHeatmapCard,

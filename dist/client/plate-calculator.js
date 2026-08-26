@@ -91,7 +91,7 @@
   }
 
   function openPlateCalculator(options = {}) {
-    const ar = typeof state !== "undefined" && state.lang === "ar";
+    const ar = (typeof state !== "undefined" ? state?.lang : window.state?.lang) === "ar";
     let currentWeight = Number(options.initialWeight) || 60;
     let selectedBarId = options.barId || "olympic";
 
@@ -194,7 +194,8 @@
     document.body.appendChild(modal);
   }
 
-  window.REP_PLATE_CALCULATOR = {
+  const root = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : this;
+  root.REP_PLATE_CALCULATOR = {
     calculatePlates,
     openPlateCalculator
   };

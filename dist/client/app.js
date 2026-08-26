@@ -118,17 +118,27 @@ function anatomyVisual(motion) {
   if(state.viewMode==="side" && motion in motionAtlasRows){
     const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
     return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
+      <div class="visual-hud-top">
+        <span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
+      </div>
       <i class="sprite-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
-      <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
-      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
     </div>`;
   }
   const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
   return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
+    <div class="visual-hud-top">
+      <span class="phase-pill"><i></i> ${u.startFinish}</span>
+    </div>
     <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
     <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
-    <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> ${u.startFinish}</span>
-    <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+    <div class="visual-hud-bottom">
+      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+      <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+    </div>
   </div>`;
 }
 
@@ -1262,7 +1272,7 @@ function showExitConfirm(){
 // there's no heart-rate or wearable data source here, so this is duration x
 // intensity x bodyweight, not a measured burn.
 const SESSION_MET={morning:2.8,gym:5,cardio:4.3,bad:2.5,gymLite:4.5,padel:6,football:7,basketball:6.5,swimming:6,cycling:7.5,tennis:7,other:5};
-const ACTIVITY_TYPES=[["padel",{en:"Padel",ar:"بادل"}],["football",{en:"Football",ar:"كرة القدم"}],["basketball",{en:"Basketball",ar:"كرة السلة"}],["swimming",{en:"Swimming",ar:"سباحة"}],["cycling",{en:"Cycling",ar:"دراجة"}],["tennis",{en:"Tennis",ar:"تنس"}],["other",{en:"Other",ar:"أخرى"}]];
+const ACTIVITY_TYPES=[["padel",{en:"🎾 Padel",ar:"🎾 بادل"}],["football",{en:"⚽ Football",ar:"⚽ كرة القدم"}],["basketball",{en:"🏀 Basketball",ar:"🏀 كرة السلة"}],["swimming",{en:"🏊 Swimming",ar:"🏊 سباحة"}],["cycling",{en:"🚴 Cycling",ar:"🚴 دراجة"}],["tennis",{en:"🎾 Tennis",ar:"🎾 تنس"}],["other",{en:"⚡ Other",ar:"⚡ أخرى"}]];
 function latestWeightKg(){const w=[...state.bodyWeights].sort((a,b)=>b.week.localeCompare(a.week))[0];return w?w.kg:75;}
 function estimateCalories(sessionId,durationSeconds){return Math.round((SESSION_MET[sessionId]||4)*latestWeightKg()*(durationSeconds/3600));}
 function logActivity(type,customName,minutes,calories,notes){
@@ -1410,6 +1420,7 @@ function renderRecovery() {
   if(state.lang==="ar")return renderRecoveryArabic();
   const check = saved.checkin || {};
   app.innerHTML = `<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
+    ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
     <section class="recovery-grid">
       ${sleepSummaryCard(false)}
       <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:15 AM wake, aim for 9:15 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
@@ -1425,7 +1436,9 @@ function renderRecovery() {
   bindRecoveryTools();
 }
 function renderRecoveryArabic(){
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}<section class="recovery-grid">
+  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}
+  ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
+  <section class="recovery-grid">
   ${sleepSummaryCard(true)}
   <article class="recovery-card"><span class="card-kicker">كل يوم</span><h2>الأساسيات</h2><ul><li><strong>النوم:</strong> 7 ساعات على الأقل؛ مع الاستيقاظ 4:15 ص استهدف 9:15 م.</li><li><strong>الماء:</strong> عند الاستيقاظ وطوال الصباح، خصوصاً مع حرارة القاهرة.</li><li><strong>الإفطار:</strong> بروتين وكربوهيدرات بعد تمرين الصباح.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الأحد · الثلاثاء · الخميس</span><h2>بعد الجيم</h2><ul><li>Foam roller للجسم السفلي والظهر مساءً، نحو 8 دقائق.</li><li>مسدس المساج قبل النوم، 6–8 دقائق.</li><li>لا تستخدم الثلج روتينياً؛ فقط لألم مفصل حقيقي.</li></ul></article>
@@ -2112,31 +2125,43 @@ function showLogActivity(){
   if(document.querySelector(".activity-panel"))return;
   const ar=state.lang==="ar",defaultMinutes=60,defaultType=ACTIVITY_TYPES[0][0];
   const box=document.createElement("div");box.className="exit-confirm activity-panel";
-  box.innerHTML=`<strong>${ar?"تسجيل نشاط":"Log an activity"}</strong>
-    <p class="activity-hint">${ar?"للرياضات غير المنظمة مثل البادل وكرة القدم — مدة وسعرات محروقة من ساعة أبل، لا قائمة تمارين موجهة.":"For unstructured sports like padel and football — duration and calories burned from your Apple Watch, not a guided exercise list."}</p>
+  box.innerHTML=`<strong>${ar?"تسجيل نشاط رياضي":"Log Sport Activity"}</strong>
+    <p class="activity-hint">${ar?"للرياضات مثل البادل وكرة القدم — تسجل المدة والسعرات، وتحسب تلقائياً في خريطة الاستشفاء العضلي.":"For sports like Padel & Football — logs duration, Apple Watch active calories, and updates your Muscle Recovery Map."}</p>
     <div class="activity-types">${ACTIVITY_TYPES.map(([id,label],i)=>`<button data-activity-type="${id}" class="${i===0?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
     <input class="activity-custom" data-activity-custom type="text" maxlength="40" placeholder="${ar?"اسم النشاط":"Activity name"}" style="display:none">
-    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة من ساعة أبل":"Apple Watch Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
-    <p class="activity-hint">${ar?"استخدم السعرات النشطة، وليس إجمالي السعرات، من ملخص تمرين ساعة أبل.":"Use Active Calories—not Total Calories—from the Apple Watch workout summary."}</p>
-    <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية":"Optional notes"}"></textarea>
-    <button data-save-activity>${ar?"حفظ النشاط":"Save activity"}</button>
+    <div style="display:flex;gap:6px;margin:8px 0 10px;overflow-x:auto;">
+      ${[30, 45, 60, 90, 120].map(m=>`<button type="button" data-quick-duration="${m}" style="min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:900;cursor:pointer;">${m} ${ar?"د":"min"}</button>`).join("")}
+    </div>
+    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة":"Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
+    <p class="activity-hint">${ar?"استخدم السعرات النشطة (Active Calories) من ملخص تمرين ساعة أبل.":"Use Active Calories from your Apple Watch workout summary."}</p>
+    <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية (شدة اللعب، النتيجة...)":"Optional notes (match intensity, score...)"}"></textarea>
+    <button data-save-activity>${ar?"حفظ النشاط":"Save Activity"}</button>
     <button class="quiet" data-close-activity>${ar?"إلغاء":"Cancel"}</button>`;
   document.body.appendChild(box);
   let selected=defaultType;
   const minutesInput=box.querySelector("[data-activity-minutes]"),caloriesInput=box.querySelector("[data-activity-calories]");
+  const updateCal=()=>{
+    const mins=Math.max(1,Number(minutesInput.value)||defaultMinutes);
+    caloriesInput.value=estimateCalories(selected,mins*60);
+  };
   box.querySelectorAll("[data-activity-type]").forEach(button=>button.onclick=()=>{
     selected=button.dataset.activityType;
     box.querySelectorAll("[data-activity-type]").forEach(b=>b.classList.toggle("is-active",b===button));
     box.querySelector("[data-activity-custom]").style.display=selected==="other"?"block":"none";
-    caloriesInput.value=estimateCalories(selected,Math.max(1,Number(minutesInput.value)||defaultMinutes)*60);
+    updateCal();
   });
+  box.querySelectorAll("[data-quick-duration]").forEach(btn=>btn.onclick=()=>{
+    minutesInput.value=btn.dataset.quickDuration;
+    updateCal();
+  });
+  minutesInput.oninput=updateCal;
   box.querySelector("[data-close-activity]").onclick=()=>box.remove();
   box.querySelector("[data-save-activity]").onclick=()=>{
     const minutes=minutesInput.value,calories=caloriesInput.value,notes=box.querySelector("[data-activity-notes]").value,custom=box.querySelector("[data-activity-custom]").value;
     if(logActivity(selected,custom,minutes,calories,notes)){
       if(navigator.vibrate)navigator.vibrate(30);
       box.remove();
-      if(state.view==="history")renderHistory();else renderHome();
+      if(state.view==="history")renderHistory();else if(state.view==="recovery")renderRecovery();else renderHome();
     }
   };
 }
