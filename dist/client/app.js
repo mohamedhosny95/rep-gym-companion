@@ -70,6 +70,18 @@ const sessions = {
       ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
     ]
   },
+  general: {
+    name: "Any Activity Warm-up & Cooldown", short: "GEN", meta: "Any day · Before / after any activity", icon: "waves", accent: "#5fe1c9",
+    description: "A general-purpose warm-up and cool-down for any sport or activity not already covered — running, basketball, tennis, cycling, hiking, and more.",
+    exercises: [
+      ex("Easy Jog or Brisk Walk", "3–4 min", "Cardio pulse raiser", 0, "warm-up", "walk", "Open space to walk or jog.", "Gradually raise heart rate and body temperature, building from an easy pace to a light jog over the full duration.", "Ease into it — this is preparation, not a test.", "Jumping straight to hard effort."),
+      ex("Full-Body Dynamic Stretch", "2–3 min", "Joint mobility", 0, "dynamic", "march", "Open space to move freely.", "Arm circles, torso twists, and leg swings front-to-back and side-to-side through a full range of motion.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Movement-Specific Drills", "2–3 min", "Neuromuscular prep", 0, "activation", "march", "Open space, mimicking the activity ahead.", "Light shuffles, skips, or short strides that mimic the movement patterns of the activity ahead, gradually increasing speed.", "Build toward full intensity gradually.", "Going full speed cold."),
+      ex("Walk & Breathe Down", "2–3 min", "Heart rate recovery", 0, "cooldown", "walk", "Open space to walk easily.", "Walk at an easy pace until your breathing returns to normal.", "Relaxed, easy breathing.", "Stopping abruptly right after hard effort."),
+      ex("Full-Body Static Stretch", "4 stretches", "30 sec each", 0, "cooldown", "stretch", "Open floor, right after the activity.", "Hamstrings · Quads · Calves · Shoulders.", "Hold each stretch gently without bouncing; breathe slowly and let the muscle relax.", "Bouncing or forcing range.", 4),
+      ex("Hydrate & Refuel", "—", "Recovery", 0, "cooldown", "walk", "Right after the activity.", "Rehydrate with water or electrolytes and eat a protein-containing snack within the hour.", "Recovery starts the moment you stop moving.", "Skipping fluids or waiting too long to eat.")
+    ]
+  },
   cardio: {
     name: "Fallback Cardio", short: "CARDIO", meta: "Mon / Wed · Only if no game that week · 30–35 min", icon: "pulse", accent: "#7dc9ff",
     description: "Football and padel already provide strong cardio stimulus, so this is a fallback only — use it for a week your game gets cancelled, not alongside it.",
