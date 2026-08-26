@@ -1039,6 +1039,60 @@ function cardioPanel(item){
   return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
 }
 function cardioAdvice(){return REP_TRAINING_SESSION.cardioAdvice(state.history,state.lang);}
+function openBottomSheet({ title, options = [], onSelect }) {
+  const existing = document.querySelector(".mobile-sheet-backdrop");
+  if (existing) existing.remove();
+  const existingSheet = document.querySelector(".mobile-bottom-sheet");
+  if (existingSheet) existingSheet.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "mobile-sheet-backdrop";
+  const sheet = document.createElement("div");
+  sheet.className = "mobile-bottom-sheet";
+  sheet.innerHTML = REP_SAFE_DOM.sanitize(`
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <h3>${esc(title)}</h3>
+      <button class="sheet-close-btn" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-options-grid">
+      ${options.map((opt, idx) => `
+        <button class="sheet-option-item ${opt.selected ? "is-selected" : ""}" type="button" data-sheet-idx="${idx}">
+          <span>${esc(opt.label)}</span>
+          ${opt.selected ? "<span>✓</span>" : ""}
+        </button>
+      `).join("")}
+    </div>
+  `);
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sheet);
+
+  requestAnimationFrame(() => {
+    backdrop.classList.add("is-open");
+    sheet.classList.add("is-open");
+  });
+
+  const close = () => {
+    backdrop.classList.remove("is-open");
+    sheet.classList.remove("is-open");
+    setTimeout(() => {
+      backdrop.remove();
+      sheet.remove();
+    }, 360);
+  };
+
+  backdrop.onclick = close;
+  sheet.querySelector(".sheet-close-btn").onclick = close;
+  sheet.querySelectorAll("[data-sheet-idx]").forEach(btn => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.sheetIdx);
+      if (onSelect) onSelect(options[idx], idx);
+      close();
+    };
+  });
+}
+
 function motionControls(){
   const ar=state.lang==="ar";
   return `<div class="motion-controls" aria-label="Animation controls">
@@ -1240,6 +1294,7 @@ function renderExercise() {
 
   const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(ar?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
 
+  document.body.classList.add("workout-mode");
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player" data-swipe>
     <div class="player-header">
       <button class="round-button player-back-btn" data-exit aria-label="${ar?"خروج":"Back"}">‹</button>
@@ -1253,13 +1308,17 @@ function renderExercise() {
     </div>
     <div class="progress-bar"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
-      <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}">${anatomyVisual(item.motion)}</div>
+      <div class="visual-wrap anatomy-wrap workout-hero-stage" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}">${anatomyVisual(item.motion)}</div>
       <div class="exercise-info">
         <div class="exercise-title-row">
           <h1>${esc(item.name)}</h1>
           ${swapBtn}
         </div>
         <p class="exercise-target-sub">${ar ? `المستهدف: ${targetMusclesText}` : `Target: ${targetMusclesText}`}</p>
+      </div>
+      <div class="workout-progress-strip">
+        <span class="progress-strip-set">${ar ? `المجموعة ${nextSetIndex !== undefined ? nextSetIndex + 1 : item.sets} من ${item.sets}` : `SET ${nextSetIndex !== undefined ? nextSetIndex + 1 : item.sets} OF ${item.sets}`}</span>
+        <span class="progress-strip-reps">${isStrength ? (ar ? `الهدف: ${item.reps || "8-12"} تكرار` : `TARGET: ${item.reps || "8-12"} REPS`) : (ar ? `المؤقت: ${motionGuide[item.motion]?.[2] || 45} ثانية` : `TIMER: ${motionGuide[item.motion]?.[2] || 45} SEC`)}</span>
       </div>
       ${motionControls()}
       <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
@@ -1270,6 +1329,11 @@ function renderExercise() {
       ${loadPanel(base,item)}
       ${cardioPanel(item)}
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
+      <div class="workout-bottom-dock">
+        <button class="primary-workout-cta ${!isStrength ? "is-sport" : ""} ${isAllDone ? "is-completed" : ""}" data-next type="button">
+          ${isAllDone ? (state.index === session.exercises.length - 1 ? (ar ? "✓ إنهاء التمرين وحفظ التقدم" : "✓ FINISH WORKOUT & SAVE") : (ar ? "التمرين التالي ←" : "NEXT EXERCISE →")) : (isStrength ? (ar ? `✓ تسجيل المجموعة ${nextSetIndex + 1} (راحة ${item.rest || 90}ث)` : `✓ COMPLETE SET ${nextSetIndex + 1} (REST ${item.rest || 90}s)`) : (ar ? "✓ الانتقال للحركة التالية" : "✓ COMPLETE DRILL & CONTINUE"))}
+        </button>
+      </div>
       <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${ar?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
     </article></section>`);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
@@ -1342,15 +1406,62 @@ function renderExercise() {
   updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
-  if(action==="play")state.paused=!state.paused;
-  if(action==="speed")state.speed=state.speed===1?.5:1;
-  if(action==="view")state.viewMode=state.viewMode==="side"?"front":"side";
-  if(action==="muscles")state.muscles=!state.muscles;
+  const ar = state.lang === "ar";
+  if (action === "speed") {
+    openBottomSheet({
+      title: ar ? "سرعة الحركة البيوميكانيكية" : "Biomechanical Speed",
+      options: [
+        { label: "0.5x (Slow Motion)", value: 0.5, selected: state.speed === 0.5 },
+        { label: "0.75x", value: 0.75, selected: state.speed === 0.75 },
+        { label: "1x (Normal Speed)", value: 1, selected: !state.speed || state.speed === 1 },
+        { label: "1.25x", value: 1.25, selected: state.speed === 1.25 },
+        { label: "1.5x (Fast)", value: 1.5, selected: state.speed === 1.5 }
+      ],
+      onSelect: (opt) => {
+        state.speed = opt.value;
+        persist();
+        const v = document.querySelector(".anatomy-visual");
+        if (v) {
+          const item = currentItem(sessions[state.session]?.exercises?.[state.index]);
+          const baseDuration = (motionGuide[item?.motion]?.[2] || 4);
+          v.style.animationDuration = `${baseDuration / opt.value}s`;
+        }
+        renderExercise();
+      }
+    });
+    return;
+  }
+  if (action === "view") {
+    openBottomSheet({
+      title: ar ? "زاوية الكاميرا والعرض" : "Camera View Angle",
+      options: [
+        { label: ar ? "العرض الأمامي (Front)" : "Front View", value: "front", selected: state.viewMode !== "side" },
+        { label: ar ? "العرض الجانبي (Side)" : "Side View", value: "side", selected: state.viewMode === "side" },
+        { label: ar ? "الهيكل البيوميكانيكي 3D" : "Biomechanical 3D Rig", value: "3d", selected: false }
+      ],
+      onSelect: (opt) => {
+        if (opt.value === "side" || opt.value === "front") {
+          state.viewMode = opt.value;
+          persist();
+          renderExercise();
+        }
+      }
+    });
+    return;
+  }
+  if (action === "play") {
+    state.paused = !state.paused;
+    if (window.vibrateGym) window.vibrateGym("habit");
+  }
+  if (action === "muscles") {
+    state.muscles = !state.muscles;
+    if (window.vibrateGym) window.vibrateGym("habit");
+  }
   persist();
-  if(state.view==="preview"){
-    const open=new Set([...document.querySelectorAll(".preview-row")].map((el,i)=>el.open?i:-1).filter(i=>i>=0));
-    showSessionPreview(state.previewSession,open);
-  }else renderExercise();
+  if (state.view === "preview") {
+    const open = new Set([...document.querySelectorAll(".preview-row")].map((el, i) => el.open ? i : -1).filter(i => i >= 0));
+    showSessionPreview(state.previewSession, open);
+  } else renderExercise();
 }
 function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60).padStart(2,"0");return `${m}:${s}`;}
 function toggleExerciseTimer(motion){
@@ -1534,7 +1645,7 @@ function abandonSession(){
   REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
-  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
+  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();document.body.classList.remove("workout-mode");if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
 }
 // MET (metabolic equivalent) per session type, used only for a rough estimate -
 // there's no heart-rate or wearable data source here, so this is duration x

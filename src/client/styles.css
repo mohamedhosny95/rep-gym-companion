@@ -1,26 +1,69 @@
 :root {
   color-scheme: dark;
-  --bg: #0b0d0c;
-  --panel: #131715;
-  --panel-2: #1a201d;
-  --line: #2a322e;
-  --text: #f5f7f5;
-  --muted: #9ca8a1;
+  /* Surface Layers */
+  --bg: #08090b;
+  --surface-base: #08090b;
+  --surface-card: #111318;
+  --surface-elevated: #191b20;
+  --surface-glass: rgba(17, 19, 24, 0.85);
+  --surface-overlay: rgba(8, 9, 11, 0.88);
+  
+  --panel: #111318;
+  --panel-2: #191b20;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  
+  /* Text Contrast Hierarchy */
+  --text: #ffffff;
+  --text-pri: #ffffff;
+  --text-sec: rgba(255, 255, 255, 0.65);
+  --text-ter: rgba(255, 255, 255, 0.40);
+  --muted: #94a3b8;
+  
+  /* Brand & Contextual Accents */
+  --accent-strength: #ff7838;
+  --accent-strength-glow: rgba(255, 120, 56, 0.35);
+  --accent-sport: #168fff;
+  --accent-sport-glow: rgba(22, 143, 255, 0.35);
+  --accent-readiness: #c9ff3d;
+  --accent-readiness-glow: rgba(201, 255, 61, 0.35);
+  
   --acid: #c9ff3d;
-  --acid-ink: #10150a;
-  --orange: #ff8b3d;
-  --blue: #7dc9ff;
-  --surface-glass: rgba(19, 23, 21, 0.75);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --acid-ink: #0a0f05;
+  --orange: #ff7838;
+  --blue: #168fff;
+  
+  /* Spacing Grid (4px base) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  
+  /* Corner Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
+  
+  /* Safe Areas & Mobile Viewport */
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  
+  /* Springs & Motion Timing */
+  --motion-fast: 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-standard: 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-spring: 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* True OLED Pure Black Mode */
 [data-theme="oled"] {
   --bg: #000000;
+  --surface-base: #000000;
+  --surface-card: #090b0a;
+  --surface-elevated: #111412;
   --panel: #090b0a;
   --panel-2: #111412;
   --line: #1c221e;
@@ -1973,3 +2016,234 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 .custom-routine-card { transition: transform .1s ease, border-color .15s ease; }
 .custom-routine-card:hover { border-color: rgba(201,255,61,.3); }
 .builder-ex-row { transition: all .15s ease; }
+
+/* =========================================================
+   MOBILE BOTTOM SHEET COMPONENT (Apple / Nike System)
+   ========================================================= */
+.mobile-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+.mobile-sheet-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mobile-bottom-sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  width: min(100%, 560px);
+  max-height: 85dvh;
+  z-index: 151;
+  background: var(--surface-elevated);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  box-shadow: 0 -16px 60px rgba(0, 0, 0, 0.65);
+  padding: 12px 18px calc(24px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.mobile-bottom-sheet.is-open {
+  transform: translate(-50%, 0);
+}
+.sheet-drag-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 auto 16px;
+  cursor: grab;
+}
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.sheet-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 850;
+  color: var(--text-pri);
+}
+.sheet-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  color: var(--text-sec);
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.sheet-options-grid {
+  display: grid;
+  gap: 8px;
+}
+.sheet-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: var(--text-pri);
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.sheet-option-item:active {
+  transform: scale(0.98);
+}
+.sheet-option-item.is-selected {
+  background: rgba(255, 120, 56, 0.16);
+  border-color: var(--accent-strength);
+  color: var(--accent-strength);
+}
+
+/* =========================================================
+   REST MODE OVERLAY (Calm & Focused)
+   ========================================================= */
+.rest-mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(8, 9, 11, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px calc(24px + var(--safe-bottom));
+  text-align: center;
+  animation: viewEnter 0.28s ease-out;
+}
+.rest-kicker {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-strength);
+  margin-bottom: 8px;
+}
+.rest-timer-display {
+  font-size: clamp(56px, 16vw, 76px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 1;
+  margin: 8px 0 20px;
+  font-variant-numeric: tabular-nums;
+}
+.rest-next-preview {
+  margin-bottom: 28px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  max-width: 340px;
+  width: 100%;
+}
+.rest-next-preview small {
+  display: block;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-sec);
+}
+.rest-next-preview strong {
+  display: block;
+  font-size: 16px;
+  color: #ffffff;
+  margin-top: 2px;
+}
+.rest-actions {
+  display: flex;
+  gap: 12px;
+  width: min(100%, 340px);
+}
+.rest-btn-add {
+  flex: 1;
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-pri);
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.rest-btn-skip {
+  flex: 1.5;
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-strength), #ff5500);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 24px var(--accent-strength-glow);
+  cursor: pointer;
+}
+
+/* =========================================================
+   STICKY BOTTOM WORKOUT CTA & ABOVE-THE-FOLD BAR
+   ========================================================= */
+.workout-bottom-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding: 10px 0 calc(10px + var(--safe-bottom));
+  background: linear-gradient(to top, rgba(8, 9, 11, 0.98) 70%, rgba(8, 9, 11, 0));
+  margin-top: 14px;
+}
+.primary-workout-cta {
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--radius-md);
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-strength), #ff5500);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 26px var(--accent-strength-glow);
+  cursor: pointer;
+  transition: transform var(--motion-fast);
+}
+.primary-workout-cta:active {
+  transform: scale(0.96);
+}
+.primary-workout-cta.is-sport {
+  background: linear-gradient(135deg, var(--accent-sport), #0066d6);
+  box-shadow: 0 8px 26px var(--accent-sport-glow);
+}
+.primary-workout-cta.is-completed {
+  background: linear-gradient(135deg, var(--accent-readiness), #8bc34a);
+  color: #0a0f05;
+  box-shadow: 0 8px 26px var(--accent-readiness-glow);
+}
+
