@@ -1,6 +1,6 @@
 (function(){
   const REQUEST_TIMEOUT_MS=30000,SIGNATURES_KEY="rep-sync-signatures-v1",outbox=window.REP_SYNC_OUTBOX;
-  const typeMap={morning:"Morning Activation",gym:"Gym",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
+  const typeMap={morning:"Morning Activation",gym:"Gym",football:"Football",padel:"Padel",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
   const activityLabel=item=>item.payload?.food_name||item.payload?.rawNote||item.payload?.name||item.workout?.type||item.payload?.plan||item.payload?.date||item.kind||"Sync record";
   const record=(item,status,extra={})=>window.REP_SYNC_CENTER?.record(state,{id:item.id,kind:item.kind,label:activityLabel(item),status,...extra});
   const signatures=()=>{try{return JSON.parse(localStorage.getItem(SIGNATURES_KEY)||"{}");}catch{return {};}};
