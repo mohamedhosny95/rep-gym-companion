@@ -238,12 +238,55 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .anatomy-wrap .motion-tempo { color: rgba(255,255,255,.35); }
 .visual-wrap {
+  min-height: 270px;
+  height: min(38dvh, 360px);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 35%, #18221b 0%, #070a08 100%);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 16px 40px rgba(0,0,0,.4);
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.visual-label {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 12px;
+  z-index: 6;
+  padding: 6px 12px;
+  background: rgba(11,13,12,.85);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 99px;
+  color: var(--acid);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  pointer-events: auto;
+}
+.visual-hud-top {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.anatomy-motion {
+  width: 100%;
+  height: 100%;
   position: relative;
   overflow: hidden;
-  border-radius: 22px;
-  background: radial-gradient(circle at 50% 35%, #18221b 0%, #070a08 100%);
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: 0 16px 40px rgba(0,0,0,.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -251,34 +294,6 @@ h1, h2, h3, p { margin-top: 0; }
   will-change: transform;
   backface-visibility: hidden;
 }
-.anatomy-wrap { background: radial-gradient(circle at 50% 35%, #18221b 0%, #070a08 100%); }
-.anatomy-motion {
-  height: 100%;
-  max-width: 100%;
-  aspect-ratio: var(--cell-ratio);
-  position: relative;
-  overflow: hidden;
-  background: transparent;
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-}
-.anatomy-frame {
-  position: absolute;
-  inset: 0;
-  display: block;
-  background-size: var(--atlas-size);
-  background-repeat: no-repeat;
-  transform: translateZ(0);
-  will-change: opacity, transform;
-  backface-visibility: hidden;
-}
-.frame-a { animation: anatomyA var(--loop-speed,4s) cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-.frame-b { opacity: 0; animation: anatomyB var(--loop-speed,4s) cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-.flip-b .frame-b { animation-name: anatomyBFlip; }
-.anatomy-motion.is-paused * { animation-play-state: paused !important; }
-.anatomy-motion.muscles-off .anatomy-frame { filter: grayscale(1); }
-.anatomy-motion.muscles-off .muscle-callout { opacity: .35; }
 .visual-hud-bottom {
   position: absolute;
   bottom: 12px;
@@ -342,7 +357,6 @@ h1, h2, h3, p { margin-top: 0; }
   background: #ef4f37;
   animation: phaseDot 4s steps(1) infinite;
 }
-.phase-pill em { color: #ef4f37; font-style: normal; }
 .guide-callout {
   display: block;
   width: 100%;
@@ -359,13 +373,439 @@ h1, h2, h3, p { margin-top: 0; }
   -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
 }
-.motion-path, .range-warning { display: none !important; }
-@keyframes pathPulse { 0%,100%{opacity:.25} 50%{opacity:.9} }
-@keyframes warningPulse { 0%,55%,100%{opacity:.15;transform:scale(.85)} 72%{opacity:.8;transform:scale(1)} }
-@keyframes anatomyA { 0%,38%{opacity:1;transform:scale(1)} 50%,88%{opacity:0;transform:scale(1.02)} 100%{opacity:1;transform:scale(1)} }
-@keyframes anatomyB { 0%,38%{opacity:0;transform:scale(1.02)} 50%,88%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes anatomyBFlip { 0%,38%{opacity:0;transform:scaleX(-1) scale(1.02)} 50%,88%{opacity:1;transform:scaleX(-1) scale(1)} 100%{opacity:0;transform:scaleX(-1) scale(1.02)} }
+.pitch-pill { border-color: rgba(201,255,61,.3); color: var(--acid); }
+.padel-pill { border-color: rgba(125,201,255,.3); color: var(--blue); }
+.gym-pill { border-color: rgba(255,139,61,.3); color: var(--orange); }
 @keyframes phaseDot { 0%,42%,100%{background:#9ca8a1} 50%,92%{background:#ef4f37} }
+
+/* 1. FOOTBALL STADIUM PITCH STAGE */
+.football-stage {
+  background: radial-gradient(ellipse at 50% 60%, #154527 0%, #0a2114 85%);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+}
+.pitch-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.pitch-turf-bg {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 40px, transparent 40px, transparent 80px);
+}
+.pitch-markings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pitch-circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130px;
+  height: 130px;
+  transform: translate(-50%, -50%) scaleY(0.5);
+  border: 2px solid rgba(255,255,255,0.22);
+  border-radius: 50%;
+}
+.pitch-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.22);
+  transform: translateX(-50%);
+}
+.pitch-box {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 12px;
+  height: 52px;
+  border: 2px solid rgba(255,255,255,0.18);
+  border-bottom: 0;
+}
+.pitch-arc {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  width: 60px;
+  height: 30px;
+  border: 2px solid rgba(255,255,255,0.18);
+  border-bottom: 0;
+  border-radius: 30px 30px 0 0;
+  transform: translateX(-50%);
+}
+.pitch-cones {
+  position: absolute;
+  bottom: 45px;
+  left: 20%;
+  right: 20%;
+  display: flex;
+  justify-content: space-around;
+}
+.pitch-cones i {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 12px solid #ff7a18;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+.pitch-ball {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 60%, #334155 100%);
+  border: 1.5px solid #0f172a;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.7);
+  bottom: 42px;
+  left: 30%;
+  animation: footballRoll var(--loop-speed, 3.6s) cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+@keyframes footballRoll {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50% { transform: translateX(110px) rotate(360deg); }
+}
+
+/* 2. PADEL TOURNAMENT COURT STAGE */
+.padel-stage {
+  background: radial-gradient(ellipse at 50% 60%, #103b68 0%, #081d34 85%);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+}
+.court-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.court-glass-posts {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 70px;
+  border: 2px solid rgba(125, 201, 255, 0.35);
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(125, 201, 255, 0.08), transparent);
+  border-radius: 8px 8px 0 0;
+}
+.court-lines {
+  position: absolute;
+  inset: 0;
+}
+.court-service-box {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 45%;
+  bottom: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+.court-t-line {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  bottom: 20px;
+  width: 2px;
+  background: rgba(255,255,255,0.3);
+  transform: translateX(-50%);
+}
+.court-net {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 44%;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.net-tape {
+  height: 3px;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255,255,255,0.6);
+}
+.net-mesh {
+  flex: 1;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.2) 0, rgba(255,255,255,0.2) 4px, transparent 4px, transparent 8px);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.court-ball {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #eaff3b 0%, #c5df13 70%, #7d9600 100%);
+  box-shadow: 0 0 12px rgba(234, 255, 59, 0.6);
+  top: 38%;
+  left: 28%;
+  animation: padelBounce var(--loop-speed, 3.6s) cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+@keyframes padelBounce {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(60px, -24px); }
+  50% { transform: translate(120px, 12px); }
+  75% { transform: translate(60px, -20px); }
+}
+
+/* 3. GYM BIOMECHANICAL RIG STAGE */
+.gym-stage {
+  background: radial-gradient(ellipse at 50% 55%, #18231c 0%, #090e0b 85%);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+}
+.gym-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.gym-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #3a4a40 20%, #3a4a40 80%, transparent);
+}
+.machine-hardware {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.machine-frame-rail {
+  position: absolute;
+  right: 26%;
+  top: 15%;
+  bottom: 20px;
+  width: 14px;
+  background: #242c27;
+  border: 1px solid #3c4841;
+  border-radius: 4px;
+}
+.machine-pulley-top {
+  position: absolute;
+  right: 25%;
+  top: 14%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #6b7a72;
+  background: #19201c;
+}
+.machine-cable-line {
+  position: absolute;
+  right: 27%;
+  top: 18%;
+  bottom: 35%;
+  width: 2px;
+  background: #c9ff3d;
+  box-shadow: 0 0 6px rgba(201,255,61,0.4);
+}
+.machine-bar {
+  position: absolute;
+  right: 20%;
+  top: 32%;
+  width: 70px;
+  height: 6px;
+  background: #8b9992;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.machine-weight-plates {
+  position: absolute;
+  right: 24%;
+  bottom: 24px;
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.machine-weight-plates i {
+  display: block;
+  height: 6px;
+  background: #3c4841;
+  border-radius: 2px;
+  border: 1px solid #5a6b61;
+}
+.machine-seat-pad {
+  position: absolute;
+  left: 32%;
+  bottom: 35px;
+  width: 48px;
+  height: 14px;
+  background: #ff5f6d;
+  border-radius: 4px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+}
+
+/* 4. STUDIO MAT STAGE */
+.mat-stage {
+  background: radial-gradient(ellipse at 50% 55%, #18221b 0%, #070a08 85%);
+}
+.mat-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.studio-mat-cushion {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 28px;
+  height: 10px;
+  background: #2a3d32;
+  border: 1px solid #4a6855;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+/* ATHLETE FIGURE ENGINE */
+.sport-athlete, .gym-lifter, .mat-athlete {
+  --body: #c9ff3d;
+  --muscle-glow: #ff8b3d;
+  position: absolute;
+  left: 45%;
+  bottom: 30px;
+  width: 70px;
+  height: 140px;
+  transform-origin: 35px 120px;
+  transform: translateX(-50%) translateZ(0);
+}
+.player-head, .gym-head, .lifter-head {
+  position: absolute;
+  left: 23px;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--body);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.player-torso, .gym-torso, .lifter-torso {
+  position: absolute;
+  left: 27px;
+  top: 26px;
+  width: 16px;
+  height: 52px;
+  border-radius: 8px;
+  background: var(--body);
+}
+.player-torso .jersey-no {
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #0b110e;
+  line-height: 22px;
+}
+.player-arm, .lifter-arm {
+  position: absolute;
+  width: 10px;
+  background: var(--body);
+  border-radius: 6px;
+  transform-origin: 5px 5px;
+}
+.arm-l { left: 28px; top: 30px; height: 46px; }
+.arm-r { left: 32px; top: 30px; height: 46px; }
+.player-leg, .lifter-leg {
+  position: absolute;
+  width: 11px;
+  background: var(--body);
+  border-radius: 6px;
+  transform-origin: 5.5px 5.5px;
+}
+.leg-l { left: 26px; top: 72px; height: 60px; }
+.leg-r { left: 33px; top: 72px; height: 60px; }
+
+.padel-racket {
+  position: absolute;
+  bottom: -14px;
+  right: -8px;
+  width: 16px;
+  height: 22px;
+  background: #111;
+  border: 2px solid #00f0ff;
+  border-radius: 50%;
+  transform: rotate(20deg);
+}
+
+/* ACTIVE MUSCLE GLOW HIGHLIGHTING */
+.muscles-on .target-muscle-glow,
+.muscles-on .muscle-glow-core {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: rgba(255, 110, 48, 0.85);
+  box-shadow: 0 0 16px rgba(255, 110, 48, 0.9);
+}
+.muscles-on .motion-pulldown .lifter-torso,
+.muscles-on .motion-row .lifter-torso {
+  background: #ff7a29;
+  box-shadow: 0 0 16px rgba(255, 122, 41, 0.7);
+}
+.muscles-on .motion-chestpress .lifter-torso {
+  background: #ff5252;
+  box-shadow: 0 0 16px rgba(255, 82, 82, 0.7);
+}
+.muscles-on .motion-legpress .lifter-leg,
+.muscles-on .motion-bike .lifter-leg,
+.muscles-on .football-stage .player-leg {
+  background: #ff9900;
+  box-shadow: 0 0 14px rgba(255, 153, 0, 0.7);
+}
+.muscles-off .sport-athlete,
+.muscles-off .gym-lifter,
+.muscles-off .mat-athlete {
+  filter: grayscale(0.8);
+}
+.muscles-off .muscle-callout { opacity: .45; }
+
+/* KINEMATIC MOTION LOOPS */
+.motion-football_jog .leg-l { animation: marchL 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.motion-football_jog .leg-r { animation: marchR 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.motion-football_jog .arm-l { animation: marchR 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.motion-football_jog .arm-r { animation: marchL 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+
+.motion-football_dynamic .leg-r { animation: highKick 1.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes highKick { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(-75deg); } }
+
+.motion-football_agility .football-player { animation: shuffleLateral 1.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes shuffleLateral { 0%, 100% { transform: translateX(-40px); } 50% { transform: translateX(40px); } }
+
+.motion-football_strides .football-player { animation: strideSprint 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes strideSprint { 0%, 100% { transform: translateX(-30px) rotate(10deg); } 50% { transform: translateX(30px) rotate(10deg); } }
+
+.motion-padel_jog .padel-player { animation: courtJog 1.2s ease-in-out infinite; }
+@keyframes courtJog { 0%, 100% { transform: translateX(-20px); } 50% { transform: translateX(20px); } }
+
+.motion-padel_rally .arm-r { animation: padelSwing 1.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes padelSwing { 0%, 100% { transform: rotate(45deg); } 50% { transform: rotate(-90deg) scale(1.1); } }
+
+.motion-padel_shoulder .arm-r { animation: shoulderCircle 1.8s linear infinite; }
+@keyframes shoulderCircle { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.motion-pulldown .arm-l, .motion-pulldown .arm-r { animation: pullDownLats 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.motion-pulldown .machine-bar { animation: barPulldown 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes pullDownLats { 0%, 100% { transform: rotate(145deg) scaleY(1.1); } 50% { transform: rotate(45deg) scaleY(0.9); } }
+@keyframes barPulldown { 0%, 100% { top: 32%; } 50% { top: 48%; } }
+
+.motion-legpress .gym-lifter { transform: rotate(-70deg) translate(-20px, 30px); }
+.motion-legpress .leg-l, .motion-legpress .leg-r { animation: legPressMotion 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes legPressMotion { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(85deg); } }
+
+.motion-chestpress .arm-l, .motion-chestpress .arm-r { animation: chestPressMotion 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes chestPressMotion { 0%, 100% { transform: rotate(20deg) scaleY(0.9); } 50% { transform: rotate(88deg) scaleY(1.15); } }
+
+.motion-row .gym-lifter { transform: translateY(10px); }
+.motion-row .arm-l, .motion-row .arm-r { animation: rowPullMotion 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes rowPullMotion { 0%, 100% { transform: rotate(80deg) scaleY(1.15); } 50% { transform: rotate(18deg) scaleY(0.8); } }
+
+.motion-hinge .gym-lifter { animation: romanChairHinge 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+@keyframes romanChairHinge { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(50deg) translate(14px, 6px); } }
+
+.motion-bike .leg-l, .motion-bike .leg-r { animation: pedalPedal 1s linear infinite; }
+@keyframes pedalPedal { to { transform: rotate(360deg); } }
 
 .motion-controls {
   display: grid;
@@ -420,8 +860,6 @@ h1, h2, h3, p { margin-top: 0; }
 .load-panel { margin:8px 0 14px;padding:14px;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:var(--panel); }
 .load-fields { display:grid;grid-template-columns:1fr 1fr;gap:10px; }.load-fields label{color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.load-fields label>span{display:flex;align-items:center;margin-top:6px;border:1px solid var(--line);border-radius:11px;background:#0c0f0d;overflow:hidden}.load-fields input{width:100%;min-width:0;height:48px;padding:0 10px;border:0;background:transparent;color:var(--text);font:inherit;font-size:18px;font-weight:900}.load-fields em{padding-right:10px;color:var(--muted);font-style:normal;font-size:11px}
 .load-panel p{margin:9px 0 0;color:var(--muted);font-size:11px}.load-panel p strong{color:var(--text)}
-.sprite-motion{aspect-ratio:1.55/1;background:radial-gradient(circle at 50% 35%, #18221b 0%, #070a08 100%);transform:translateZ(0);will-change:transform;backface-visibility:hidden;}.sprite-frame{position:absolute;inset:0;background-image:url('assets/priority-motion-atlas.webp');background-repeat:no-repeat;background-size:600% 700%;background-position:0 var(--row);animation:spriteSix var(--loop-speed) steps(1,end) infinite;transform:translateZ(0);will-change:background-position;backface-visibility:hidden;image-rendering:-webkit-optimize-contrast;}.sprite-motion.is-paused .sprite-frame{animation-play-state:paused}.sprite-motion .phase-pill{background:rgba(12,15,13,.82);color:#fff}.sprite-motion .guide-callout{background:rgba(201,255,61,.95);color:#10140b;}.sprite-motion.muscles-off .sprite-frame{filter:grayscale(1)}
-@keyframes spriteSix{0%,100%{background-position:0 var(--row)}16.66%{background-position:20% var(--row)}33.33%{background-position:40% var(--row)}50%{background-position:60% var(--row)}66.66%{background-position:80% var(--row)}83.33%{background-position:100% var(--row)}}
 .set-log-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.set-log-kicker{display:block;color:var(--acid);font-size:9px;font-weight:950;letter-spacing:.12em;text-transform:uppercase}.set-log-head h2{margin:2px 0 0;font-size:16px;font-weight:900}.set-log-actions{display:flex;gap:6px;flex-wrap:wrap}.voice-set-btn{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.04);color:var(--text);font-size:11px;font-weight:800;cursor:pointer;transition:all .15s ease;white-space:nowrap}.voice-set-btn:hover{border-color:var(--acid);color:var(--acid);background:rgba(201,255,61,.08)}
 .set-table-header{display:grid;grid-template-columns:32px 56px 1.2fr 1fr .9fr 44px;gap:6px;align-items:center;padding:0 10px 8px;color:var(--muted);font-size:9.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-align:center}.set-table-header .col-set{text-align:start}.set-table-header .col-prev{text-align:center}
 .set-log-grid{display:grid;gap:10px}.set-card-row{border:1px solid var(--line);border-radius:16px;background:#090c0a;padding:10px 12px;transition:border-color .2s ease,background .2s ease,transform .2s ease;transform:translateZ(0);}.set-card-row.is-completed{border-color:rgba(201,255,61,.3);background:rgba(201,255,61,.03)}

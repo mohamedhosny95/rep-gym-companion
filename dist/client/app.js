@@ -50,24 +50,24 @@ const sessions = {
     name: "Football Warm-up & Cooldown", short: "FB", meta: "Monday · Before / after your game", icon: "flame", accent: "#ff5f6d",
     description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites.",
     exercises: [
-      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "walk", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
-      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
-      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "walk", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
-      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "walk", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
-      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "walk", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
-      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
+      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "football_jog", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
+      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "football_dynamic", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "football_agility", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
+      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "football_strides", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
+      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "football_cooldown", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
+      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "football_stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
     ]
   },
   padel: {
     name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Wednesday · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
     description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point.",
     exercises: [
-      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "walk", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
-      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
-      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "stretch", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
-      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "walk", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
-      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
-      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
+      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "padel_jog", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
+      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "padel_dynamic", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "padel_shoulder", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
+      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "padel_rally", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
+      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "padel_walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
+      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "padel_stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
     ]
   },
   cardio: {
@@ -104,63 +104,203 @@ function ex(name, prescription, intensity, rest, category, motion, setup, execut
 }
 
 const anatomy = {
-  march:       ["mobility", "500% 200%", "0% 0%", "0% 100%", "Hip flexors · Quads · Calves", "flip"],
-  catcow:      ["mobility", "500% 200%", "25% 0%", "25% 100%", "Spinal erectors · Abdominals"],
-  kneel:       ["mobility", "500% 200%", "50% 0%", "50% 100%", "Hip flexors"],
-  floor:       ["mobility", "500% 200%", "75% 0%", "75% 100%", "Glutes · Hamstrings"],
-  birddog:     ["mobility", "500% 200%", "100% 0%", "100% 100%", "Core · Glutes · Back"],
-  plank:       ["core", "400% 200%", "0% 0%", "0% 100%", "Core · Glutes"],
-  breathe:     ["core", "400% 200%", "33.333% 0%", "33.333% 100%", "Deep abdominal wall"],
-  kegel:       ["core", "400% 200%", "66.667% 0%", "66.667% 100%", "Pelvic floor"],
-  grip:        ["core", "400% 200%", "100% 0%", "100% 100%", "Forearm flexors · Hand"],
-  bike:        ["gym", "400% 300%", "0% 0%", "33.333% 0%", "Quads · Glutes · Calves"],
-  legpress:    ["gym", "400% 300%", "66.667% 0%", "100% 0%", "Quads · Glutes"],
-  hinge:       ["gym", "400% 300%", "0% 50%", "33.333% 50%", "Spinal erectors · Glutes · Hamstrings"],
-  chestpress:  ["gym", "400% 300%", "66.667% 50%", "100% 50%", "Chest · Front delts · Triceps"],
-  row:         ["gym", "400% 300%", "0% 100%", "33.333% 100%", "Lats · Rhomboids · Biceps"],
-  pulldown:    ["gym", "400% 300%", "66.667% 100%", "100% 100%", "Lats · Biceps"],
-  walk:        ["cardio", "300% 200%", "0% 0%", "0% 100%", "Glutes · Quads · Calves"],
-  inclinewalk: ["cardio", "300% 200%", "50% 0%", "50% 100%", "Glutes · Quads · Core"],
-  stretch:     ["cardio", "300% 200%", "100% 0%", "100% 100%", "Lats · Obliques"]
+  march:       ["mobility", "Hip flexors · Quads · Calves"],
+  catcow:      ["mobility", "Spinal erectors · Abdominals"],
+  kneel:       ["mobility", "Hip flexors · Quads"],
+  floor:       ["mobility", "Glutes · Hamstrings"],
+  birddog:     ["mobility", "Core · Glutes · Lower back"],
+  plank:       ["core", "Core · Glutes · Shoulders"],
+  breathe:     ["core", "Deep abdominal wall · Diaphragm"],
+  kegel:       ["core", "Pelvic floor"],
+  grip:        ["core", "Forearm flexors · Hand"],
+  bike:        ["gym", "Quadriceps · Glutes · Calves"],
+  legpress:    ["gym", "Quadriceps · Glutes"],
+  hinge:       ["gym", "Hamstrings · Glutes · Erector Spinae"],
+  chestpress:  ["gym", "Pectorals · Front delts · Triceps"],
+  row:         ["gym", "Lats · Rhomboids · Biceps"],
+  pulldown:    ["gym", "Lats · Teres major · Biceps"],
+  walk:        ["cardio", "Glutes · Quads · Calves"],
+  inclinewalk: ["cardio", "Glutes · Quads · Calves · Core"],
+  stretch:     ["cardio", "Lats · Obliques · Hamstrings"],
+  // Football specific
+  football_jog:      ["football", "Quadriceps · Hamstrings · Calves"],
+  football_dynamic:  ["football", "Hip flexors · Glutes · Hamstrings"],
+  football_agility:  ["football", "Adductors (Groin) · Calves · Glutes"],
+  football_strides:  ["football", "Hamstrings · Quadriceps · Glutes"],
+  football_cooldown: ["football", "Full lower body recovery"],
+  football_stretch:  ["football", "Hamstrings · Adductors · Calves"],
+  // Padel specific
+  padel_jog:         ["padel", "Calves · Quadriceps · Core"],
+  padel_dynamic:     ["padel", "Core · Delts · Hip flexors"],
+  padel_shoulder:    ["padel", "Rotator cuff · Front & Rear Delts"],
+  padel_rally:       ["padel", "Shoulders · Forearms · Core"],
+  padel_walk:        ["padel", "Calves · Full body recovery"],
+  padel_stretch:     ["padel", "Forearms · Delts · Lats"]
 };
 
 const motionGuide = {
-  march:["Lift · Switch","ارفع · بدّل",180], catcow:["Inhale: cow · Exhale: cat","شهيق: بقرة · زفير: قطة",0], kneel:["Ease forward · Hold","تقدم برفق · اثبت",45],
-  floor:["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",45], birddog:["Extend · Hold · Return","مد · اثبت · عد",60], plank:["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
-  breathe:["Exhale · Draw in · Hold","زفير · اسحب للداخل · اثبت",20], kegel:["Contract 5s · Fully release 5s","شد 5ث · استرخِ 5ث",0], grip:["Close 2s · Open 2s","أغلق 2ث · افتح 2ث",0],
-  bike:["Smooth pedal · Easy breath","دوران سلس · تنفس سهل",300], legpress:["Lower 2s · Press 1s","انزل 2ث · ادفع 1ث",0], hinge:["Lower 2s · Neutral 1s","انزل 2ث · محايد 1ث",0],
-  chestpress:["Return 2s · Press 1s","عد 2ث · ادفع 1ث",0], row:["Reach 2s · Pull 1s","مد 2ث · اسحب 1ث",0], pulldown:["Rise 2s · Pull 1s","اصعد 2ث · اسحب 1ث",0],
-  walk:["Easy stride · Natural arms","خطوة سهلة · ذراعان طبيعيان",300], inclinewalk:["Upright · Short sentences","جسم مستقيم · جمل قصيرة",1500], stretch:["Ease in · Hold · No bounce","ادخل برفق · اثبت · دون ارتداد",30]
+  march:       ["Lift · Switch","ارفع · بدّل",180],
+  catcow:      ["Inhale: cow · Exhale: cat","شهيق: بقرة · زفير: قطة",0],
+  kneel:       ["Ease forward · Hold","تقدم برفق · اثبت",45],
+  floor:       ["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",45],
+  birddog:     ["Extend · Hold · Return","مد · اثبت · عد",60],
+  plank:       ["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
+  breathe:     ["Exhale · Draw in · Hold","زفير · اسحب للداخل · اثبت",20],
+  kegel:       ["Contract 5s · Fully release 5s","شد 5ث · استرخِ 5ث",0],
+  grip:        ["Close 2s · Open 2s","أغلق 2ث · افتح 2ث",0],
+  bike:        ["Smooth pedal · Easy breath","دوران سلس · تنفس سهل",300],
+  legpress:    ["Lower 2s · Press 1s","انزل 2ث · ادفع 1ث",0],
+  hinge:       ["Lower 2s · Neutral 1s","انزل 2ث · محايد 1ث",0],
+  chestpress:  ["Return 2s · Press 1s","عد 2ث · ادفع 1ث",0],
+  row:         ["Reach 2s · Pull 1s","مد 2ث · اسحب 1ث",0],
+  pulldown:    ["Rise 2s · Pull 1s","اصعد 2ث · اسحب 1ث",0],
+  walk:        ["Easy stride · Natural arms","خطوة سهلة · ذراعان طبيعيان",300],
+  inclinewalk: ["Upright · Short sentences","جسم مستقيم · جمل قصيرة",1500],
+  stretch:     ["Ease in · Hold · No bounce","ادخل برفق · اثبت · دون ارتداد",30],
+  // Football
+  football_jog:      ["Easy pitch jog · Light on balls of feet","هرولة خفيفة على أرض الملعب · خفة في الخطوات",180],
+  football_dynamic:  ["Leg swings · High knees · Butt kicks","أرجحة الساق · رفع الركبتين · ضرب الكعب",0],
+  football_agility:  ["Low center of gravity · Quick feet","مركز ثقل منخفض · حركة أقدام سريعة",0],
+  football_strides:  ["Smooth acceleration 60% → 90%","تسارع تدريجي 60% ← 90%",0],
+  football_cooldown: ["Lower heart rate · Deep breaths","خفض نبض القلب · تنفس عميق",180],
+  football_stretch:  ["Hold 30s · Priority on groin & hamstrings","اثبت 30ث · الأولوية للمقربة والخلفية",30],
+  // Padel
+  padel_jog:         ["Court perimeter jog · Quick split steps","هرولة حول الملعب · خطوات سريعة",150],
+  padel_dynamic:     ["Dynamic lunges + torso twists","اندفاعات ديناميكية + دوران الجذع",0],
+  padel_shoulder:    ["Full shoulder rotations · Rotator cuff prep","دوران كامل للكتف · تهيئة الكفة المدورة",0],
+  padel_rally:       ["Shadow swings · Bandeja & volley timing","ضربات حرة · توقيت البانديخا والكرات الطائرة",0],
+  padel_walk:        ["Relaxed court walk · Heart rate recovery","مشي مريح داخل الملعب · استعادة النبض",120],
+  padel_stretch:     ["Forearm flexors · Shoulders · Calves","عضلات الساعد · الأكتاف · السمانة",30]
 };
 
-const motionAtlasRows = { legpress:0, hinge:1, chestpress:2, row:3, pulldown:4, floor:5, birddog:6 };
-
 function anatomyVisual(motion) {
-  const [atlas,size,a,b,muscles,flip] = anatomy[motion] || anatomy.march;
-  const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
-  const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
-  if(state.viewMode==="side" && motion in motionAtlasRows){
-    const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
-    return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
+  const [type, muscles] = anatomy[motion] || ["gym", "Active muscles"];
+  const u = REP_I18N[state.lang].ui, guide = motionGuide[motion] || motionGuide.march;
+  const isPaused = state.paused ? "is-paused" : "";
+  const musclesClass = state.muscles ? "muscles-on" : "muscles-off";
+  const speedStyle = `--loop-speed:${3.6 / state.speed}s;`;
+
+  // 1. Dedicated Football Stadium & Pitch Stage
+  if (motion.startsWith("football_") || motion === "football") {
+    return `<div class="anatomy-motion football-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
       <div class="visual-hud-top">
-        <span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
+        <span class="phase-pill pitch-pill"><i></i> ⚽ ${state.lang === "ar" ? "ملعب كرة القدم" : "FOOTBALL PITCH"}</span>
       </div>
-      <i class="sprite-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
+      <div class="pitch-container">
+        <div class="pitch-turf-bg"></div>
+        <div class="pitch-markings">
+          <div class="pitch-circle"></div>
+          <div class="pitch-line"></div>
+          <div class="pitch-box"></div>
+          <div class="pitch-arc"></div>
+        </div>
+        <div class="pitch-cones"><i></i><i></i><i></i></div>
+        <div class="pitch-ball"></div>
+        <div class="sport-athlete football-player ${motion}">
+          <div class="player-shadow"></div>
+          <div class="player-head"></div>
+          <div class="player-torso"><span class="jersey-no">10</span></div>
+          <div class="player-arm arm-l"></div>
+          <div class="player-arm arm-r"></div>
+          <div class="player-leg leg-l"></div>
+          <div class="player-leg leg-r"></div>
+        </div>
+      </div>
       <div class="visual-hud-bottom">
-        <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
         <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
       </div>
     </div>`;
   }
-  const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
-  return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
+
+  // 2. Dedicated Padel Tournament Glass-Court Stage
+  if (motion.startsWith("padel_") || motion === "padel") {
+    return `<div class="anatomy-motion padel-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+      <div class="visual-hud-top">
+        <span class="phase-pill padel-pill"><i></i> 🎾 ${state.lang === "ar" ? "ملعب بادل زجاجي" : "PADEL COURT"}</span>
+      </div>
+      <div class="court-container">
+        <div class="court-turf-bg"></div>
+        <div class="court-glass-posts"><i></i><i></i><i></i></div>
+        <div class="court-lines">
+          <div class="court-t-line"></div>
+          <div class="court-service-box"></div>
+        </div>
+        <div class="court-net">
+          <div class="net-tape"></div>
+          <div class="net-mesh"></div>
+        </div>
+        <div class="court-ball"></div>
+        <div class="sport-athlete padel-player ${motion}">
+          <div class="player-shadow"></div>
+          <div class="player-head"></div>
+          <div class="player-torso"></div>
+          <div class="player-arm arm-l"></div>
+          <div class="player-arm arm-r"><div class="padel-racket"></div></div>
+          <div class="player-leg leg-l"></div>
+          <div class="player-leg leg-r"></div>
+        </div>
+      </div>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
+    </div>`;
+  }
+
+  // 3. Gym Biomechanics Rig Stage (Lat Pulldown, Leg Press, Row, Chest Press, Bike, Hinge, Treadmill)
+  if (["pulldown", "legpress", "row", "chestpress", "hinge", "bike", "walk", "inclinewalk"].includes(motion)) {
+    return `<div class="anatomy-motion gym-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+      <div class="visual-hud-top">
+        <span class="phase-pill gym-pill"><i></i> 🏋️ ${state.lang === "ar" ? "توجيه الأداء والمعدات" : "BIOMECHANICAL RIG"}</span>
+      </div>
+      <div class="gym-container ${motion}">
+        <div class="gym-floor"></div>
+        <div class="machine-hardware">
+          <div class="machine-frame-rail"></div>
+          <div class="machine-pulley-top"></div>
+          <div class="machine-cable-line"></div>
+          <div class="machine-bar"></div>
+          <div class="machine-weight-plates"><i></i><i></i><i></i><i></i></div>
+          <div class="machine-seat-pad"></div>
+        </div>
+        <div class="gym-lifter ${motion}">
+          <div class="lifter-shadow"></div>
+          <div class="lifter-head"></div>
+          <div class="lifter-torso"><span class="muscle-glow-core"></span></div>
+          <div class="lifter-arm arm-l"></div>
+          <div class="lifter-arm arm-r"></div>
+          <div class="lifter-leg leg-l"></div>
+          <div class="lifter-leg leg-r"></div>
+        </div>
+      </div>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
+    </div>`;
+  }
+
+  // 4. Studio Mat Stage for Mobility & Core
+  return `<div class="anatomy-motion mat-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
     <div class="visual-hud-top">
-      <span class="phase-pill"><i></i> ${u.startFinish}</span>
+      <span class="phase-pill mat-pill"><i></i> 🧘 ${state.lang === "ar" ? "حركات التنشيط والجذع" : "MOBILITY & CORE"}</span>
     </div>
-    <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
-    <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
+    <div class="mat-container">
+      <div class="studio-mat-floor"></div>
+      <div class="studio-mat-cushion"></div>
+      <div class="mat-athlete ${motion}">
+        <div class="athlete-shadow"></div>
+        <div class="lifter-head"></div>
+        <div class="lifter-torso"><span class="muscle-glow-core"></span></div>
+        <div class="lifter-arm arm-l"></div>
+        <div class="lifter-arm arm-r"></div>
+        <div class="lifter-leg leg-l"></div>
+        <div class="lifter-leg leg-r"></div>
+      </div>
+    </div>
     <div class="visual-hud-bottom">
-      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+      <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
       <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
     </div>
   </div>`;
