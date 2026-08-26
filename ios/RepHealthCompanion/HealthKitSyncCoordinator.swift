@@ -34,22 +34,22 @@ final class HealthKitSyncCoordinator: ObservableObject {
     @Published private(set) var lastSync: Date?
     @Published private(set) var status = "Not connected"
 
-    private var readTypes: Set<HKObjectType> {
+    private var readTypes: Set<HKSampleType> {
         let quantities: [HKQuantityTypeIdentifier] = [
             .heartRate, .heartRateVariabilitySDNN, .restingHeartRate,
             .respiratoryRate, .activeEnergyBurned, .stepCount, .vo2Max,
             .oxygenSaturation, .appleExerciseTime, .appleStandTime,
             .appleSleepingWristTemperature
         ]
-        var result = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
+        var result: Set<HKSampleType> = Set(quantities.compactMap(HKObjectType.quantityType(forIdentifier:)))
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { result.insert(sleep) }
-        if let workout = HKObjectType.workoutType() as HKObjectType? { result.insert(workout) }
+        result.insert(HKObjectType.workoutType())
         return result
     }
 
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else { throw SyncError.healthUnavailable }
-        try await store.requestAuthorization(toShare: [], read: readTypes)
+        try await store.requestAuthorization(toShare: [], read: Set(readTypes.map { $0 as HKObjectType }))
         try await bootstrap()
     }
 
@@ -90,8 +90,10 @@ final class HealthKitSyncCoordinator: ObservableObject {
         async let oxygen = average(.oxygenSaturation, unit: .percent(), interval)
         async let temperature = average(.appleSleepingWristTemperature, unit: .degreeCelsius(), interval)
         async let heartCoverage = heartCoverage(interval)
-        let sleepResult = (try? await sleep) ?? (nil, nil, nil, nil, nil)
-        let coverageResult = (try? await heartCoverage) ?? (0, nil)
+        async let workoutSamples = workoutHeartRateCount(interval)
+        async let sleep = sleepSummary(interval)
+        let sleepResult = (try? await sleep) ?? (total: nil, deep: nil, rem: nil, start: nil, end: nil)
+        let coverageResult = (try? await heartCoverage) ?? (count: 0, minutes: nil)
         let hrvVal = (try? await hrv) ?? nil
         let rhrVal = (try? await rhr) ?? nil
         let respVal = (try? await respiratory) ?? nil
@@ -203,7 +205,7 @@ final class HealthKitSyncCoordinator: ObservableObject {
     }
 }
 
-enum SyncError: Error { case healthUnavailable, configurationMissing, serverRejected, networkError }
+enum SyncError: Error, Equatable { case healthUnavailable, configurationMissing, serverRejected, networkError }
 
 final class RepVitalsUploader {
     static let shared = RepVitalsUploader()

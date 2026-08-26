@@ -23,7 +23,7 @@ jobs:
     name: Validate Swift Companion
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer || true
@@ -37,3 +37,33 @@ jobs:
             swiftc -parse "$file"
           done
           echo "All Swift companion files passed syntax check."
+
+      - name: Typecheck HealthKit companion against the iOS Simulator SDK
+        run: |
+          set -euo pipefail
+          sdk_path="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+          architecture="$(uname -m)"
+          set +e
+          xcrun --sdk iphonesimulator swiftc \
+            -typecheck \
+            -parse-as-library \
+            -sdk "$sdk_path" \
+            -target "${architecture}-apple-ios17.0-simulator" \
+            ios/RepHealthCompanion/HealthKitSyncCoordinator.swift \
+            ios/RepHealthCompanion/RepHealthCompanionApp.swift 2>&1 | tee swift-typecheck.log
+          status="${PIPESTATUS[0]}"
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "### Swift compiler diagnostics"
+              echo '```text'
+              sed -n '1,200p' swift-typecheck.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            diagnostic="$(grep -m1 'error:' swift-typecheck.log || tail -n 1 swift-typecheck.log)"
+            diagnostic="${diagnostic//'%'/'%25'}"
+            diagnostic="${diagnostic//$'\r'/'%0D'}"
+            diagnostic="${diagnostic//$'\n'/'%0A'}"
+            echo "::error title=Swift SDK typecheck::$diagnostic"
+            exit "$status"
+          fi

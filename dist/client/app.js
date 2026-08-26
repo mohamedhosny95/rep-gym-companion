@@ -46,9 +46,33 @@ const sessions = {
       ex("Cooldown Stretches", "4 stretches", "20–30 sec / side", 0, "cooldown", "stretch", "Move to open floor or a stable post.", "Quad stretch · Hamstring/calf stretch · Doorway chest stretch · Overhead lat stretch.", "Static holds, easy breathing, no bouncing.", "Forcing range or turning a stretch into pain.", 4)
     ]
   },
+  football: {
+    name: "Football Warm-up & Cooldown", short: "FB", meta: "Monday · Before / after your game", icon: "flame", accent: "#ff5f6d",
+    description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites.",
+    exercises: [
+      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "walk", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
+      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "walk", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
+      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "walk", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
+      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "walk", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
+      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
+    ]
+  },
+  padel: {
+    name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Wednesday · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
+    description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point.",
+    exercises: [
+      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "walk", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
+      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "stretch", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
+      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "walk", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
+      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
+      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
+    ]
+  },
   cardio: {
-    name: "Cardio Session", short: "CARDIO", meta: "Mon / Wed · 30–35 min", icon: "pulse", accent: "#7dc9ff",
-    description: "Weight-bearing stamina work. Progress pace or incline only after the full main block feels easy.",
+    name: "Fallback Cardio", short: "CARDIO", meta: "Mon / Wed · Only if no game that week · 30–35 min", icon: "pulse", accent: "#7dc9ff",
+    description: "Football and padel already provide strong cardio stimulus, so this is a fallback only — use it for a week your game gets cancelled, not alongside it.",
     exercises: [
       ex("Easy Warm-up Walk", "3–5 min", "Easy pace", 0, "warm-up", "walk", "Set the treadmill flat or at a very gentle incline.", "Walk easily and let your stride settle.", "Breathe comfortably; prepare, don't test yourself.", "Jumping straight to main pace."),
       ex("Incline Treadmill Walk", "20–25 min", "RPE 5–6 · 4–6% incline", 0, "main", "inclinewalk", "Start around 4–6% incline at a comfortable walking pace.", "Hold RPE 5–6: short sentences are possible, full conversation is not.", "Brace gently, swing arms naturally, and look forward.", "Overstriding or holding the rails. Progress incline or pace, not duration."),
@@ -235,7 +259,7 @@ function updatePreviewUI(){
       const banner = document.createElement("div");
       banner.className = "preview-mode-banner";
       banner.id = "previewBanner";
-      banner.innerHTML = `
+      banner.innerHTML = REP_SAFE_DOM.sanitize(`
         <div class="preview-banner-inner" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;">
           <span style="font-size:11px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:6px;">
             <span style="font-size:14px;">🔬</span>
@@ -243,7 +267,7 @@ function updatePreviewUI(){
           </span>
           <button type="button" id="exitPreviewBannerBtn" style="background:#0b0d0c;color:var(--acid);border:1px solid var(--acid);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap;">${ar?"إنهاء المعاينة ✕":"Exit Preview ✕"}</button>
         </div>
-      `;
+      `);
       document.querySelector(".topbar")?.insertAdjacentElement("afterend", banner);
       document.querySelector("#exitPreviewBannerBtn")?.addEventListener("click", togglePreviewMode);
     }
@@ -279,7 +303,8 @@ function esc(value) { return String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;
 function currentDay() { return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]; }
 function todayPlan(day) {
   if (["Sunday","Tuesday","Thursday"].includes(day)) return state.lang==="ar"?"تنشيط + جيم":"Activation + Gym";
-  if (["Monday","Wednesday"].includes(day)) return state.lang==="ar"?"تنشيط + كارديو":"Activation + Cardio";
+  if (day === "Monday") return state.lang==="ar"?"تنشيط + كرة قدم":"Activation + Football";
+  if (day === "Wednesday") return state.lang==="ar"?"تنشيط + بادل":"Activation + Padel";
   if (day === "Friday") return state.lang==="ar"?"راحة":"Rest";
   return state.lang==="ar"?"استشفاء نشط + سبا":"Active recovery + Spa";
 }
@@ -309,6 +334,7 @@ function backupReminderStrip(){
   const sub=notionProtected()?(ar?"متصل بـNotion، لكن الإعدادات والملاحظات المحلية لا تُنسخ إلا بالتصدير.":"Notion is connected, but local settings and drafts are only saved by exporting."):(ar?"بياناتك محفوظة على هذا الجهاز فقط. نسخة ضائعة تعني بداية من الصفر.":"Your data lives only on this device. Losing it means starting from zero.");
   return `<section class="backup-reminder"><div><small>${ar?"نسخة احتياطية":"BACKUP"}</small><strong>${neverBacked?(ar?"لم تُصدَّر نسخة احتياطية بعد":"You've never exported a backup"):(ar?"حان وقت نسخة احتياطية جديدة":"Time for a fresh backup")}</strong><p>${sub}</p></div><div class="backup-reminder-actions"><button data-backup-export>${ar?"تصدير الآن":"Export now"}</button><button data-backup-snooze>${ar?"ذكّرني لاحقاً":"Remind me later"}</button></div></section>`;
 }
+window.backupReminderStrip=backupReminderStrip;
 function snoozeBackupReminder(){state.backupSnoozedUntil=new Date(Date.now()+7*86400000).toISOString();persist();renderHome();}
 
 // --- Daily reminders -------------------------------------------------------
@@ -435,7 +461,7 @@ function renderInsights(){
   const strainCount=horizonDays>14?14:horizonDays;
   const strainBuckets=Array.from({length:strainCount},(_,i)=>computeStrainScore(shiftLocalDay(-(strainCount-1-i))));
   const recoveryPoints=[];for(let i=horizonDays-1;i>=0;i--){const r=computeRecoveryScore(shiftLocalDay(-i));if(r)recoveryPoints.push(r.score);}
-  app.innerHTML=`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
+  app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"التحليلات":"INSIGHTS",ar?"ما تقوله بياناتك.":"What your data says.",ar?"نظرة تجمع التدريب والتغذية والاستشفاء والوزن في مكان واحد.":"One view that reads training, nutrition, recovery, and weight together.")}
   <section class="insight-stats">
     <article><small>${ar?"سلسلة الأيام":"DAY STREAK"}</small><strong>${computeStreak()}</strong></article>
     <article><small>${ar?"الحصص هذا الأسبوع":"SESSIONS THIS WEEK"}</small><strong>${sessions7}</strong></article>
@@ -463,7 +489,7 @@ function renderInsights(){
   ${window.REP_MUSCLE_HEATMAP ? window.REP_MUSCLE_HEATMAP.renderHeatmapCard(state, ar) : ""}
   ${metricGuideCard(ar)}
   ${journalInsightsCard(ar)}
-  <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`;
+  <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`);
   document.querySelectorAll("[data-trend-horizon]").forEach(btn=>{btn.onclick=()=>{state.trendHorizon=btn.dataset.trendHorizon;persist();renderInsights();};});
 }
 function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
@@ -535,7 +561,7 @@ function showPlateCalculator(initialWeight=60,onApply=null){
   const ar=state.lang==="ar";
   const overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=`
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`
     <div class="workout-preflight-panel" style="max-width:420px;margin:auto;">
       <button class="dialog-close" data-plate-close aria-label="Close">×</button>
       <small style="color:var(--acid);font-weight:900;">${ar?"حاسبة الأوزان والبار":"BARBELL PLATE CALCULATOR"}</small>
@@ -546,7 +572,7 @@ function showPlateCalculator(initialWeight=60,onApply=null){
       </div>
       <div data-plate-result style="background:#0c100d;border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;"></div>
     </div>
-  `;
+  `);
   document.body.appendChild(overlay);
   overlay.querySelector("[data-plate-close]").onclick=()=>overlay.remove();
 
@@ -563,7 +589,7 @@ function showPlateCalculator(initialWeight=60,onApply=null){
     }
     const colorMap={25:"#ef4444",20:"#3b82f6",15:"#eab308",10:"#22c55e",5:"#f8fafc",2.5:"#64748b",1.25:"#94a3b8"};
     const plateItems=Object.entries(plateCounts);
-    overlay.querySelector("[data-plate-result]").innerHTML=`
+    overlay.querySelector("[data-plate-result]").innerHTML=REP_SAFE_DOM.sanitize(`
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
         <small style="color:var(--muted);">${ar?"لكل جهة من البار":"Per side"}: <b>${sideWeight} kg</b></small>
         ${rem>0?`<span style="color:#ff8b3d;font-size:10px;">(${rem} kg unallocated)</span>`:""}
@@ -577,7 +603,7 @@ function showPlateCalculator(initialWeight=60,onApply=null){
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
         ${plateItems.map(([weight,count])=>`<span style="padding:4px 9px;border-radius:999px;font-size:11px;font-weight:850;background:${colorMap[weight]};color:#000;">${count}× ${weight}kg</span>`).join("")}
       </div>
-    `;
+    `);
   }
   overlay.querySelector("[data-plate-total]").oninput=updateMath;
   overlay.querySelector("[data-plate-bar]").onchange=updateMath;
@@ -647,7 +673,7 @@ function renderOverview(){
   const items=buildInsights(),note=items[0];
   const resume=REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
-  app.innerHTML=`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}${day==="Friday"?(ar?" · يوم سورة الكهف":" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="hero home-hero"><p class="eyebrow">${ar?"اليوم":"TODAY"}${day==="Friday"?(ar?" · يوم سورة الكهف":" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine(ar)}</h1><p>${recovery?(recovery.calibrating?(ar?"الاستشفاء لا يزال يُعاير — استمر بالتسجيل يومياً.":"Recovery is still calibrating — keep logging daily."):recovery.band==="green"?(ar?"استشفاؤك جيد. اليوم يوم دفع.":"Recovery looks good. Today's a day to push."):recovery.band==="yellow"?(ar?"استشفاء متوسط — اضبط الحمل وفقاً لذلك.":"Recovery is moderate — adjust load accordingly."):(ar?"استشفاء منخفض — أعطِ الجسم وقتاً اليوم.":"Recovery is low — prioritize rest today.")):(ar?"سجّل نومك لرؤية استعدادك اليوم.":"Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${ar?"يوم متتالٍ":"day streak"}</span></div>`:""}
     ${strainRecoveryCard(ar)}
     <div class="today-vitals-sync-bar" style="display:flex;align-items:center;justify-content:space-between;margin:-6px 0 12px;padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.03);font-size:11px;">
@@ -661,7 +687,7 @@ function renderOverview(){
       <button data-today-log-act type="button" style="min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:11px;font-weight:850;cursor:pointer;">+ ${ar?"نشاط رياضي":"Log Activity"}</button>
     </div>
     ${todayFuelSnippet(ar)}
-    ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`;
+    ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${ar?"ملاحظة اليوم":"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`);
   document.querySelector("[data-check-watch-vitals]")?.addEventListener("click",()=>fetchPendingVitals(true));
   document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
   document.querySelector("[data-goto-fuel]")?.addEventListener("click",()=>setPrimaryTab("food"));
@@ -675,7 +701,7 @@ function renderHome() {
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
   const resume = REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
   const streak=computeStreak();
-  app.innerHTML = `
+  app.innerHTML = REP_SAFE_DOM.sanitize(`
     <section class="hero">
       <p class="eyebrow">${u.companion}</p>
       <h1>${u.hero1}<br><em>${u.hero2}</em></h1>
@@ -701,8 +727,8 @@ function renderHome() {
     </section>
     <section class="weekly">
       <div class="section-title"><h2>${u.weekly}</h2><span>${state.lang==="ar"?"الصباح + منتصفه":"AM + mid-morning"}</span></div>
-      <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":["Mon","Wed"].includes(d)?"C":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
-    </section>`;
+      <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":d==="Mon"?"FB":d==="Wed"?"PDL":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
+    </section>`);
   document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.session;
     const continuing = REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
@@ -750,10 +776,10 @@ function showSessionPreview(id,openIndices=new Set()){
       </div>
     </details>`;
   }).join("");
-  app.innerHTML=`<section class="preview-container">${moduleHeader(ls.name,ar?"استعرض الخطة وتقنية كل حركة قبل البدء.":"Preview the plan and each move's technique before you start.",ls.description)}
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="preview-container">${moduleHeader(ls.name,ar?"استعرض الخطة وتقنية كل حركة قبل البدء.":"Preview the plan and each move's technique before you start.",ls.description)}
     <section class="preview-meta"><span>${ls.meta}</span><span>${s.exercises.length} ${u.steps}</span></section>
     <section class="preview-list">${rows}</section>
-    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${ar?"← ابدأ التمرين":"Start workout →"}</button></nav></section>`;
+    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${ar?"← ابدأ التمرين":"Start workout →"}</button></nav></section>`);
   document.querySelector("[data-start-session]").onclick=()=>startSession(id);
   document.querySelector("[data-cancel-preview]").onclick=renderHome;
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
@@ -773,7 +799,6 @@ function exerciseId(base){return base.name==="Back Extension"?(state.swaps.backE
 function normalizedLog(id,sets=3){return REP_TRAINING_SESSION.normalizedLog(state.logs,id,sets);}
 function setsFromLog(log){return REP_TRAINING_SESSION.setsFromLog(log);}
 function progressionAdvice(id){return REP_TRAINING_SESSION.progressionAdvice({logs:state.logs,history:state.history,id,lang:state.lang,recoveryGate:recoveryGate()});}
-function progressionCode(id,sets){return REP_TRAINING_SESSION.progressionCode(id,sets,state.session);}
 function loadPanel(base,item){
   if(!isLoadExercise(item))return "";
   const u=U(), ar=state.lang==="ar", id=exerciseId(base), log=normalizedLog(id,item.sets);
@@ -862,7 +887,7 @@ function showSwapModal(exerciseName){
   if(!subs.length)return;
   const ar=state.lang==="ar",overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=`<div class="workout-preflight-panel" style="max-width:400px;margin:auto;"><button class="dialog-close" data-swap-close aria-label="Close">×</button><small style="color:var(--acid);font-weight:900;">${ar?"بدائل التمرين البيوميكانيكية":"BIOMECHANICAL SUBSTITUTIONS"}</small><h2 style="margin:6px 0 14px;">${esc(exerciseName)}</h2><p style="color:var(--muted);font-size:13px;margin-bottom:14px;">${ar?"اختر بديلاً مناسباً للمعدات المتاحة مع الحفاظ على نفس المحفز العضلي:":"Choose an alternative matching available equipment with equivalent muscle stimulus:"}</p><div style="display:grid;gap:8px;">${subs.map(sub=>`<button class="settings-primary" data-select-swap="${esc(sub)}" style="text-align:left;padding:12px 14px;border-radius:12px;font-size:14px;">${esc(sub)}</button>`).join("")}</div></div>`;
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="workout-preflight-panel" style="max-width:400px;margin:auto;"><button class="dialog-close" data-swap-close aria-label="Close">×</button><small style="color:var(--acid);font-weight:900;">${ar?"بدائل التمرين البيوميكانيكية":"BIOMECHANICAL SUBSTITUTIONS"}</small><h2 style="margin:6px 0 14px;">${esc(exerciseName)}</h2><p style="color:var(--muted);font-size:13px;margin-bottom:14px;">${ar?"اختر بديلاً مناسباً للمعدات المتاحة مع الحفاظ على نفس المحفز العضلي:":"Choose an alternative matching available equipment with equivalent muscle stimulus:"}</p><div style="display:grid;gap:8px;">${subs.map(sub=>`<button class="settings-primary" data-select-swap="${esc(sub)}" style="text-align:left;padding:12px 14px;border-radius:12px;font-size:14px;">${esc(sub)}</button>`).join("")}</div></div>`);
   document.body.appendChild(overlay);
   overlay.querySelector("[data-swap-close]").onclick=()=>overlay.remove();
   overlay.querySelectorAll("[data-select-swap]").forEach(btn=>{btn.onclick=()=>{const chosen=btn.dataset.selectSwap,session=sessions[state.session];if(session&&session.exercises[state.index]){session.exercises[state.index]={...session.exercises[state.index],name:chosen};persist();overlay.remove();renderExercise();showToast(ar?`تم التبديل إلى ${chosen}`:`Swapped to ${chosen}`);}};});
@@ -881,7 +906,7 @@ function startTempoCoach(base, item){
   
   const overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=`<div class="timed-mode-card">
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="timed-mode-card">
     <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
       <div style="text-align:start;"><span style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">⏱️ ${ar?"مدرب الإيقاع":"TEMPO COACH"}</span><h2 style="margin:2px 0 0;font-size:18px;">${esc(item.name)}</h2></div>
       <button class="round-button" data-tempo-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
@@ -902,7 +927,7 @@ function startTempoCoach(base, item){
     <div style="margin-top:6px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:12px;font-size:11px;color:var(--muted);text-align:start;width:100%;">
       <strong style="color:var(--text);">${u.cue}:</strong> ${esc(item.cues)}
     </div>
-  </div>`;
+  </div>`);
   document.body.appendChild(overlay);
   
   const close=()=>{clearInterval(tick);overlay.remove();window.speechSynthesis?.cancel();};
@@ -978,7 +1003,7 @@ function renderExercise() {
   const nextSetIndex = Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
   const isAllDone = nextSetIndex === undefined;
   const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(state.lang==="ar"?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
-  app.innerHTML = `<section class="player" data-swipe>
+  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player" data-swipe>
     <div class="player-header">
       <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
       <div class="player-progress"><strong>${ls.name}</strong><span>${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
@@ -1002,7 +1027,7 @@ function renderExercise() {
       <div class="set-tracker" aria-label="${state.lang==="ar"?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
       <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
-    </article></section>`;
+    </article></section>`);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
@@ -1090,7 +1115,7 @@ function toggleExerciseTimer(motion){
   state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided};
   const overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=`<div class="timed-mode-card">
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="timed-mode-card">
     <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
       <div style="text-align:start;"><span style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">${esc(item.category)} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</span><h2 style="margin:2px 0 0;font-size:18px;">${esc(item.name)}</h2></div>
       <button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
@@ -1110,7 +1135,7 @@ function toggleExerciseTimer(motion){
       <strong style="color:var(--text);">${u.cue}:</strong> ${esc(item.cues)}
     </div>
     <label style="margin-top:6px;font-size:11px;color:#aeb8b2;display:flex;align-items:center;gap:6px;"><input type="checkbox" data-voice ${state.voice?"checked":""}> ${ar?"إرشادات صوتية":"Spoken cues"}</label>
-  </div>`;
+  </div>`);
   document.body.appendChild(overlay);
   overlay.querySelector("[data-timed-close]").onclick=stopExerciseClock;
   overlay.querySelector("[data-timed-skip]").onclick=finishExerciseTimer;
@@ -1255,7 +1280,6 @@ function next(){
   persist();renderExercise();
 }
 function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
-function promoteLogs(){REP_TRAINING_SESSION.promoteLogs(state.logs);}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
 function stopSessionClock(){if(state.sessionClock)clearInterval(state.sessionClock);state.sessionClock=null;}
 function updateSessionClock(){const el=document.querySelector("#sessionElapsed");if(el&&state.sessionStartedAt)el.textContent=formatClock(Math.floor((Date.now()-state.sessionStartedAt)/1000));}
@@ -1266,7 +1290,7 @@ function abandonSession(){
   REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
-  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`;document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
+  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
 }
 // MET (metabolic equivalent) per session type, used only for a rough estimate -
 // there's no heart-rate or wearable data source here, so this is duration x
@@ -1284,12 +1308,6 @@ function logActivity(type,customName,minutes,calories,notes){
   state.history.unshift(record);state.history=state.history.slice(0,60);
   queueWorkout(record);persist();return true;
 }
-function recordSession(){
-  const {record}=REP_TRAINING_SESSION.completeWorkout(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
-  if(record)queueWorkout(record);
-  return record;
-}
-
 function queueWorkout(record){
   if(!record?.entries?.length)return;persist();window.REP_SYNC_RUNTIME?.syncRecord?.({id:`workout-${record.id}`,kind:"workout",workout:{id:String(record.id),date:record.date,type:record.activityLabel||"Recovery",duration:record.duration,entries:record.entries}});
 }
@@ -1300,7 +1318,6 @@ async function syncPending(){
 }
 function syncStatusText(){const ar=state.lang==="ar",key=localStorage.getItem(syncKeyStorage),queued=window.REP_SYNC_OUTBOX?.summary(state.syncQueue).total||0;if(state.pairBusy)return ar?"جارٍ التحقق من المفتاح…":"Checking pairing key…";if(!key)return state.syncState==="auth"?(ar?"أعد اقتران هذا الجهاز":"Pair this device again"):(ar?"يلزم الاتصال مرة واحدة":"One-time connection needed");if(state.syncState==="syncing")return ar?"جارٍ التحقق في Notion…":"Verifying in Notion…";if(queued)return ar?`${queued} سجل قيد الانتظار`:`${queued} record${queued===1?"":"s"} pending`;return ar?"الجهاز مقترن · تمت المزامنة":"Device paired · verified sync";}
 function updateSyncPanel(){document.querySelectorAll("[data-sync-status]").forEach(status=>status.textContent=state.pairMessage||syncStatusText());document.querySelectorAll("[data-sync-all]").forEach(button=>button.disabled=state.syncState==="syncing"||!localStorage.getItem(syncKeyStorage));document.querySelectorAll("[data-save-sync-key],[data-food-pair-submit]").forEach(button=>button.disabled=state.pairBusy);}
-function refreshConnectionUI(){if(state.view==="nutrition")renderNutrition();else updateSyncPanel();}
 // validatePairingKey and connectPairingKey are defined in enhancements.js,
 // which always loads after this file and is the single source of truth for
 // pairing-key validation (32-char minimum). Declaring them here too would
@@ -1349,11 +1366,11 @@ async function disablePushReminders(){
 function renderHistory(){
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="history";state.activeTab="train";persist();updatePrimaryTabs();const u=U(),rows=state.history;
   const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
   <section class="notion-sync"><div class="notion-sync-head"><span class="notion-mark">N</span><div><strong>Notion</strong><small data-sync-status>${syncStatusText()}</small></div></div><form class="notion-sync-actions" autocomplete="off"><input data-sync-key type="password" autocomplete="new-password" placeholder="${state.lang==="ar"?"مفتاح الاقتران":"Pairing key"}" aria-label="${state.lang==="ar"?"مفتاح مزامنة Notion":"Notion sync pairing key"}"><button type="button" data-save-sync-key>${state.lang==="ar"?"اقتران":"Pair"}</button><button type="button" class="quiet" data-forget-sync>${state.lang==="ar"?"إلغاء اقتران الجهاز":"Unpair device"}</button></form><p>${state.lang==="ar"?"أدخل المفتاح مرة واحدة لكل جهاز. استخدم زر مزامنة كل شيء في مركز المزامنة لإرسال كل البيانات مباشرةً.":"Enter the key once per device. Use Sync everything in the Sync Center to send all data directly."}</p></section>
   <section class="push-card"><div class="push-head"><span class="push-icon">${ICONS.bell}</span><div><strong>${state.lang==="ar"?"تذكير يومي":"Daily reminder"}</strong><small data-push-status>${pushStatusText()}</small></div></div><div class="push-actions"><input type="time" data-push-time value="${state.pushTime}" aria-label="${state.lang==="ar"?"وقت التذكير اليومي":"Daily reminder time"}" ${state.pushEndpoint?"disabled":""}><button data-push-toggle>${state.pushEndpoint?(state.lang==="ar"?"إيقاف":"Disable"):(state.lang==="ar"?"تفعيل":"Enable")}</button></div><p>${state.lang==="ar"?"إشعار واحد يومياً في الوقت الذي تختاره — حتى عندما يكون التطبيق مغلقاً.":"One notification a day at the time you choose — even when the app is closed."}</p></section>
   <section class="data-tools"><button data-export>${state.lang==="ar"?"تصدير نسخة JSON":"Export JSON backup"}</button><label>${state.lang==="ar"?"استيراد نسخة":"Import backup"}<input data-import type="file" accept="application/json,.json"></label><small>${state.lang==="ar"?"تبقى سجلاتك على هذا الجهاز حتى تفعّل اتصالاً أو تصدّر نسخة أو ترسل صورة للتحليل بالذكاء الاصطناعي.":"Your logs stay on this device until you enable a connection, export a backup, or send an image for AI analysis."}</small><small>${state.lastBackupAt?(state.lang==="ar"?`آخر نسخة احتياطية: ${new Date(state.lastBackupAt).toLocaleDateString("ar-EG",{day:"numeric",month:"short"})}`:`Last backup: ${new Date(state.lastBackupAt).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`):(state.lang==="ar"?"لم تُصدَّر نسخة احتياطية بعد":"No backup exported yet")}</small>${clientErrorCount()?`<button class="quiet" data-diagnostics>${state.lang==="ar"?`سجل الأخطاء (${clientErrorCount()})`:`Error log (${clientErrorCount()})`}</button>`:""}</section>
-  ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div><div><strong>${rows.reduce((n,r)=>n+(r.calories||0),0)}</strong><span>${state.lang==="ar"?"سعرة (تقدير)":"kcal (est.)"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const isActivity=r.session==="activity";const details=isActivity?(r.entries?.[0]?.note?`<small>${esc(r.entries[0].note)}</small>`:""):Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");const name=isActivity?esc(r.activityLabel||"Activity"):sessionText(r.session,sessions[r.session]).name;const meta=isActivity?`${formatClock(r.duration)}${r.calories?` · ${r.calories} kcal`:""}`:`${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}${r.calories?` · ~${r.calories} kcal`:""}`;return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${name}</strong><small>${meta}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`;
+  ${rows.length?`<section class="history-summary"><div><strong>${rows.length}</strong><span>${state.lang==="ar"?"حصة":"sessions"}</span></div><div><strong>${Math.round(rows.reduce((n,r)=>n+r.duration,0)/60)}</strong><span>${state.lang==="ar"?"دقيقة":"minutes"}</span></div><div><strong>${rows.reduce((n,r)=>n+r.sets,0)}</strong><span>${state.lang==="ar"?"مجموعة":"sets"}</span></div><div><strong>${rows.reduce((n,r)=>n+(r.calories||0),0)}</strong><span>${state.lang==="ar"?"سعرة (تقدير)":"kcal (est.)"}</span></div></section><section class="history-list">${Object.entries(best).filter(([,b])=>b.weight).map(([name,b])=>`<article class="pb-card"><small>PERSONAL BEST</small><h2>${esc(state.lang==="ar"?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</h2><strong>${b.weight} kg × ${b.reps||"—"}</strong><span>${progressionAdvice(name)}</span></article>`).join("")}${rows.map(r=>{const isActivity=r.session==="activity";const details=isActivity?(r.entries?.[0]?.note?`<small>${esc(r.entries[0].note)}</small>`:""):Object.entries(r.loads||{}).map(([name,l])=>{const setText=setsFromLog(l).filter(s=>s.weight||s.reps).map((s,i)=>`${i+1}: ${s.weight||"—"}kg × ${s.reps||"—"}${s.rpe?` @${s.rpe}`:""}`).join(" · ");return setText?`<small><b>${esc(name)}</b> ${setText}</small>`:""}).join("");const name=isActivity?esc(r.activityLabel||"Activity"):sessionText(r.session,sessions[r.session]).name;const meta=isActivity?`${formatClock(r.duration)}${r.calories?` · ${r.calories} kcal`:""}`:`${formatClock(r.duration)} · ${r.sets} ${state.lang==="ar"?"مجموعات":"sets"}${r.calories?` · ~${r.calories} kcal`:""}`;return `<article class="history-row"><span>${new Date(r.date).toLocaleDateString(state.lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"short"})}</span><div><strong>${name}</strong><small>${meta}</small>${details}</div></article>`}).join("")}</section>`:`<div class="empty-state">${u.noHistory}</div>`}`);
   document.querySelector("[data-export]").onclick=exportData;document.querySelector("[data-import]").onchange=importData;document.querySelector("[data-save-sync-key]").onclick=savePairingKey;document.querySelector("[data-forget-sync]").onclick=forgetPairingKey;document.querySelector("[data-diagnostics]")?.addEventListener("click",showDiagnostics);document.querySelector("[data-push-toggle]").onclick=togglePushReminders;updateSyncPanel();
 }
 
@@ -1362,7 +1379,7 @@ function showDiagnostics(){
   if(document.querySelector(".diagnostics-panel"))return;
   const ar=state.lang==="ar",log=(()=>{try{return JSON.parse(localStorage.getItem(errorLogKey)||"[]");}catch{return [];}})();
   const box=document.createElement("div");box.className="exit-confirm diagnostics-panel";
-  box.innerHTML=`<strong>${ar?"سجل الأخطاء الأخيرة":"Recent errors"}</strong>${log.length?`<ul class="diagnostics-list">${log.slice().reverse().map(e=>`<li><small>${esc(e.time)} · ${esc(e.source)}</small><span>${esc(e.message)}</span></li>`).join("")}</ul>`:`<p>${ar?"لا توجد أخطاء مسجلة.":"No errors recorded."}</p>`}<button data-clear-log>${ar?"مسح السجل":"Clear log"}</button><button data-close-diagnostics>${ar?"إغلاق":"Close"}</button>`;
+  box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"سجل الأخطاء الأخيرة":"Recent errors"}</strong>${log.length?`<ul class="diagnostics-list">${log.slice().reverse().map(e=>`<li><small>${esc(e.time)} · ${esc(e.source)}</small><span>${esc(e.message)}</span></li>`).join("")}</ul>`:`<p>${ar?"لا توجد أخطاء مسجلة.":"No errors recorded."}</p>`}<button data-clear-log>${ar?"مسح السجل":"Clear log"}</button><button data-close-diagnostics>${ar?"إغلاق":"Close"}</button>`);
   document.body.appendChild(box);
   box.querySelector("[data-close-diagnostics]").onclick=()=>box.remove();
   box.querySelector("[data-clear-log]").onclick=()=>{localStorage.removeItem(errorLogKey);box.remove();if(state.view==="history")renderHistory();};
@@ -1388,12 +1405,12 @@ const fieldChecks=[
 ];
 function renderReview(){
   state.view="review";state.activeTab="train";persist();updatePrimaryTabs();document.body.classList.remove("workout-mode");const ar=state.lang==="ar",r=state.reviews,complete=reviewExercises.filter(x=>r[x]?.signed).length;
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">${ar?"السلامة والجودة":"SAFETY & QUALITY"}</p><h1>${ar?"المراجعة البشرية، موثّقة.":"Human review, documented."}</h1><p>${ar?"الرسومات والتعليمات تعليمية وليست تشخيصاً طبياً. الاعتماد أدناه يجب أن ينجزه مدرب معتمد أو أخصائي علاج طبيعي بعد الفحص.":"The visuals and cues are educational, not medical diagnosis. Sign-off below must be completed by a certified trainer or physiotherapist after inspection."}</p></section>
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">${ar?"السلامة والجودة":"SAFETY & QUALITY"}</p><h1>${ar?"المراجعة البشرية، موثّقة.":"Human review, documented."}</h1><p>${ar?"الرسومات والتعليمات تعليمية وليست تشخيصاً طبياً. الاعتماد أدناه يجب أن ينجزه مدرب معتمد أو أخصائي علاج طبيعي بعد الفحص.":"The visuals and cues are educational, not medical diagnosis. Sign-off below must be completed by a certified trainer or physiotherapist after inspection."}</p></section>
   <section class="review-status"><strong>${complete}/7</strong><div><b>${ar?"تم اعتماد الحركات":"movements signed off"}</b><span>${complete===7?(ar?"اكتملت المراجعة البشرية":"Human review complete"):(ar?"الاعتماد المهني ما زال معلقاً":"Professional sign-off pending")}</span></div></section>
   <section class="review-list">${reviewExercises.map(name=>{const x=r[name]||{};return `<details class="review-card" ${x.signed?"":"open"}><summary><span>${esc(ar?(REP_I18N.ar.exercises[name]?.[0]||name):name)}</span><b>${x.signed?"✓":"○"}</b></summary><div><label><input type="checkbox" data-review-check="joints" data-review-name="${esc(name)}" ${x.joints?"checked":""}> ${ar?"مسار المفاصل ومدى الحركة صحيحان":"Joint path and range are accurate"}</label><label><input type="checkbox" data-review-check="muscles" data-review-name="${esc(name)}" ${x.muscles?"checked":""}> ${ar?"تظليل العضلات صحيح":"Muscle highlighting is accurate"}</label><label><input type="checkbox" data-review-check="cues" data-review-name="${esc(name)}" ${x.cues?"checked":""}> ${ar?"التعليمات والتحذيرات آمنة":"Cues and warnings are safe"}</label><input data-review-field="reviewer" data-review-name="${esc(name)}" value="${esc(x.reviewer||"")}" placeholder="${ar?"اسم المراجع":"Reviewer name"}"><input data-review-field="credential" data-review-name="${esc(name)}" value="${esc(x.credential||"")}" placeholder="${ar?"الاعتماد / رقم الترخيص":"Credential / licence number"}"><label class="signoff"><input type="checkbox" data-review-check="signed" data-review-name="${esc(name)}" ${x.signed?"checked":""}> ${ar?"أعتمد هذه الحركة بعد مراجعتها":"I sign off this movement after review"}</label></div></details>`}).join("")}</section>
   <section class="field-test"><h2>${ar?"اختبار داخل الجيم":"Real-gym field test"}</h2><p>${ar?"نفّذ هذا على الهاتف الفعلي أثناء حصة واحدة. لا تُعلّم بنداً إلا بعد تجربته.":"Run this on the actual phone during one workout. Check an item only after testing it."}</p>${fieldChecks.map(([id,en,arabic])=>`<label><input type="checkbox" data-field="${id}" ${state.fieldTest[id]?"checked":""}> ${ar?arabic:en}</label>`).join("")}<textarea data-field-notes placeholder="${ar?"المشكلات، الجهاز، الإضاءة، القفازات...":"Issues, phone model, lighting, gloves…"}">${esc(state.fieldTest.notes||"")}</textarea><input data-field-date type="date" value="${esc(state.fieldTest.date||"")}"></section>
   <section class="evidence-note"><strong>${ar?"مصادر السلامة":"Safety references"}</strong><p>${ar?"راجع الإرشادات العامة لدى ACSM وCDC، واطلب تقييماً طبياً عند الألم أو الأعراض غير المعتادة.":"Follow general ACSM and CDC guidance, and seek medical assessment for pain or unusual symptoms."}</p><a href="https://www.acsm.org/education-resources/trending-topics-resources/physical-activity-guidelines" target="_blank" rel="noopener">ACSM physical activity guidance ↗</a><a href="https://www.cdc.gov/physical-activity/php/about/index.html" target="_blank" rel="noopener">CDC physical activity basics ↗</a></section>
-  <button class="nav-button primary review-export" data-review-export>${ar?"تصدير حزمة المراجعة":"Export review package"}</button>`;
+  <button class="nav-button primary review-export" data-review-export>${ar?"تصدير حزمة المراجعة":"Export review package"}</button>`);
   document.querySelectorAll("[data-review-check]").forEach(el=>el.onchange=()=>{const n=el.dataset.reviewName;r[n]=r[n]||{};r[n][el.dataset.reviewCheck]=el.checked;if(el.dataset.reviewCheck==="signed")r[n].date=new Date().toISOString();persist();renderReview();});
   document.querySelectorAll("[data-review-field]").forEach(el=>el.oninput=()=>{const n=el.dataset.reviewName;r[n]=r[n]||{};r[n][el.dataset.reviewField]=el.value;persistDebounced();});
   document.querySelectorAll("[data-field]").forEach(el=>el.onchange=()=>{state.fieldTest[el.dataset.field]=el.checked;persist();});
@@ -1404,7 +1421,7 @@ function renderComplete() {
   stopSessionClock();document.body.classList.remove("workout-mode");
   const session = sessions[state.session],u=U(),ls=sessionText(state.session,session),last=state.history[0],ar=state.lang==="ar";
   const calorieLine=last?.calories?`<p class="complete-calories">${ar?`~${last.calories} سعرة حرارية (تقدير)`:`~${last.calories} kcal burned (estimate)`}</p>`:"";
-  app.innerHTML = `<section class="complete"><div><div class="complete-badge">✓</div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p>${ls.name} ${u.completeSub}</p>${calorieLine}<button class="nav-button primary" data-home>${u.backSessions}</button><button class="nav-button" data-reset>${u.reset}</button></div></section>`;
+  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="complete"><div><div class="complete-badge">✓</div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p>${ls.name} ${u.completeSub}</p>${calorieLine}<button class="nav-button primary" data-home>${u.backSessions}</button><button class="nav-button" data-reset>${u.reset}</button></div></section>`);
   document.querySelector("[data-home]").addEventListener("click", renderHome);
   document.querySelector("[data-reset]").addEventListener("click", () => {
     REP_TRAINING_SESSION.resetWorkout(state);
@@ -1419,7 +1436,7 @@ function renderRecovery() {
   state.view="recovery";state.activeTab="train";persist();updatePrimaryTabs();
   if(state.lang==="ar")return renderRecoveryArabic();
   const check = saved.checkin || {};
-  app.innerHTML = `<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
+  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
     ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
     <section class="recovery-grid">
       ${sleepSummaryCard(false)}
@@ -1432,11 +1449,11 @@ function renderRecovery() {
       <article class="recovery-card wide"><span class="card-kicker">Saturday · 45–55 min</span><h2>Steam → Sauna → Jacuzzi</h2><ol class="spa-list"><li><span>Shower — rinse</span><strong>2 min</strong></li><li><span>Steam room</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Sauna</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Jacuzzi</span><strong>15–20</strong></li><li><span>Cool shower + rehydrate</span><strong>2 min</strong></li></ol><p class="check-result">Water before and between every step. Exit immediately if dizzy, nauseous, or unwell. Skip if sick, dehydrated, or hungover.</p></article>
       <article class="recovery-card warning wide"><span class="card-kicker">Stop, don't push</span><h2>Real red flags</h2><ul><li><strong>Sharp or joint pain:</strong> stop that exercise.</li><li><strong>Soreness beyond 72 hours:</strong> back off volume.</li><li><strong>Persistent fatigue or declining sleep:</strong> address it before adding load.</li><li>Pain that persists for days or feels unlike normal soreness needs a doctor, not a training workaround.</li></ul></article>
       <article class="recovery-card wide"><span class="card-kicker">Bad-day fallback</span><h2>Something beats nothing.</h2><ul><li><strong>Non-negotiable:</strong> Kegels 3 × 10 + 3 min marching.</li><li>Cut cardio first, then reduce gym to Leg Press + Chest Press + Row.</li><li>Protect the morning circuit last.</li><li>Review the full program at week 8, or after 2+ lifts stall for 2+ sessions.</li></ul></article>
-    </section>`;
+    </section>`);
   bindRecoveryTools();
 }
 function renderRecoveryArabic(){
-  app.innerHTML=`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}
   ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
   <section class="recovery-grid">
   ${sleepSummaryCard(true)}
@@ -1448,7 +1465,7 @@ function renderRecoveryArabic(){
   <article class="recovery-card wide"><span class="card-kicker">السبت · 45–55 دقيقة</span><h2>بخار ← ساونا ← جاكوزي</h2><ol class="spa-list"><li><span>دش سريع</span><strong>2 د</strong></li><li><span>غرفة البخار</span><strong>10–12</strong></li><li><span>دش بارد + ماء</span><strong>3–5</strong></li><li><span>ساونا</span><strong>10–12</strong></li><li><span>دش بارد + ماء</span><strong>3–5</strong></li><li><span>جاكوزي</span><strong>15–20</strong></li><li><span>دش بارد وترطيب</span><strong>2 د</strong></li></ol><p class="check-result">اشرب قبل البداية وبين كل خطوة. اخرج فوراً عند الدوخة أو الغثيان. لا تبدأ إذا كنت مريضاً أو جافاً.</p></article>
   <article class="recovery-card"><span class="card-kicker">مراجعة دقيقتين</span><h2>إشارات الأسبوع</h2><form class="checkin" id="checkin"><label>الإجهاد العضلي<select name="soreness">${ratingOptions(saved.checkin?.soreness)}</select></label><label>الطاقة<select name="energy">${ratingOptions(saved.checkin?.energy)}</select></label><label class="wide">متوسط النوم<input name="sleep" type="number" min="0" max="12" step="0.5" value="${recentSleepAvg(7)??saved.checkin?.sleep??7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${saved.checkin?.pain?"checked":""}> يوجد ألم غير الإجهاد العضلي</span></label><label class="wide">ملاحظات<input name="notes" maxlength="180" value="${esc(saved.checkin?.notes||"")}" placeholder="اختياري"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>حفظ ومزامنة</button></article>
   <article class="recovery-card wide"><span class="card-kicker">استشفاء موجه</span><h2>ابدأ مؤقتاً</h2><div class="timer-presets"><button data-guide-timer="480" data-guide-label="Foam roll">Foam roller <b>8:00</b></button><button data-guide-timer="420" data-guide-label="Massage gun">مسدس المساج <b>7:00</b></button><button data-guide-timer="300" data-guide-label="Legs up the wall">الرجلان على الحائط <b>5:00</b></button><button data-guide-timer="600" data-guide-label="Gentle stretch">إطالة خفيفة <b>10:00</b></button></div></article>
-  <article class="recovery-card wide"><span class="card-kicker">الخطة المصغرة</span><h2>شيء أفضل من لا شيء.</h2><ul><li><strong>الحد الأدنى:</strong> كيجل 3 × 10 + مشي في المكان 3 دقائق.</li><li>اختصر الكارديو أولاً، ثم الجيم إلى Leg Press + Chest Press + Row.</li><li>احمِ دائرة الصباح أخيراً.</li><li>راجع البرنامج في الأسبوع الثامن.</li></ul></article></section>`;
+  <article class="recovery-card wide"><span class="card-kicker">الخطة المصغرة</span><h2>شيء أفضل من لا شيء.</h2><ul><li><strong>الحد الأدنى:</strong> كيجل 3 × 10 + مشي في المكان 3 دقائق.</li><li>اختصر الكارديو أولاً، ثم الجيم إلى Leg Press + Chest Press + Row.</li><li>احمِ دائرة الصباح أخيراً.</li><li>راجع البرنامج في الأسبوع الثامن.</li></ul></article></section>`);
   bindRecoveryTools();
 }
 function ratingOptions(selected){return [1,2,3,4,5].map(n=>`<option ${Number(selected||3)===n?"selected":""}>${n}</option>`).join("");}
@@ -1464,7 +1481,6 @@ function saveRecoveryCheckin(){updateCheckin();const c={...saved.checkin,date:ne
 
 function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
 function dailyBucket(kind){state.daily[kind]=state.daily[kind]||{};state.daily[kind][isoDay()]=state.daily[kind][isoDay()]||{checked:{},notes:""};return state.daily[kind][isoDay()];}
-function checkedCount(bucket,prefix,total){let n=0;for(let i=0;i<total;i++)if(bucket.checked[`${prefix}-${i}`])n++;return n;}
 function checklist(items,prefix,bucket){return `<div class="module-checklist">${items.map((item,i)=>{const parts=Array.isArray(item)?item:["",item,""];return `<label><input type="checkbox" data-daily-key="${prefix}-${i}" ${bucket.checked[`${prefix}-${i}`]?"checked":""}><span>${parts[0]?`<time>${esc(parts[0])}</time>`:""}<strong>${esc(parts[1])}</strong>${parts[2]?`<small>${esc(parts[2])}</small>`:""}</span></label>`}).join("")}</div>`;}
 function bindDaily(kind,render){document.querySelectorAll("[data-daily-key]").forEach(el=>el.onchange=()=>{if(el.checked&&navigator.vibrate)navigator.vibrate(30);const b=dailyBucket(kind);b.checked[el.dataset.dailyKey]=el.checked;persist();render();});const notes=document.querySelector("[data-daily-notes]");if(notes)notes.oninput=e=>{dailyBucket(kind).notes=e.target.value;persistDebounced();};}
 function moduleHeader(kicker,title,copy){return `<section class="recovery-head module-head"><p class="eyebrow">${kicker}</p><h1>${title}</h1><p>${copy}</p><span class="guide-version">${state.lang==="ar"?"الدليل":"Guide"} v${REP_HEALTH_GUIDE.version} · ${REP_HEALTH_GUIDE.updatedAt}</span></section>`;}
@@ -1949,14 +1965,14 @@ function bindVitalsTools(){
 function renderVitals(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="vitals";state.activeTab="vitals";persistDebounced();updatePrimaryTabs();
   const ar=state.lang==="ar";
-  app.innerHTML=`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
+  app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
   ${strainRecoveryCard(ar)}
   ${vitalsScreenshotCard(ar)}
   ${sleepTrackerCard(ar)}
   ${journalCard(ar)}
   ${activeEnergyCard(ar)}
   ${healthMetricsCard(ar)}
-  ${importCard(ar)}`;
+  ${importCard(ar)}`);
   bindVitalsTools();
 }
 function weightTrackerCard(ar){
@@ -2021,8 +2037,8 @@ function frequentMealsTray(ar){
 
 function renderNutrition(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="nutrition";state.activeTab="food";state.foodMealType=state.foodMealType||autoMealType();persistDebounced();updatePrimaryTabs();const ar=state.lang==="ar",profile=foodProfile(),entries=todayFoodEntries(),totals=foodTotals(entries),water=Number(state.water[isoDay()])||0,note=state.foodNote||"";
-  app.innerHTML=`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong><span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:900;color:var(--orange);background:rgba(255,139,61,.12);padding:2px 7px;border-radius:6px;border:1px solid rgba(255,139,61,.25);">${profile.carbCycleBadge}</span></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`;
-  document.querySelector(".food-connect")?.insertAdjacentHTML("afterend",nutritionPlanNote());const foodHeadings=[...document.querySelectorAll(".food-section-head h2")];if(foodHeadings.length)foodHeadings.at(-1).textContent=ar?"وجبات اليوم":"Food entries today";
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong><span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:900;color:var(--orange);background:rgba(255,139,61,.12);padding:2px 7px;border-radius:6px;border:1px solid rgba(255,139,61,.25);">${profile.carbCycleBadge}</span></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`);
+  document.querySelector(".food-connect")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(nutritionPlanNote()));const foodHeadings=[...document.querySelectorAll(".food-section-head h2")];if(foodHeadings.length)foodHeadings.at(-1).textContent=ar?"وجبات اليوم":"Food entries today";
   bindFoodTracker();
 }
 function bindFoodTracker(){const note=document.querySelector("[data-food-note]");note.oninput=e=>{state.foodNote=e.target.value;if(state.foodPendingPayload){state.foodPendingPayload=null;document.querySelector("[data-retry-food]")?.remove();}persistDebounced();};document.querySelectorAll("[data-quick-meal]").forEach(button=>button.onclick=()=>{state.foodNote=button.dataset.quickMeal;analyzeFood({mode:"text",description:button.dataset.quickMeal});});document.querySelectorAll("[data-meal-type]").forEach(button=>button.onclick=()=>{state.foodMealType=button.dataset.mealType;persist();renderNutrition();});document.querySelectorAll("[data-log-method]").forEach(button=>button.onclick=()=>{state.foodLogMethod=button.dataset.logMethod;persist();renderNutrition();});document.querySelector("[data-analyze-food]").onclick=()=>analyzeFood({mode:state.foodLogMethod==="Restaurant"?"restaurant":"text",description:String(state.foodNote||"").trim()});document.querySelector("[data-manual-food]").onclick=()=>manualFoodDraft();document.querySelector("[data-food-photo]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"photo");document.querySelector("[data-food-gallery]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"photo");document.querySelector("[data-food-barcode]").onchange=e=>analyzeFoodImage(e.target.files?.[0],"barcode-image");document.querySelector("[data-live-barcode]")?.addEventListener("click",startLiveBarcodeScanner);document.querySelector("[data-food-voice]").onclick=startFoodVoice;document.querySelector("[data-food-pair-form]")?.addEventListener("submit",e=>{e.preventDefault();pairFromFood();});document.querySelector("[data-food-disconnect]")?.addEventListener("click",forgetPairingKey);document.querySelector("[data-retry-food]")?.addEventListener("click",()=>{const pending=state.foodPendingPayload;state.foodPendingPayload=null;if(pending)analyzeFood(pending);});document.querySelectorAll("[data-water-delta]").forEach(button=>button.onclick=()=>changeFoodWater(Number(button.dataset.waterDelta)));document.querySelector("[data-water-form]").onsubmit=e=>{e.preventDefault();applyCustomWater("add");};document.querySelector('[data-water-custom-action="set"]').onclick=()=>applyCustomWater("set");document.querySelector("[data-water-reset]").onclick=()=>setFoodWater(0);document.querySelector("[data-cancel-food]")?.addEventListener("click",()=>{state.foodDraft=null;renderNutrition();});document.querySelector("[data-save-food]")?.addEventListener("click",saveFoodDraft);document.querySelectorAll("[data-delete-food]").forEach(button=>button.onclick=()=>deleteFoodEntry(button.dataset.deleteFood));document.querySelectorAll("[data-save-template]").forEach(button=>button.onclick=()=>saveMealTemplate(button.dataset.saveTemplate));document.querySelectorAll("[data-use-template]").forEach(button=>button.onclick=()=>useMealTemplate(button.dataset.useTemplate));document.querySelectorAll("[data-delete-template]").forEach(button=>button.onclick=()=>deleteMealTemplate(button.dataset.deleteTemplate));document.querySelector("[data-new-template]")?.addEventListener("click",()=>{state.newTemplateOpen=!state.newTemplateOpen;renderNutrition();});document.querySelector("[data-cancel-template]")?.addEventListener("click",()=>{state.newTemplateOpen=false;renderNutrition();});document.querySelector("[data-template-form]")?.addEventListener("submit",e=>{e.preventDefault();createMealTemplateManual();});document.querySelectorAll("[data-daily-key]").forEach(el=>el.onchange=()=>{if(el.checked&&navigator.vibrate)navigator.vibrate(30);const b=dailyBucket("nutrition");b.checked[el.dataset.dailyKey]=el.checked;queueNutritionSummary();persist();renderNutrition();});document.querySelector("[data-weight-form]").onsubmit=e=>{e.preventDefault();const input=document.querySelector("[data-weight-input]"),value=Number(input.value);if(!Number.isFinite(value)||value<30||value>300){input.setCustomValidity(state.lang==="ar"?"أدخل وزناً بين 30 و300 كجم.":"Enter a weight from 30 to 300 kg.");input.reportValidity();return;}input.setCustomValidity("");saveBodyWeight(value);renderNutrition();};document.querySelectorAll("[data-delete-weight]").forEach(button=>button.onclick=()=>{deleteBodyWeight(button.dataset.deleteWeight);renderNutrition();});document.querySelectorAll("[data-reminder-tab]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.reminderTab));document.querySelector("[data-reminder-toggle]")?.addEventListener("click",e=>{const t=e.currentTarget.dataset.reminderToggle;state.reminderExpanded[t]=!state.reminderExpanded[t];renderNutrition();});updateSyncPanel();}
@@ -2045,7 +2061,7 @@ async function startLiveBarcodeScanner(){
   if(!navigator.mediaDevices?.getUserMedia){showToast(ar?"الكاميرا غير متاحة في هذا المتصفح.":"Camera is not available.");return;}
   const overlay=document.createElement("div");
   overlay.className="barcode-scanner-overlay";
-  overlay.innerHTML=`<div class="barcode-video-box"><video autoplay playsinline muted></video><div class="barcode-reticle"></div></div><p style="color:#fff;margin-top:14px;font-size:13px;">${ar?"وجّه الكاميرا نحو الباركود":"Point camera at food barcode"}</p><button class="quiet" data-close-barcode style="margin-top:10px;color:#fff;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:999px;">${ar?"إلغاء":"Cancel"}</button>`;
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="barcode-video-box"><video autoplay playsinline muted></video><div class="barcode-reticle"></div></div><p style="color:#fff;margin-top:14px;font-size:13px;">${ar?"وجّه الكاميرا نحو الباركود":"Point camera at food barcode"}</p><button class="quiet" data-close-barcode style="margin-top:10px;color:#fff;padding:8px 16px;border:1px solid rgba(255,255,255,.2);border-radius:999px;">${ar?"إلغاء":"Cancel"}</button>`);
   document.body.appendChild(overlay);
   let stream=null,scanInterval=null;
   const video=overlay.querySelector("video");
@@ -2085,7 +2101,7 @@ function deleteFoodEntry(id){state.foodEntries=state.foodEntries.filter(entry=>e
 function renderHygiene(){
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="hygiene";state.activeTab="care";persistDebounced();updatePrimaryTabs();const ar=state.lang==="ar",g=REP_HEALTH_GUIDE.hygiene,b=dailyBucket("hygiene"),day=currentDay(),hair=g.hair[day],training=["Sunday","Monday","Tuesday","Wednesday","Thursday"].includes(day),sections=[...g.morning.map((x,i)=>["morning",i,x]),...g.evening.map((x,i)=>["evening",i,x]),...hair.map((x,i)=>["hair",i,x]),...(training?g.postWorkout.map((x,i)=>["post",i,x]):[]),...(training?g.afterWork.map((x,i)=>["after",i,x]):[])],done=sections.filter(([p,i])=>b.checked[`${p}-${i}`]).length,percent=Math.round(done/sections.length*100);
   const complete=p=>{const group=sections.filter(x=>x[0]===p);return group.length>0&&group.every(([,i])=>b.checked[`${p}-${i}`]);};
-  app.innerHTML=`${moduleHeader(ar?"العناية اليومية":"DAILY CARE",ar?"امسح. نفّذ. أكمل.":"Scan. Do. Done.",ar?"روتين الصباح والمساء وما بعد التمرين مع تعليمات الشعر حسب اليوم.":"Morning, evening, post-workout, and the correct hair routine for today.")}
+  app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"العناية اليومية":"DAILY CARE",ar?"امسح. نفّذ. أكمل.":"Scan. Do. Done.",ar?"روتين الصباح والمساء وما بعد التمرين مع تعليمات الشعر حسب اليوم.":"Morning, evening, post-workout, and the correct hair routine for today.")}
   ${reminderStrip("care")}
   <button class="care-plan-button" data-view-care-plan>${ar?"☰ عرض خطة العناية الكاملة":"☰ View full care plan"}</button>
   <section class="nonneg-grid">${g.nonNegotiables.map((x,i)=>`<div class="${(i===0&&b.checked["morning-0"])||(i===1&&b.checked["evening-1"])||(i===2&&b.checked["morning-3"]&&b.checked["evening-3"])||(i===3&&b.checked["post-0"])?"done":""}"><span>${i+1}</span><strong>${esc(x)}</strong></div>`).join("")}</section>
@@ -2095,7 +2111,7 @@ function renderHygiene(){
   ${training?`<section class="module-card accent-card"><div class="module-card-head"><div><small>30-MINUTE RULE</small><h2>${ar?"بعد التمرين":"Post-workout"}</h2></div><span>${complete("post")?"✓":""}</span></div>${checklist(g.postWorkout,"post",b)}</section>`:""}
   ${training?`<section class="module-card"><div class="module-card-head"><div><small>~7:15 PM</small><h2>${ar?"بعد العمل":"After work"}</h2></div><span>${complete("after")?"✓":""}</span></div>${checklist(g.afterWork,"after",b)}</section>`:""}
   <section class="module-card"><div class="module-card-head"><div><small>${esc(day.toUpperCase())}</small><h2>${ar?"روتين الشعر":"Hair routine"}</h2></div><span>${complete("hair")?"✓":""}</span></div>${checklist(hair,"hair",b)}<details class="cue-details"><summary>${ar?"قواعد الشعر الصارمة":"Strict hair rules"}</summary><div class="cue-body"><ul>${g.strictHairRules.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div></details></section>
-  <section class="module-card"><label class="notes-label">${ar?"ملاحظات اليوم":"Today's notes"}<textarea data-daily-notes maxlength="300">${esc(b.notes||"")}</textarea></label><button class="module-save" data-save-daily>${ar?"حفظ ومزامنة اليوم":"Save & sync today"}</button></section>`;
+  <section class="module-card"><label class="notes-label">${ar?"ملاحظات اليوم":"Today's notes"}<textarea data-daily-notes maxlength="300">${esc(b.notes||"")}</textarea></label><button class="module-save" data-save-daily>${ar?"حفظ ومزامنة اليوم":"Save & sync today"}</button></section>`);
   bindDaily("hygiene",renderHygiene);document.querySelector("[data-save-daily]").onclick=()=>{queueHealth("hygiene",{date:isoDay(),morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:training?complete("post"):false,hairRoutineComplete:complete("hair"),spf:Boolean(b.checked["morning-0"]),floss:Boolean(b.checked["evening-1"]),beardOil:Boolean(b.checked["morning-3"]&&b.checked["evening-3"]),showerWithin30m:Boolean(b.checked["post-0"]),completion:percent,notes:b.notes||""});state.syncState="idle";renderHygiene();};
   document.querySelector("[data-view-care-plan]").onclick=showCarePlan;
   document.querySelectorAll("[data-reminder-tab]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.reminderTab));
@@ -2107,7 +2123,7 @@ function showCarePlan(){
   const ar=state.lang==="ar",g=REP_HEALTH_GUIDE.hygiene,today=currentDay();
   const list=items=>`<ul>${items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
   const box=document.createElement("div");box.className="exit-confirm care-plan-panel";
-  box.innerHTML=`<strong>${ar?"خطة العناية الكاملة":"Full care plan"}</strong>
+  box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"خطة العناية الكاملة":"Full care plan"}</strong>
     <div class="care-plan-section"><h3>${ar?"غير قابل للتفاوض":"Non-negotiables"}</h3>${list(g.nonNegotiables)}</div>
     <div class="care-plan-section"><h3>${ar?"الصباح":"Morning"}</h3>${list(g.morning)}</div>
     <div class="care-plan-section"><h3>${ar?"المساء":"Evening"}</h3>${list(g.evening)}</div>
@@ -2117,7 +2133,7 @@ function showCarePlan(){
     <div class="care-plan-section"><h3>${ar?"قواعد الشعر الصارمة":"Strict hair rules"}</h3>${list(g.strictHairRules)}</div>
     <div class="care-plan-section"><h3>${ar?"أسبوعياً":"Weekly"}</h3>${list(g.weekly)}</div>
     <div class="care-plan-section"><h3>${ar?"شهرياً / مستمر":"Monthly / ongoing"}</h3>${list(g.monthly)}</div>
-    <button data-close-care-plan>${ar?"إغلاق":"Close"}</button>`;
+    <button data-close-care-plan>${ar?"إغلاق":"Close"}</button>`);
   document.body.appendChild(box);
   box.querySelector("[data-close-care-plan]").onclick=()=>box.remove();
 }
@@ -2125,7 +2141,7 @@ function showLogActivity(){
   if(document.querySelector(".activity-panel"))return;
   const ar=state.lang==="ar",defaultMinutes=60,defaultType=ACTIVITY_TYPES[0][0];
   const box=document.createElement("div");box.className="exit-confirm activity-panel";
-  box.innerHTML=`<strong>${ar?"تسجيل نشاط رياضي":"Log Sport Activity"}</strong>
+  box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"تسجيل نشاط رياضي":"Log Sport Activity"}</strong>
     <p class="activity-hint">${ar?"للرياضات مثل البادل وكرة القدم — تسجل المدة والسعرات، وتحسب تلقائياً في خريطة الاستشفاء العضلي.":"For sports like Padel & Football — logs duration, Apple Watch active calories, and updates your Muscle Recovery Map."}</p>
     <div class="activity-types">${ACTIVITY_TYPES.map(([id,label],i)=>`<button data-activity-type="${id}" class="${i===0?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
     <input class="activity-custom" data-activity-custom type="text" maxlength="40" placeholder="${ar?"اسم النشاط":"Activity name"}" style="display:none">
@@ -2136,7 +2152,7 @@ function showLogActivity(){
     <p class="activity-hint">${ar?"استخدم السعرات النشطة (Active Calories) من ملخص تمرين ساعة أبل.":"Use Active Calories from your Apple Watch workout summary."}</p>
     <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية (شدة اللعب، النتيجة...)":"Optional notes (match intensity, score...)"}"></textarea>
     <button data-save-activity>${ar?"حفظ النشاط":"Save Activity"}</button>
-    <button class="quiet" data-close-activity>${ar?"إلغاء":"Cancel"}</button>`;
+    <button class="quiet" data-close-activity>${ar?"إلغاء":"Cancel"}</button>`);
   document.body.appendChild(box);
   let selected=defaultType;
   const minutesInput=box.querySelector("[data-activity-minutes]"),caloriesInput=box.querySelector("[data-activity-calories]");
@@ -2165,20 +2181,8 @@ function showLogActivity(){
     }
   };
 }
-function renderBadDay(){const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";state.activeTab="train";persist();updatePrimaryTabs();app.innerHTML=`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`;document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
-function startGuideTimer(label,seconds){let remaining=seconds,paused=false;const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=`<button class="timed-close" aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><p>${esc(label)}</p><strong data-guide-value>${formatClock(remaining)}</strong><span>${state.lang==="ar"?"تنفس ببطء وحافظ على الراحة":"BREATHE SLOWLY · STAY COMFORTABLE"}</span><div class="timed-progress"><i data-guide-progress></i></div><div class="timed-actions"><button data-guide-pause>${U().pause}</button><button data-guide-finish>${U().skip}</button></div>`;document.body.appendChild(overlay);const close=()=>{clearInterval(tick);overlay.remove();};overlay.querySelector(".timed-close").onclick=close;overlay.querySelector("[data-guide-finish]").onclick=()=>{signalEnd();close();};overlay.querySelector("[data-guide-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};const tick=setInterval(()=>{if(paused)return;remaining--;overlay.querySelector("[data-guide-value]").textContent=formatClock(Math.max(0,remaining));overlay.querySelector("[data-guide-progress]").style.width=`${Math.max(0,remaining/seconds*100)}%`;if(remaining<=0){signalEnd();close();}},1000);}
-
-function updateMediaSessionRest(remaining,setIndex){
-  if("mediaSession" in navigator&&window.MediaMetadata){
-    const min=Math.floor(remaining/60),sec=String(remaining%60).padStart(2,"0");
-    const item=sessions[state.session]?.exercises[state.index];
-    navigator.mediaSession.metadata=new MediaMetadata({
-      title:`Rest: ${min}:${sec} (Set ${setIndex+1})`,
-      artist:item?`Next: ${item.name}`:"Rep Gym Companion",
-      album:"Rep Workout Rest Timer"
-    });
-  }
-}
+function renderBadDay(){const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";state.activeTab="train";persist();updatePrimaryTabs();app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`);document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
+function startGuideTimer(label,seconds){let remaining=seconds,paused=false;const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=REP_SAFE_DOM.sanitize(`<button class="timed-close" aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><p>${esc(label)}</p><strong data-guide-value>${formatClock(remaining)}</strong><span>${state.lang==="ar"?"تنفس ببطء وحافظ على الراحة":"BREATHE SLOWLY · STAY COMFORTABLE"}</span><div class="timed-progress"><i data-guide-progress></i></div><div class="timed-actions"><button data-guide-pause>${U().pause}</button><button data-guide-finish>${U().skip}</button></div>`);document.body.appendChild(overlay);const close=()=>{clearInterval(tick);overlay.remove();};overlay.querySelector(".timed-close").onclick=close;overlay.querySelector("[data-guide-finish]").onclick=()=>{signalEnd();close();};overlay.querySelector("[data-guide-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};const tick=setInterval(()=>{if(paused)return;remaining--;overlay.querySelector("[data-guide-value]").textContent=formatClock(Math.max(0,remaining));overlay.querySelector("[data-guide-progress]").style.width=`${Math.max(0,remaining/seconds*100)}%`;if(remaining<=0){signalEnd();close();}},1000);}
 
 function startTimer(seconds, setIndex) {
   if (state.timer?.interval) clearInterval(state.timer.interval);
@@ -2257,13 +2261,13 @@ async function toggleWakeLock(){
   if(state.wakeLock){await state.wakeLock.release();state.wakeLock=null;button.setAttribute("aria-pressed","false");button.classList.remove("is-active");return;}
   try{state.wakeLock=await navigator.wakeLock.request("screen");button.setAttribute("aria-pressed","true");button.classList.add("is-active");state.wakeLock.addEventListener("release",()=>{state.wakeLock=null;button.classList.remove("is-active");});}catch{showToast(state.lang==="ar"?"تعذّر إبقاء الشاشة مضاءة على هذا المتصفح.":"Couldn't keep the screen awake on this browser.");}
 }
-document.addEventListener("visibilitychange",async()=>{if("wakeLock" in navigator&&document.visibilityState==="visible"&&document.querySelector("#wakeButton")?.classList.contains("is-active")&&!state.wakeLock)try{state.wakeLock=await navigator.wakeLock.request("screen");}catch{}});
+document.addEventListener("visibilitychange",async()=>{if(("wakeLock" in navigator) && document.visibilityState==="visible" && document.querySelector("#wakeButton")?.classList.contains("is-active") && !state.wakeLock)try{state.wakeLock=await navigator.wakeLock.request("screen");}catch{}});
 let installPrompt=null;
 addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
 async function installApp(){
   if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;return;}
   const msg=state.lang==="ar"?"على iPhone: اضغط مشاركة ثم «إضافة إلى الشاشة الرئيسية». على Android: افتح قائمة المتصفح ثم «تثبيت التطبيق».":"On iPhone: tap Share, then Add to Home Screen. On Android: open the browser menu, then Install app.";
-  const box=document.createElement("div");box.className="install-help";box.innerHTML=`<button aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><strong>${U().install}</strong><p>${msg}</p>`;document.body.appendChild(box);box.querySelector("button").onclick=()=>box.remove();
+  const box=document.createElement("div");box.className="install-help";box.innerHTML=REP_SAFE_DOM.sanitize(`<button aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><strong>${U().install}</strong><p>${msg}</p>`);document.body.appendChild(box);box.querySelector("button").onclick=()=>box.remove();
 }
 function network(){const el=document.querySelector("#networkStatus");el.classList.toggle("is-offline",!navigator.onLine);el.lastChild.textContent=` ${navigator.onLine?U().offlineReady:U().offlineMode}`;}
 addEventListener("online",()=>{network();fetchPendingVitals();});addEventListener("offline",network);network();
@@ -2275,7 +2279,7 @@ addEventListener("online",()=>{network();fetchPendingVitals();});addEventListene
 async function registerServiceWorker(){
   if(!("serviceWorker" in navigator)||!location.protocol.startsWith("http"))return;
   const reg=await navigator.serviceWorker.register(`./sw.js?v=${window.REP_BUILD_VERSION||"dev"}`);
-  reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=`<span>${U().updateReady}</span><button>${U().reload}</button>`;document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});
+  reg.addEventListener("updatefound",()=>{const worker=reg.installing;worker?.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){const bar=document.createElement("div");bar.className="update-bar";bar.innerHTML=REP_SAFE_DOM.sanitize(`<span>${U().updateReady}</span><button>${U().reload}</button>`);document.body.appendChild(bar);bar.querySelector("button").onclick=()=>location.reload();}});});
   reg.update().catch(()=>{});
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update().catch(()=>{});});
   addEventListener("pageshow",()=>reg.update().catch(()=>{}));
@@ -2289,12 +2293,12 @@ function continuingSession(){return REP_TRAINING_SESSION.isResumableWorkout(stat
 function renderQuickLog(){
   const container=document.querySelector("#quickLog");if(!container)return;
   const ar=state.lang==="ar";
-  container.innerHTML=`<div class="quick-log-menu" id="quickLogMenu" hidden>
+  container.innerHTML=REP_SAFE_DOM.sanitize(`<div class="quick-log-menu" id="quickLogMenu" hidden>
       <button type="button" data-quick-action="workout">${ICONS.dumbbell}<span>${continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout")}</span></button>
       <button type="button" data-quick-action="food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><span>${ar?"تسجيل وجبة":"Log a meal"}</span></button>
       <button type="button" data-quick-action="activity">${ICONS.pulse}<span>${ar?"تسجيل نشاط":"Log an activity"}</span></button>
     </div>
-    <button type="button" class="quick-log-fab" id="quickLogFab" aria-haspopup="true" aria-expanded="false" aria-label="${ar?"إجراء سريع":"Quick log"}">${ICONS.plus}</button>`;
+    <button type="button" class="quick-log-fab" id="quickLogFab" aria-haspopup="true" aria-expanded="false" aria-label="${ar?"إجراء سريع":"Quick log"}">${ICONS.plus}</button>`);
   const fab=container.querySelector("#quickLogFab"),menu=container.querySelector("#quickLogMenu");
   fab.addEventListener("click",()=>{
     const opening=menu.hidden;

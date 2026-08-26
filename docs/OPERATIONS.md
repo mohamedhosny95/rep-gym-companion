@@ -10,6 +10,11 @@
 6. Record current Cloudflare deployment ID; deploy production manually.
 7. Probe `/api/system-health`, pair a test device, and sync one disposable record.
 
+`verify:all` includes the browser certification suite and a fresh-profile,
+end-to-end encrypted backup export/import/tamper drill. The drill writes
+machine-readable evidence under `work/certification/` without retaining the
+passphrase or user data.
+
 Do not modify or depend on GitHub Actions until the monthly quota is available again.
 
 ## Notion outage or schema drift
@@ -31,6 +36,10 @@ Rotate the affected secret in both the provider and Cloudflare, revoke all regis
 ## Backup/restore drill
 
 Quarterly, use a fresh browser profile: export a schema-5 encrypted backup, tamper with its header and confirm restore rejection, clear the profile, import the untouched file, and compare record counts/date ranges. Record the build, backup schema, result, and operator. Automatic device snapshots are convenience recovery, not an off-device backup.
+
+Run `npm run test:recovery` for the automated half of this drill. A human must
+still restore their real backup in a separate browser profile and record the
+result without committing the backup itself.
 
 ## Privacy request
 

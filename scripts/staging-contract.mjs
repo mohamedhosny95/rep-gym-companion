@@ -19,5 +19,5 @@ try{
   if(!pageResponse.ok||page.id?.replaceAll("-","")!==notionPageId.replaceAll("-",""))throw Error("Notion post-write read did not match the receipt.");
   console.log(JSON.stringify({ok:true,environment:health.environment,notionSourceId:health.notion.sourceId,receiptVerified:true}));
 }finally{
-  if(notionPageId){const cleanup=await fetch(`https://api.notion.com/v1/pages/${notionPageId}`,{method:"PATCH",headers:{authorization:`Bearer ${notionToken}`,"notion-version":"2026-03-11","content-type":"application/json"},body:JSON.stringify({archived:true})});if(!cleanup.ok){console.error(`Cleanup failed for Notion page ${notionPageId}.`);process.exitCode=1;}}
+  if(notionPageId){const cleanup=await fetch(`https://api.notion.com/v1/pages/${notionPageId}`,{method:"PATCH",headers:{authorization:`Bearer ${notionToken}`,"notion-version":"2026-03-11","content-type":"application/json"},body:JSON.stringify({in_trash:true})});if(!cleanup.ok){console.error(`Cleanup failed for Notion page ${notionPageId}.`);process.exitCode=1;}}
 }

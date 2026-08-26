@@ -89,7 +89,7 @@
     const ar = window.state?.lang === "ar";
     const overlay = document.createElement("div");
     overlay.className = "timed-mode barcode-modal-overlay";
-    overlay.innerHTML = `
+    overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="workout-preflight-panel barcode-scanner-panel" style="max-width:440px;margin:auto;padding:16px;">
         <button class="dialog-close" data-barcode-close aria-label="Close">×</button>
         <span class="set-log-kicker" style="color:var(--acid);">📷 ${ar?"ماسح الباركود الذكي":"SMART BARCODE SCANNER"}</span>
@@ -115,7 +115,7 @@
           <button type="button" data-barcode-demo="000000000003" style="flex:1;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--muted);font-size:10px;cursor:pointer;">🍫 Quest Bar</button>
         </div>
       </div>
-    `;
+    `);
     document.body.appendChild(overlay);
 
     const video = overlay.querySelector("[data-scanner-video]");

@@ -165,7 +165,7 @@
     const maxHr = computeMaxHr();
     const zone = getZone(state.currentBpm || 120, maxHr);
 
-    overlay.innerHTML = `
+    overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="workout-preflight-panel" style="max-width:440px;margin:auto;">
         <button class="dialog-close" data-hr-close aria-label="Close">×</button>
         <span class="set-log-kicker" style="color:#f43f5e;">💓 ${ar?"مراقبة النبض ومناطق التدريب":"LIVE HEART RATE & RECOVERY ZONES"}</span>
@@ -216,7 +216,7 @@
           `}
         </div>
       </div>
-    `;
+    `);
     document.body.appendChild(overlay);
 
     const closeBtn = overlay.querySelector("[data-hr-close]");

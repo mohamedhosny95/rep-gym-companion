@@ -117,7 +117,7 @@
           return `<span class="plate-badge" style="background:${def?.color||'#9e9e9e'};color:${def?.textColor||'#fff'};">${count} × ${kg}kg</span>`;
         }).join("");
 
-      modal.innerHTML = `
+      modal.innerHTML = REP_SAFE_DOM.sanitize(`
         <div class="rep-modal-sheet plate-calc-sheet">
           <div class="sheet-header">
             <div>
@@ -160,7 +160,7 @@
             <button type="button" class="btn-done" style="flex:1;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:13px;font-weight:900;cursor:pointer;">${ar ? "تم" : "Done"}</button>
           </div>
         </div>
-      `;
+      `);
 
       // Bind listeners
       modal.querySelector(".sheet-close").onclick = () => modal.remove();

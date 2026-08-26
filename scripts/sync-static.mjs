@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds deployable client and Worker artifacts from the editable src/ tree.
-import { readdirSync, mkdirSync, copyFileSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import { build } from "esbuild";
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
 const source=join(root,"src","client"),target=join(root,"dist","client");
 const serverSource=join(root,"src","server","index.js"),serverTarget=join(root,"dist","server","index.js"),serverNodeTarget=join(root,"dist","server","index.node.js");
+const domPurifySource=join(root,"node_modules","dompurify","dist","purify.min.js");
 
 function walk(dir){
   const files=[];
@@ -24,13 +25,19 @@ for(const file of sourceFiles.sort()){
   version.update(relative(source,file));
   version.update(readFileSync(file));
 }
+version.update("vendor/dompurify.min.js");
+version.update(readFileSync(domPurifySource));
 const buildVersion=version.digest("hex").slice(0,12);
 mkdirSync(target,{recursive:true});
 for(const file of sourceFiles){const rel=relative(source,file),dest=join(target,rel);mkdirSync(dirname(dest),{recursive:true});copyFileSync(file,dest);}
-if(existsSync(target))for(const file of walk(target)){const rel=relative(target,file);if(!sourcePaths.has(rel))rmSync(file);}
+const domPurifyTarget=join(target,"vendor","dompurify.min.js");
+mkdirSync(dirname(domPurifyTarget),{recursive:true});
+copyFileSync(domPurifySource,domPurifyTarget);
+sourcePaths.add(relative(target,domPurifyTarget));
+for(const file of walk(target)){const rel=relative(target,file);if(!sourcePaths.has(rel))rmSync(file);}
 for(const rel of ["build-meta.js","index.html","bootstrap.js","enhancements.js","sw.js"]){
   const file=join(target,rel);
-  if(existsSync(file))writeFileSync(file,readFileSync(file,"utf8").replaceAll("__BUILD_VERSION__",buildVersion));
+  writeFileSync(file,readFileSync(file,"utf8").replaceAll("__BUILD_VERSION__",buildVersion));
 }
 mkdirSync(dirname(serverTarget),{recursive:true});
 const workerBuild={entryPoints:[serverSource],bundle:true,format:"esm",platform:"neutral",target:"es2022",sourcemap:false,legalComments:"none"};
