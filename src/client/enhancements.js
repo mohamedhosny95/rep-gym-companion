@@ -198,6 +198,8 @@
       hero.insertAdjacentElement("afterend",nav);
     }
     document.querySelector(".install-card")?.remove();
+    document.querySelector(".today-training-action")?.remove();
+    document.querySelector(".program-exporter-card")?.remove();
     const sessionGrid=document.querySelector(".session-grid:not(.training-tools)"),weekly=document.querySelector(".weekly"),toolsTitle=document.querySelector(".training-tools-title"),tools=document.querySelector(".training-tools");
     let advanced=document.querySelector(".training-advanced");
     if(toolsTitle&&tools&&!advanced){
@@ -210,7 +212,6 @@
     document.querySelectorAll(".vitals-teaser,.today-strip,.health-status,.reminder-strip,.health-coach-card").forEach(el=>{el.hidden=state.trainingView!=="today";});
     if(state.trainingView==="today"){
       const focus=daySchedule().focus,id=["gym","football","padel","cardio"].includes(focus)?focus:"bad";
-      document.querySelector(".today-training-action")?.remove();
       const card=document.createElement("section");card.className="today-training-action";card.innerHTML=REP_SAFE_DOM.sanitize(`<small>${ar?"الخطوة التالية":"NEXT ACTION"}</small><h2>${esc(todayPlan())}</h2><p>${ar?"ابدأ الخطة المحددة لهذا اليوم، ويمكنك تعديلها بعد مراجعة الاستشفاء.":"Start the plan selected for today; adjust it after checking your recovery."}</p><button data-start-today>${ar?"ابدأ خطة اليوم":"Start today's plan"}</button>`);
       nav.insertAdjacentElement("afterend",card);
       card.querySelector("[data-start-today]").onclick=()=>showSessionPreview(id);

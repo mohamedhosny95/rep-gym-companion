@@ -50,24 +50,24 @@ const sessions = {
     name: "Football Warm-up & Cooldown", short: "FB", meta: "Monday · Before / after your game", icon: "flame", accent: "#ff5f6d",
     description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites.",
     exercises: [
-      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "walk", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
-      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
-      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "walk", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
-      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "walk", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
-      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "walk", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
-      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
+      ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "football_jog", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
+      ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "football_dynamic", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "football_agility", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
+      ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "football_strides", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
+      ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "football_cooldown", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
+      ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "football_stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
     ]
   },
   padel: {
     name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Wednesday · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
     description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point.",
     exercises: [
-      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "walk", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
-      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
-      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "stretch", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
-      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "walk", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
-      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
-      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
+      ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "padel_jog", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
+      ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "padel_dynamic", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
+      ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "padel_shoulder", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
+      ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "padel_rally", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
+      ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "padel_walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
+      ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "padel_stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
     ]
   },
   cardio: {
@@ -104,55 +104,205 @@ function ex(name, prescription, intensity, rest, category, motion, setup, execut
 }
 
 const anatomy = {
-  march:       ["mobility", "500% 200%", "0% 0%", "0% 100%", "Hip flexors · Quads · Calves", "flip"],
-  catcow:      ["mobility", "500% 200%", "25% 0%", "25% 100%", "Spinal erectors · Abdominals"],
-  kneel:       ["mobility", "500% 200%", "50% 0%", "50% 100%", "Hip flexors"],
-  floor:       ["mobility", "500% 200%", "75% 0%", "75% 100%", "Glutes · Hamstrings"],
-  birddog:     ["mobility", "500% 200%", "100% 0%", "100% 100%", "Core · Glutes · Back"],
-  plank:       ["core", "400% 200%", "0% 0%", "0% 100%", "Core · Glutes"],
-  breathe:     ["core", "400% 200%", "33.333% 0%", "33.333% 100%", "Deep abdominal wall"],
-  kegel:       ["core", "400% 200%", "66.667% 0%", "66.667% 100%", "Pelvic floor"],
-  grip:        ["core", "400% 200%", "100% 0%", "100% 100%", "Forearm flexors · Hand"],
-  bike:        ["gym", "400% 300%", "0% 0%", "33.333% 0%", "Quads · Glutes · Calves"],
-  legpress:    ["gym", "400% 300%", "66.667% 0%", "100% 0%", "Quads · Glutes"],
-  hinge:       ["gym", "400% 300%", "0% 50%", "33.333% 50%", "Spinal erectors · Glutes · Hamstrings"],
-  chestpress:  ["gym", "400% 300%", "66.667% 50%", "100% 50%", "Chest · Front delts · Triceps"],
-  row:         ["gym", "400% 300%", "0% 100%", "33.333% 100%", "Lats · Rhomboids · Biceps"],
-  pulldown:    ["gym", "400% 300%", "66.667% 100%", "100% 100%", "Lats · Biceps"],
-  walk:        ["cardio", "300% 200%", "0% 0%", "0% 100%", "Glutes · Quads · Calves"],
-  inclinewalk: ["cardio", "300% 200%", "50% 0%", "50% 100%", "Glutes · Quads · Core"],
-  stretch:     ["cardio", "300% 200%", "100% 0%", "100% 100%", "Lats · Obliques"]
+  march:       ["mobility", "Hip flexors · Quads · Calves"],
+  catcow:      ["mobility", "Spinal erectors · Abdominals"],
+  kneel:       ["mobility", "Hip flexors · Quads"],
+  floor:       ["mobility", "Glutes · Hamstrings"],
+  birddog:     ["mobility", "Core · Glutes · Lower back"],
+  plank:       ["core", "Core · Glutes · Shoulders"],
+  breathe:     ["core", "Deep abdominal wall · Diaphragm"],
+  kegel:       ["core", "Pelvic floor"],
+  grip:        ["core", "Forearm flexors · Hand"],
+  bike:        ["gym", "Quadriceps · Glutes · Calves"],
+  legpress:    ["gym", "Quadriceps · Glutes"],
+  hinge:       ["gym", "Hamstrings · Glutes · Erector Spinae"],
+  chestpress:  ["gym", "Pectorals · Front delts · Triceps"],
+  row:         ["gym", "Lats · Rhomboids · Biceps"],
+  pulldown:    ["gym", "Lats · Teres major · Biceps"],
+  walk:        ["cardio", "Glutes · Quads · Calves"],
+  inclinewalk: ["cardio", "Glutes · Quads · Calves · Core"],
+  stretch:     ["cardio", "Lats · Obliques · Hamstrings"],
+  // Football specific
+  football_jog:      ["football", "Quadriceps · Hamstrings · Calves"],
+  football_dynamic:  ["football", "Hip flexors · Glutes · Hamstrings"],
+  football_agility:  ["football", "Adductors (Groin) · Calves · Glutes"],
+  football_strides:  ["football", "Hamstrings · Quadriceps · Glutes"],
+  football_cooldown: ["football", "Full lower body recovery"],
+  football_stretch:  ["football", "Hamstrings · Adductors · Calves"],
+  // Padel specific
+  padel_jog:         ["padel", "Calves · Quadriceps · Core"],
+  padel_dynamic:     ["padel", "Core · Delts · Hip flexors"],
+  padel_shoulder:    ["padel", "Rotator cuff · Front & Rear Delts"],
+  padel_rally:       ["padel", "Shoulders · Forearms · Core"],
+  padel_walk:        ["padel", "Calves · Full body recovery"],
+  padel_stretch:     ["padel", "Forearms · Delts · Lats"]
 };
 
 const motionGuide = {
-  march:["Lift · Switch","ارفع · بدّل",180], catcow:["Inhale: cow · Exhale: cat","شهيق: بقرة · زفير: قطة",0], kneel:["Ease forward · Hold","تقدم برفق · اثبت",45],
-  floor:["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",45], birddog:["Extend · Hold · Return","مد · اثبت · عد",60], plank:["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
-  breathe:["Exhale · Draw in · Hold","زفير · اسحب للداخل · اثبت",20], kegel:["Contract 5s · Fully release 5s","شد 5ث · استرخِ 5ث",0], grip:["Close 2s · Open 2s","أغلق 2ث · افتح 2ث",0],
-  bike:["Smooth pedal · Easy breath","دوران سلس · تنفس سهل",300], legpress:["Lower 2s · Press 1s","انزل 2ث · ادفع 1ث",0], hinge:["Lower 2s · Neutral 1s","انزل 2ث · محايد 1ث",0],
-  chestpress:["Return 2s · Press 1s","عد 2ث · ادفع 1ث",0], row:["Reach 2s · Pull 1s","مد 2ث · اسحب 1ث",0], pulldown:["Rise 2s · Pull 1s","اصعد 2ث · اسحب 1ث",0],
-  walk:["Easy stride · Natural arms","خطوة سهلة · ذراعان طبيعيان",300], inclinewalk:["Upright · Short sentences","جسم مستقيم · جمل قصيرة",1500], stretch:["Ease in · Hold · No bounce","ادخل برفق · اثبت · دون ارتداد",30]
+  march:       ["Lift · Switch","ارفع · بدّل",180],
+  catcow:      ["Inhale: cow · Exhale: cat","شهيق: بقرة · زفير: قطة",0],
+  kneel:       ["Ease forward · Hold","تقدم برفق · اثبت",45],
+  floor:       ["Lift 1s · Hold 2s · Lower 2s","ارفع 1ث · اثبت 2ث · انزل 2ث",45],
+  birddog:     ["Extend · Hold · Return","مد · اثبت · عد",60],
+  plank:       ["Brace · Breathe normally","شد الجذع · تنفس طبيعياً",45],
+  breathe:     ["Exhale · Draw in · Hold","زفير · اسحب للداخل · اثبت",20],
+  kegel:       ["Contract 5s · Fully release 5s","شد 5ث · استرخِ 5ث",0],
+  grip:        ["Close 2s · Open 2s","أغلق 2ث · افتح 2ث",0],
+  bike:        ["Smooth pedal · Easy breath","دوران سلس · تنفس سهل",300],
+  legpress:    ["Lower 2s · Press 1s","انزل 2ث · ادفع 1ث",0],
+  hinge:       ["Lower 2s · Neutral 1s","انزل 2ث · محايد 1ث",0],
+  chestpress:  ["Return 2s · Press 1s","عد 2ث · ادفع 1ث",0],
+  row:         ["Reach 2s · Pull 1s","مد 2ث · اسحب 1ث",0],
+  pulldown:    ["Rise 2s · Pull 1s","اصعد 2ث · اسحب 1ث",0],
+  walk:        ["Easy stride · Natural arms","خطوة سهلة · ذراعان طبيعيان",300],
+  inclinewalk: ["Upright · Short sentences","جسم مستقيم · جمل قصيرة",1500],
+  stretch:     ["Ease in · Hold · No bounce","ادخل برفق · اثبت · دون ارتداد",30],
+  // Football
+  football_jog:      ["Easy pitch jog · Light on balls of feet","هرولة خفيفة على أرض الملعب · خفة في الخطوات",180],
+  football_dynamic:  ["Leg swings · High knees · Butt kicks","أرجحة الساق · رفع الركبتين · ضرب الكعب",0],
+  football_agility:  ["Low center of gravity · Quick feet","مركز ثقل منخفض · حركة أقدام سريعة",0],
+  football_strides:  ["Smooth acceleration 60% → 90%","تسارع تدريجي 60% ← 90%",0],
+  football_cooldown: ["Lower heart rate · Deep breaths","خفض نبض القلب · تنفس عميق",180],
+  football_stretch:  ["Hold 30s · Priority on groin & hamstrings","اثبت 30ث · الأولوية للمقربة والخلفية",30],
+  // Padel
+  padel_jog:         ["Court perimeter jog · Quick split steps","هرولة حول الملعب · خطوات سريعة",150],
+  padel_dynamic:     ["Dynamic lunges + torso twists","اندفاعات ديناميكية + دوران الجذع",0],
+  padel_shoulder:    ["Full shoulder rotations · Rotator cuff prep","دوران كامل للكتف · تهيئة الكفة المدورة",0],
+  padel_rally:       ["Shadow swings · Bandeja & volley timing","ضربات حرة · توقيت البانديخا والكرات الطائرة",0],
+  padel_walk:        ["Relaxed court walk · Heart rate recovery","مشي مريح داخل الملعب · استعادة النبض",120],
+  padel_stretch:     ["Forearm flexors · Shoulders · Calves","عضلات الساعد · الأكتاف · السمانة",30]
 };
 
-const motionAtlasRows = { legpress:0, hinge:1, chestpress:2, row:3, pulldown:4, floor:5, birddog:6 };
-
 function anatomyVisual(motion) {
-  const [atlas,size,a,b,muscles,flip] = anatomy[motion] || anatomy.march;
-  const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
-  const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
-  if(state.viewMode==="side" && motion in motionAtlasRows){
-    const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
-    return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
-      <i class="sprite-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
-      <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
-      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+  const u = REP_I18N[state.lang].ui, guide = motionGuide[motion] || motionGuide.march;
+  const muscles = (REP_I18N[state.lang].anatomyTarget?.[motion] || (anatomy[motion]?.[1]) || "Active muscles");
+  const isPaused = state.paused ? "is-paused" : "";
+  const musclesClass = state.muscles ? "muscles-on" : "muscles-off";
+  const speedStyle = `--loop-speed:${3.6 / state.speed}s;`;
+
+  // 1. Dedicated Football Stadium & Pitch Stage
+  if (motion.startsWith("football_") || motion === "football") {
+    return `<div class="anatomy-motion football-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+      <div class="visual-hud-top">
+        <span class="phase-pill pitch-pill"><i></i> ⚽ ${state.lang === "ar" ? "ملعب كرة القدم" : "FOOTBALL PITCH"}</span>
+      </div>
+      <div class="pitch-container">
+        <div class="pitch-turf-bg"></div>
+        <div class="pitch-markings">
+          <div class="pitch-circle"></div>
+          <div class="pitch-line"></div>
+          <div class="pitch-box"></div>
+          <div class="pitch-arc"></div>
+        </div>
+        <div class="pitch-cones"><i></i><i></i><i></i></div>
+        <div class="pitch-ball"></div>
+        <div class="sport-athlete football-player ${motion}">
+          <div class="player-shadow"></div>
+          <div class="player-head"></div>
+          <div class="player-torso"><span class="jersey-no">10</span></div>
+          <div class="player-arm arm-l"></div>
+          <div class="player-arm arm-r"></div>
+          <div class="player-leg leg-l"></div>
+          <div class="player-leg leg-r"></div>
+        </div>
+      </div>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
     </div>`;
   }
-  const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
-  return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
-    <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
-    <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
-    <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> ${u.startFinish}</span>
-    <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+
+  // 2. Dedicated Padel Tournament Glass-Court Stage
+  if (motion.startsWith("padel_") || motion === "padel") {
+    return `<div class="anatomy-motion padel-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+      <div class="visual-hud-top">
+        <span class="phase-pill padel-pill"><i></i> 🎾 ${state.lang === "ar" ? "ملعب بادل زجاجي" : "PADEL COURT"}</span>
+      </div>
+      <div class="court-container">
+        <div class="court-turf-bg"></div>
+        <div class="court-glass-posts"><i></i><i></i><i></i></div>
+        <div class="court-lines">
+          <div class="court-t-line"></div>
+          <div class="court-service-box"></div>
+        </div>
+        <div class="court-net">
+          <div class="net-tape"></div>
+          <div class="net-mesh"></div>
+        </div>
+        <div class="court-ball"></div>
+        <div class="sport-athlete padel-player ${motion}">
+          <div class="player-shadow"></div>
+          <div class="player-head"></div>
+          <div class="player-torso"></div>
+          <div class="player-arm arm-l"></div>
+          <div class="player-arm arm-r"><div class="padel-racket"></div></div>
+          <div class="player-leg leg-l"></div>
+          <div class="player-leg leg-r"></div>
+        </div>
+      </div>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
+    </div>`;
+  }
+
+  // 3. Gym Biomechanics Rig Stage (Lat Pulldown, Leg Press, Row, Chest Press, Bike, Hinge, Treadmill)
+  if (["pulldown", "legpress", "row", "chestpress", "hinge", "bike", "walk", "inclinewalk"].includes(motion)) {
+    return `<div class="anatomy-motion gym-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+      <div class="visual-hud-top">
+        <span class="phase-pill gym-pill"><i></i> 🏋️ ${state.lang === "ar" ? "توجيه الأداء والمعدات" : "BIOMECHANICAL RIG"}</span>
+      </div>
+      <div class="gym-container ${motion}">
+        <div class="gym-floor"></div>
+        <div class="machine-hardware">
+          <div class="machine-frame-rail"></div>
+          <div class="machine-pulley-top"></div>
+          <div class="machine-cable-line"></div>
+          <div class="machine-bar"></div>
+          <div class="machine-weight-plates"><i></i><i></i><i></i><i></i></div>
+          <div class="machine-seat-pad"></div>
+        </div>
+        <div class="gym-lifter ${motion}">
+          <div class="lifter-shadow"></div>
+          <div class="lifter-head"></div>
+          <div class="lifter-torso"><span class="muscle-glow-core"></span></div>
+          <div class="lifter-arm arm-l"></div>
+          <div class="lifter-arm arm-r"></div>
+          <div class="lifter-leg leg-l"></div>
+          <div class="lifter-leg leg-r"></div>
+        </div>
+      </div>
+      <div class="visual-hud-bottom">
+        <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+        <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+      </div>
+    </div>`;
+  }
+
+  // 4. Studio Mat Stage for Mobility & Core
+  return `<div class="anatomy-motion mat-stage motion-${motion} ${isPaused} ${musclesClass}" style="${speedStyle}">
+    <div class="visual-hud-top">
+      <span class="phase-pill mat-pill"><i></i> 🧘 ${state.lang === "ar" ? "حركات التنشيط والجذع" : "MOBILITY & CORE"}</span>
+    </div>
+    <div class="mat-container">
+      <div class="studio-mat-floor"></div>
+      <div class="studio-mat-cushion"></div>
+      <div class="mat-athlete ${motion}">
+        <div class="athlete-shadow"></div>
+        <div class="lifter-head"></div>
+        <div class="lifter-torso"><span class="muscle-glow-core"></span></div>
+        <div class="lifter-arm arm-l"></div>
+        <div class="lifter-arm arm-r"></div>
+        <div class="lifter-leg leg-l"></div>
+        <div class="lifter-leg leg-r"></div>
+      </div>
+    </div>
+    <div class="visual-hud-bottom">
+      <span class="guide-callout">${guide[state.lang === "ar" ? 1 : 0]}</span>
+      <span class="muscle-callout"><b>${u.active}</b>${muscles}</span>
+    </div>
   </div>`;
 }
 
@@ -183,16 +333,15 @@ const state = {
 const syncKeyStorage="rep-notion-pairing-key-v1";
 const repAuth=window.REP_AUTH;
 const app = document.querySelector("#app");
-let enterRaf = null;
-new MutationObserver(()=>{
-  if(enterRaf) return;
-  enterRaf = requestAnimationFrame(()=>{
-    enterRaf = null;
+let currentRenderedView = null;
+function notifyViewChange(viewName) {
+  if (viewName && viewName !== currentRenderedView) {
+    currentRenderedView = viewName;
     app.classList.remove("view-enter");
     void app.offsetWidth;
     app.classList.add("view-enter");
-  });
-}).observe(app,{childList:true});
+  }
+}
 const timerDock = document.querySelector("#timerDock");
 
 let previewSnapshot = null;
@@ -432,6 +581,7 @@ function journalInsightsCard(ar){
     :`<p class="journal-empty">${ar?"سجّل دفتر اليومية من تبويب الحيوية لبضعة أيام لتظهر هنا أنماط مرتبطة بالاستشفاء.":"Log the Journal from the Vitals tab for a few days, and any patterns tied to Recovery will show up here."}</p>`}</section>`;
 }
 function renderInsights(){
+  notifyViewChange("insights");
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="insights";state.activeTab="insights";persistDebounced();updatePrimaryTabs();
   const ar=state.lang==="ar",weekAgo=Date.now()-7*86400000;
   const history7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo),sessions7=history7.length;
@@ -482,7 +632,23 @@ function renderInsights(){
   <section class="insights-card"><div class="insights-head"><small>${ar?"ملخص عام":"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${ar?"سجّل تمارين وطعاماً ووزناً لبضعة أيام لتظهر هنا ملاحظات تلقائية.":"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`);
   document.querySelectorAll("[data-trend-horizon]").forEach(btn=>{btn.onclick=()=>{state.trendHorizon=btn.dataset.trendHorizon;persist();renderInsights();};});
 }
-function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:state.lang==="ar"?"اليوم":"Today",train:state.lang==="ar"?"التدريب":"Training",food:state.lang==="ar"?"التغذية":"Nutrition",care:state.lang==="ar"?"العناية":"Wellness",insights:state.lang==="ar"?"التحليلات":"Insights",vitals:state.lang==="ar"?"الحيوية":"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
+function updatePrimaryTabs(){
+  document.querySelectorAll("[data-app-tab]").forEach(button=>{
+    const active=button.dataset.appTab===state.activeTab;
+    button.setAttribute("aria-current",active?"page":"false");
+    const labels={
+      home:state.lang==="ar"?"اليوم":"Home",
+      train:state.lang==="ar"?"التمارين":"Workouts",
+      food:state.lang==="ar"?"النشاط":"Activity",
+      care:state.lang==="ar"?"الملف":"Profile",
+      health:state.lang==="ar"?"الملف":"Profile",
+      insights:state.lang==="ar"?"التقدم":"Progress",
+      vitals:state.lang==="ar"?"الحيوية":"Vitals"
+    };
+    const span=button.querySelector("span");
+    if(span&&labels[button.dataset.appTab])span.textContent=labels[button.dataset.appTab];
+  });
+}
 function focusViewHeading(){
   requestAnimationFrame(()=>{const heading=app.querySelector("h1");if(!heading)return;heading.tabIndex=-1;heading.focus({preventScroll:true});scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
 }
@@ -606,7 +772,7 @@ function setPrimaryTab(tab){
   updatePrimaryTabs();
   if(tab==="home")renderOverview();
   else if(tab==="food")renderNutrition();
-  else if(tab==="care")renderHygiene();
+  else if(tab==="care"||tab==="health")renderHygiene();
   else if(tab==="insights")renderInsights();
   else if(tab==="vitals")renderVitals();
   else renderHome();
@@ -658,6 +824,7 @@ function todayFuelSnippet(ar){
   </section>`;
 }
 function renderOverview(){
+  notifyViewChange("overview");
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="home-overview";state.activeTab="home";persistDebounced();updatePrimaryTabs();
   const ar=state.lang==="ar",day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore(),bedtime=computeBedtimeSuggestion();
   const items=buildInsights(),note=items[0];
@@ -686,6 +853,7 @@ function renderOverview(){
 }
 
 function renderHome() {
+  notifyViewChange("home");
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view = "home";state.activeTab="train";persistDebounced();updatePrimaryTabs();
   const day = currentDay(),u=U();
   document.documentElement.lang=state.lang;document.documentElement.dir=REP_I18N[state.lang].dir;
@@ -793,76 +961,75 @@ function loadPanel(base,item){
   if(!isLoadExercise(item))return "";
   const u=U(), ar=state.lang==="ar", id=exerciseId(base), log=normalizedLog(id,item.sets);
   const isLb = state.preferences?.weightUnit === "lb";
-  const unitLabel = isLb ? "lb" : "kg";
+  const unitLabel = isLb ? "LBS" : "KG";
   const prev=log.previousSets?.map((s,i)=>`${i+1}: ${isLb?(window.weightLabel?weightLabel(s.weight):`${s.weight||"—"} lb`):`${s.weight||"—"} kg`} × ${s.reps||"—"}`).join(" · ")||u.noPrevious;
   const advice=window.REP_PERFORMANCE_INSIGHTS?.progressionAdvice(id,state);
   const curWeight=Number(log.sets[0]?.weight||60)||60;
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
 
-  return `<section class="load-panel">
+  return `<section class="load-panel set-logging-card">
     <div class="set-log-head">
       <div>
-        <span class="set-log-kicker">${ar?"تسجيل القوة":"STRENGTH LOG"}</span>
-        <h2>${ar?"سجل المجموعات":"Log Every Set"}</h2>
+        <h2>${ar?"تسجيل المجموعات":"Sets Logging"}</h2>
       </div>
       <div class="set-log-actions">
-        <button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${ar?"الإيقاع":"Tempo"}</button>
         <button class="voice-set-btn" data-plate-math="${curWeight}" type="button">🏋️ ${ar?"الأوزان":"Plates"}</button>
+        <button class="voice-set-btn" data-tempo-coach type="button">⏱️ ${ar?"الإيقاع":"Tempo"}</button>
         <button class="voice-set-btn" data-voice-set-log type="button">🎙️ ${ar?"صوتي":"Voice"}</button>
       </div>
     </div>
 
-    <div class="set-table-header">
-      <span class="col-set">${ar?"مجموعة":"SET"}</span>
-      <span class="col-prev">${ar?"السابق":"PREV"}</span>
-      <span class="col-weight">${u.weight} (${unitLabel})</span>
-      <span class="col-reps">${u.reps}</span>
-      <span class="col-rpe">RPE</span>
-      <span class="col-check">✓</span>
+    <div class="set-table-card">
+      <div class="set-table-header">
+        <span class="col-set">SET</span>
+        <span class="col-weight">${unitLabel}</span>
+        <span class="col-reps">REPS</span>
+        <span class="col-rpe">RPE</span>
+        <span class="col-check">✓</span>
+      </div>
+
+      <div class="set-log-grid">
+        ${Array.from({length:item.sets},(_,i)=>{
+          const s=log.sets[i]||{};
+          const isDone=done.includes(i);
+          const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
+          return `<div class="set-card-row ${isDone?"is-completed":""}">
+            <div class="set-main-fields">
+              <span class="set-num-label">${i+1}</span>
+              <div class="set-input-wrap">
+                <input data-log="weight" data-log-set="${i}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${wVal}" placeholder="${unitLabel}" aria-label="${u.weight} ${i+1}">
+              </div>
+              <div class="set-input-wrap">
+                <input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}" placeholder="10" aria-label="${u.reps} ${i+1}">
+              </div>
+              <div class="set-input-wrap">
+                <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="8" aria-label="RPE ${i+1}">
+              </div>
+              <button class="set-button set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
+                ${isDone?"✓":"○"}
+              </button>
+            </div>
+            <div class="set-sub-bar">
+              <div class="set-steppers">
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?-5:-2.5}">${isLb?"-5":"-2.5"}</button>
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?5:2.5}">${isLb?"+5":"+2.5"}</button>
+                <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?10:5}">${isLb?"+10":"+5"}</button>
+                ${i>0?`<button class="clone-set-btn" data-clone-set="${i}" type="button">⎘ ${ar?`مثل ${i}`:`Match S${i}`}</button>`:""}
+              </div>
+              <div class="set-note-wrap">
+                <input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${ar?"+ ملاحظة (اختياري)":"+ Note (optional)"}" aria-label="Note ${i+1}">
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
     </div>
 
-    <div class="set-log-grid">
-      ${Array.from({length:item.sets},(_,i)=>{
-        const s=log.sets[i]||{};
-        const prevSet=log.previousSets?.[i];
-        const prevText=prevSet?(prevSet.weight?`${isLb?(window.weightLabel?weightLabel(prevSet.weight):prevSet.weight):prevSet.weight}×${prevSet.reps}`:`${prevSet.reps}r`):"—";
-        const isDone=done.includes(i);
-        const wVal=isLb?(window.weightInput?weightInput(s.weight):esc(s.weight||"")):esc(s.weight||"");
-        return `<div class="set-card-row ${isDone?"is-completed":""}">
-          <div class="set-main-fields">
-            <span class="set-badge ${isDone?"is-done":""}">${i+1}</span>
-            <div class="set-prev-cell"><small>${prevText}</small></div>
-            <div class="set-input-wrap">
-              <input data-log="weight" data-log-set="${i}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${wVal}" placeholder="${unitLabel}" aria-label="${u.weight} ${i+1}">
-            </div>
-            <div class="set-input-wrap">
-              <input data-log="reps" data-log-set="${i}" type="number" min="0" step="1" inputmode="numeric" value="${esc(s.reps||"")}" placeholder="0" aria-label="${u.reps} ${i+1}">
-            </div>
-            <div class="set-input-wrap">
-              <input data-log="rpe" data-log-set="${i}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(s.rpe||"")}" placeholder="7.5" aria-label="RPE ${i+1}">
-            </div>
-            <button class="set-check-btn ${isDone?"is-done":""}" type="button" data-set="${i}" aria-label="${ar?`تحديد مجموعة ${i+1}`:`Mark set ${i+1}`}">
-              ${isDone?"✓":"○"}
-            </button>
-          </div>
-          <div class="set-sub-bar">
-            <div class="set-steppers">
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?-5:-2.5}">${isLb?"-5":"-2.5"}</button>
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?5:2.5}">${isLb?"+5":"+2.5"}</button>
-              <button class="step-btn" type="button" data-step-set="${i}" data-step-val="${isLb?10:5}">${isLb?"+10":"+5"}</button>
-              ${i>0?`<button class="clone-set-btn" data-clone-set="${i}" type="button">⎘ ${ar?`مثل ${i}`:`Match S${i}`}</button>`:""}
-            </div>
-            <div class="set-note-wrap">
-              <input data-log="note" data-log-set="${i}" value="${esc(s.note||"")}" maxlength="60" placeholder="${ar?"+ ملاحظة (اختياري)":"+ Note (optional)"}" aria-label="Note ${i+1}">
-            </div>
-          </div>
-        </div>`;
-      }).join("")}
+    <div class="set-card-footer">
+      <small style="color:var(--muted);">${u.previousLog}: <strong>${prev}</strong></small>
     </div>
-
-    <p style="margin:10px 0 0;color:var(--muted);font-size:11px;">${u.previousLog}: <strong>${prev}</strong></p>
-    <div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div>
+    ${advice?`<div class="progression-callout">${advice?`<span class="progression-badge status-${advice.status}">${esc(advice.badge)}</span> `:""}${progressionAdvice(id)}</div>`:""}
   </section>`;
 }
 function cardioPanel(item){
@@ -870,7 +1037,122 @@ function cardioPanel(item){
   return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
 }
 function cardioAdvice(){return REP_TRAINING_SESSION.cardioAdvice(state.history,state.lang);}
-function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
+function openBottomSheet({ title, options = [], onSelect }) {
+  const existing = document.querySelector(".mobile-sheet-backdrop");
+  if (existing) existing.remove();
+  const existingSheet = document.querySelector(".mobile-bottom-sheet");
+  if (existingSheet) existingSheet.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "mobile-sheet-backdrop";
+  const sheet = document.createElement("div");
+  sheet.className = "mobile-bottom-sheet";
+  sheet.innerHTML = REP_SAFE_DOM.sanitize(`
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <h3>${esc(title)}</h3>
+      <button class="sheet-close-btn" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-options-grid">
+      ${options.map((opt, idx) => `
+        <button class="sheet-option-item ${opt.selected ? "is-selected" : ""}" type="button" data-sheet-idx="${idx}">
+          <span>${esc(opt.label)}</span>
+          ${opt.selected ? "<span>✓</span>" : ""}
+        </button>
+      `).join("")}
+    </div>
+  `);
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sheet);
+
+  requestAnimationFrame(() => {
+    backdrop.classList.add("is-open");
+    sheet.classList.add("is-open");
+  });
+
+  const close = () => {
+    backdrop.classList.remove("is-open");
+    sheet.classList.remove("is-open");
+    setTimeout(() => {
+      backdrop.remove();
+      sheet.remove();
+    }, 360);
+  };
+
+  backdrop.onclick = close;
+  sheet.querySelector(".sheet-close-btn").onclick = close;
+  sheet.querySelectorAll("[data-sheet-idx]").forEach(btn => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.sheetIdx);
+      if (onSelect) onSelect(options[idx], idx);
+      close();
+    };
+  });
+}
+
+function motionControls(){
+  const ar=state.lang==="ar";
+  return `<div class="motion-controls" aria-label="Animation controls">
+    <button class="motion-control-tile ${state.speed!==1?"is-active":""}" data-motion-action="speed" type="button">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <span class="tile-label">${ar?"السرعة":"Speed"}</span>
+      <span class="tile-value">${state.speed}x</span>
+    </button>
+    <button class="motion-control-tile ${state.paused?"":"is-active"}" data-motion-action="play" type="button" aria-pressed="${!state.paused}">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span class="tile-label">${ar?"تكرار":"Loop"}</span>
+      <span class="tile-value">${state.paused?(ar?"متوقف":"Paused"):(ar?"مستمر":"Playing")}</span>
+    </button>
+    <button class="motion-control-tile" data-motion-action="view" type="button">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+      <span class="tile-label">${ar?"الزاوية":"Angle"}</span>
+      <span class="tile-value">${state.viewMode==="front"?(ar?"أمامي":"Front"):(ar?"جانبي":"Side")}</span>
+    </button>
+    <button class="motion-control-tile ${state.muscles?"is-active muscles-active":""}" data-motion-action="muscles" type="button" aria-pressed="${state.muscles}">
+      <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h12M6 14h12M6 10h12M8 6h8"/></svg>
+      <span class="tile-label">${ar?"العضلات":"Muscles"}</span>
+      <span class="tile-value">${state.muscles?(ar?"مفعلة":"ON"):(ar?"معطلة":"OFF")}</span>
+    </button>
+  </div>`;
+}
+
+function sportDrillPanel(base, item) {
+  if (isLoadExercise(item)) return "";
+  const ar = state.lang === "ar";
+  const session = sessions[state.session] || {};
+  const isLast = state.index >= (session.exercises?.length || 1) - 1;
+  const nextItem = !isLast ? localizedItem(session.exercises[state.index + 1]) : null;
+  const timerSecs = motionGuide[item.motion]?.[2] || 45;
+
+  return `<section class="sport-drill-card">
+    <div class="drill-card-header">
+      <span class="drill-set-tag">SET ${state.index + 1} / ${session.exercises?.length || 1}</span>
+      <div class="drill-dots">
+        ${Array.from({ length: session.exercises?.length || 1 }, (_, i) => `<i class="${i === state.index ? "is-active" : i < state.index ? "is-done" : ""}"></i>`).join("")}
+      </div>
+    </div>
+    <div class="drill-main-row">
+      <div class="drill-timer-ring-wrap" data-exercise-timer>
+        <div class="drill-timer-ring">
+          <strong>${timerSecs}</strong>
+          <small>SEC</small>
+        </div>
+      </div>
+      <div class="drill-meta-info">
+        <h3>${esc(item.name)}</h3>
+        <div class="drill-stat-chips">
+          <span class="drill-chip is-accent">✓ ${esc(item.prescription)}</span>
+          <span class="drill-chip">${esc(item.intensity)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="drill-actions-row">
+      <button class="drill-btn-skip" data-prev type="button" ${state.index === 0 ? "disabled" : ""}>${ar ? "السابق" : "SKIP EXERCISE"}</button>
+      <button class="drill-btn-next" data-drill-next type="button">${isLast ? (ar ? "إنهاء الحصة" : "FINISH SESSION") : (ar ? `التالي: ${nextItem?.name || ""}` : `NEXT: ${nextItem?.name || "Next Move"}`)}</button>
+    </div>
+  </section>`;
+}
 
 function showSwapModal(exerciseName){
   const subs=window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[exerciseName]||[];
@@ -984,41 +1266,78 @@ function startVoiceSetLogger(base,item){
 function renderExercise() {
   const session = sessions[state.session];
   if (!session) return renderHome();
+  notifyViewChange("exercise-" + (state.session || "") + "-" + state.index);
   if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
+  const ar = state.lang === "ar";
   const subs = window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[base.name] || [];
-  const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${state.lang==="ar"?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
+  const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${ar?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
   const nextSetIndex = Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
   const isAllDone = nextSetIndex === undefined;
-  const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(state.lang==="ar"?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
+  const isStrength = isLoadExercise(item);
+
+  const statusBadgeText = state.session === "football"
+    ? `⚽ ${ar ? "ملعب كرة القدم · إحماء" : "FOOTBALL PITCH · WARM-UP"}`
+    : state.session === "padel"
+    ? `🎾 ${ar ? "ملعب بادل · تحضير المباريات" : "PADEL COURT · RALLY PREP"}`
+    : isStrength
+    ? `🏋️ ${ar ? "توجيه بيوميكانيكي · مركب" : "BIOMECHANICAL RIG · COMPOUND"}`
+    : `🧘 ${ar ? "تنشيط واستشفاء" : "MOBILITY & CORE"}`;
+
+  const targetMusclesText = ar
+    ? (REP_I18N.ar.anatomyTarget?.[item.motion] || `${item.category}`)
+    : (REP_I18N.en.anatomyTarget?.[item.motion] || `${item.category}`);
+
+  const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(ar?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
+
+  document.body.classList.add("workout-mode");
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player" data-swipe>
     <div class="player-header">
-      <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
-      <div class="player-progress"><strong>${ls.name}</strong><span>${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
+      <button class="round-button player-back-btn" data-exit aria-label="${ar?"خروج":"Back"}">‹</button>
+      <div class="player-header-badge">
+        <span class="header-status-pill">${statusBadgeText}</span>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(state.lang==="ar") : ""}
-        <button class="round-button" data-exit aria-label="${state.lang==="ar"?"إنهاء الحصة":"Exit session"}">×</button>
+        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(ar) : ""}
+        <button class="round-button" data-exit aria-label="${ar?"إنهاء الحصة":"Exit session"}">×</button>
       </div>
     </div>
     <div class="progress-bar"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
-      <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${anatomyVisual(item.motion)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
-      ${motionControls()}
-      <div class="exercise-info"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${swapBtn}</div><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>
-      <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
-        <span style="font-size:11px;font-weight:900;color:var(--orange);">⚡ ${state.lang==="ar"?"سوبر سيت متاح":"SUPERSET MODE"}</span>
-        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"تبديل مع التالي ↻":"Next Move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"السابق ↺":"Prev Move ↺"}</button>` : "")}
+      <div class="visual-wrap anatomy-wrap workout-hero-stage" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}">${anatomyVisual(item.motion)}</div>
+      <div class="exercise-info">
+        <div class="exercise-title-row">
+          <h1>${esc(item.name)}</h1>
+          ${swapBtn}
+        </div>
+        <p class="exercise-target-sub">${ar ? `المستهدف: ${targetMusclesText}` : `Target: ${targetMusclesText}`}</p>
       </div>
-      ${motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer>${u.startTimer} · ${formatClock(motionGuide[item.motion][2])}</button>`:""}
+      <div class="workout-progress-strip">
+        <span class="progress-strip-set">${ar ? `المجموعة ${nextSetIndex !== undefined ? nextSetIndex + 1 : item.sets} من ${item.sets}` : `SET ${nextSetIndex !== undefined ? nextSetIndex + 1 : item.sets} OF ${item.sets}`}</span>
+        <span class="progress-strip-reps">${isStrength ? (ar ? `الهدف: ${item.reps || "8-12"} تكرار` : `TARGET: ${item.reps || "8-12"} REPS`) : (ar ? `المؤقت: ${motionGuide[item.motion]?.[2] || 45} ثانية` : `TIMER: ${motionGuide[item.motion]?.[2] || 45} SEC`)}</span>
+      </div>
+      ${motionControls()}
+      <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
+        <span style="font-size:11px;font-weight:900;color:var(--orange);">⚡ ${ar?"سوبر سيت متاح":"SUPERSET MODE"}</span>
+        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${ar?"تبديل مع التالي ↻":"Next Move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${ar?"السابق ↺":"Prev Move ↺"}</button>` : "")}
+      </div>
+      ${sportDrillPanel(base, item)}
       ${loadPanel(base,item)}
       ${cardioPanel(item)}
-      <div class="set-tracker" aria-label="${state.lang==="ar"?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
-      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
+      <div class="workout-bottom-dock">
+        <div style="display:flex;gap:10px;width:100%;">
+          <button class="player-back-btn" data-prev ${state.index===0?"disabled":""} style="width:54px;height:54px;border-radius:16px;flex:none;display:grid;place-items:center;" aria-label="${u.previous}">‹</button>
+          <button class="primary-workout-cta ${!isStrength ? "is-sport" : ""} ${isAllDone ? "is-completed" : ""}" data-next type="button" style="flex:1;">
+            ${primaryButtonLabel}
+          </button>
+        </div>
+      </div>
     </article></section>`);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
+  document.querySelectorAll("[data-drill-next]").forEach(b => b.addEventListener("click", next));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
   document.querySelector("[data-open-hr-modal]")?.addEventListener("click", ()=>window.REP_HEART_RATE?.openHrModal());
@@ -1088,15 +1407,62 @@ function renderExercise() {
   updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
-  if(action==="play")state.paused=!state.paused;
-  if(action==="speed")state.speed=state.speed===1?.5:1;
-  if(action==="view")state.viewMode=state.viewMode==="side"?"front":"side";
-  if(action==="muscles")state.muscles=!state.muscles;
+  const ar = state.lang === "ar";
+  if (action === "speed") {
+    openBottomSheet({
+      title: ar ? "سرعة الحركة البيوميكانيكية" : "Biomechanical Speed",
+      options: [
+        { label: "0.5x (Slow Motion)", value: 0.5, selected: state.speed === 0.5 },
+        { label: "0.75x", value: 0.75, selected: state.speed === 0.75 },
+        { label: "1x (Normal Speed)", value: 1, selected: !state.speed || state.speed === 1 },
+        { label: "1.25x", value: 1.25, selected: state.speed === 1.25 },
+        { label: "1.5x (Fast)", value: 1.5, selected: state.speed === 1.5 }
+      ],
+      onSelect: (opt) => {
+        state.speed = opt.value;
+        persist();
+        const v = document.querySelector(".anatomy-visual");
+        if (v) {
+          const item = currentItem(sessions[state.session]?.exercises?.[state.index]);
+          const baseDuration = (motionGuide[item?.motion]?.[2] || 4);
+          v.style.animationDuration = `${baseDuration / opt.value}s`;
+        }
+        renderExercise();
+      }
+    });
+    return;
+  }
+  if (action === "view") {
+    openBottomSheet({
+      title: ar ? "زاوية الكاميرا والعرض" : "Camera View Angle",
+      options: [
+        { label: ar ? "العرض الأمامي (Front)" : "Front View", value: "front", selected: state.viewMode !== "side" },
+        { label: ar ? "العرض الجانبي (Side)" : "Side View", value: "side", selected: state.viewMode === "side" },
+        { label: ar ? "الهيكل البيوميكانيكي 3D" : "Biomechanical 3D Rig", value: "3d", selected: false }
+      ],
+      onSelect: (opt) => {
+        if (opt.value === "side" || opt.value === "front") {
+          state.viewMode = opt.value;
+          persist();
+          renderExercise();
+        }
+      }
+    });
+    return;
+  }
+  if (action === "play") {
+    state.paused = !state.paused;
+    if (window.vibrateGym) window.vibrateGym("habit");
+  }
+  if (action === "muscles") {
+    state.muscles = !state.muscles;
+    if (window.vibrateGym) window.vibrateGym("habit");
+  }
   persist();
-  if(state.view==="preview"){
-    const open=new Set([...document.querySelectorAll(".preview-row")].map((el,i)=>el.open?i:-1).filter(i=>i>=0));
-    showSessionPreview(state.previewSession,open);
-  }else renderExercise();
+  if (state.view === "preview") {
+    const open = new Set([...document.querySelectorAll(".preview-row")].map((el, i) => el.open ? i : -1).filter(i => i >= 0));
+    showSessionPreview(state.previewSession, open);
+  } else renderExercise();
 }
 function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60).padStart(2,"0");return `${m}:${s}`;}
 function toggleExerciseTimer(motion){
@@ -1280,13 +1646,13 @@ function abandonSession(){
   REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
-  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
+  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();document.body.classList.remove("workout-mode");if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
 }
 // MET (metabolic equivalent) per session type, used only for a rough estimate -
 // there's no heart-rate or wearable data source here, so this is duration x
 // intensity x bodyweight, not a measured burn.
 const SESSION_MET={morning:2.8,gym:5,cardio:4.3,bad:2.5,gymLite:4.5,padel:6,football:7,basketball:6.5,swimming:6,cycling:7.5,tennis:7,other:5};
-const ACTIVITY_TYPES=[["padel",{en:"Padel",ar:"بادل"}],["football",{en:"Football",ar:"كرة القدم"}],["basketball",{en:"Basketball",ar:"كرة السلة"}],["swimming",{en:"Swimming",ar:"سباحة"}],["cycling",{en:"Cycling",ar:"دراجة"}],["tennis",{en:"Tennis",ar:"تنس"}],["other",{en:"Other",ar:"أخرى"}]];
+const ACTIVITY_TYPES=[["padel",{en:"🎾 Padel",ar:"🎾 بادل"}],["football",{en:"⚽ Football",ar:"⚽ كرة القدم"}],["basketball",{en:"🏀 Basketball",ar:"🏀 كرة السلة"}],["swimming",{en:"🏊 Swimming",ar:"🏊 سباحة"}],["cycling",{en:"🚴 Cycling",ar:"🚴 دراجة"}],["tennis",{en:"🎾 Tennis",ar:"🎾 تنس"}],["other",{en:"⚡ Other",ar:"⚡ أخرى"}]];
 function latestWeightKg(){const w=[...state.bodyWeights].sort((a,b)=>b.week.localeCompare(a.week))[0];return w?w.kg:75;}
 function estimateCalories(sessionId,durationSeconds){return Math.round((SESSION_MET[sessionId]||4)*latestWeightKg()*(durationSeconds/3600));}
 function logActivity(type,customName,minutes,calories,notes){
@@ -1354,6 +1720,7 @@ async function disablePushReminders(){
 }
 
 function renderHistory(){
+  notifyViewChange("history");
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="history";state.activeTab="train";persist();updatePrimaryTabs();const u=U(),rows=state.history;
   const best={};rows.forEach(r=>Object.entries(r.loads||{}).forEach(([name,l])=>setsFromLog(l).forEach(s=>{const w=Number(s.weight)||0,reps=Number(s.reps)||0;if(!best[name]||w>best[name].weight||(w===best[name].weight&&reps>best[name].reps))best[name]={weight:w,reps};})));
   app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">${u.history}</p><h1>${state.lang==="ar"?"تقدمك، بوضوح.":"Progress, without noise."}</h1><p>${u.historyDesc}</p></section>
@@ -1423,10 +1790,12 @@ function renderComplete() {
 }
 
 function renderRecovery() {
+  notifyViewChange("recovery");
   state.view="recovery";state.activeTab="train";persist();updatePrimaryTabs();
   if(state.lang==="ar")return renderRecoveryArabic();
   const check = saved.checkin || {};
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
+    ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
     <section class="recovery-grid">
       ${sleepSummaryCard(false)}
       <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:15 AM wake, aim for 9:15 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
@@ -1442,7 +1811,9 @@ function renderRecovery() {
   bindRecoveryTools();
 }
 function renderRecoveryArabic(){
-  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}<section class="recovery-grid">
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">نظام الاستشفاء</p><h1>هنا يحدث التطور.</h1><p>التزم بالأساسيات يومياً، وراجع حالتك أسبوعياً. الألم معلومة وليس تحدياً.</p></section>${recoveryDecisionCard()}
+  ${window.REP_RECOVERY_MAP ? window.REP_RECOVERY_MAP.renderRecoveryMap(state) : ""}
+  <section class="recovery-grid">
   ${sleepSummaryCard(true)}
   <article class="recovery-card"><span class="card-kicker">كل يوم</span><h2>الأساسيات</h2><ul><li><strong>النوم:</strong> 7 ساعات على الأقل؛ مع الاستيقاظ 4:15 ص استهدف 9:15 م.</li><li><strong>الماء:</strong> عند الاستيقاظ وطوال الصباح، خصوصاً مع حرارة القاهرة.</li><li><strong>الإفطار:</strong> بروتين وكربوهيدرات بعد تمرين الصباح.</li></ul></article>
   <article class="recovery-card"><span class="card-kicker">الأحد · الثلاثاء · الخميس</span><h2>بعد الجيم</h2><ul><li>Foam roller للجسم السفلي والظهر مساءً، نحو 8 دقائق.</li><li>مسدس المساج قبل النوم، 6–8 دقائق.</li><li>لا تستخدم الثلج روتينياً؛ فقط لألم مفصل حقيقي.</li></ul></article>
@@ -1950,6 +2321,7 @@ function bindVitalsTools(){
   document.querySelectorAll(".journal-list [data-daily-key]").forEach(el=>el.onchange=()=>{if(el.checked&&navigator.vibrate)navigator.vibrate(30);const b=dailyBucket("journal");b.checked[el.dataset.dailyKey]=el.checked;persist();renderVitals();});
 }
 function renderVitals(){
+  notifyViewChange("vitals");
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="vitals";state.activeTab="vitals";persistDebounced();updatePrimaryTabs();
   const ar=state.lang==="ar";
   app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"الحيوية":"VITALS",ar?"استعدادك اليوم.":"Your readiness today.",ar?"مؤشرات الاستشفاء والإجهاد المبنية على بياناتك، مع إمكانية استيراد الأرقام من لقطات شاشة صحة أبل.":"Recovery and strain built from your own data, plus the option to import numbers straight from Apple Health screenshots.")}
@@ -2023,6 +2395,7 @@ function frequentMealsTray(ar){
 }
 
 function renderNutrition(){
+  notifyViewChange("nutrition");
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="nutrition";state.activeTab="food";state.foodMealType=state.foodMealType||autoMealType();persistDebounced();updatePrimaryTabs();const ar=state.lang==="ar",profile=foodProfile(),entries=todayFoodEntries(),totals=foodTotals(entries),water=Number(state.water[isoDay()])||0,note=state.foodNote||"";
   app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong><span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:900;color:var(--orange);background:rgba(255,139,61,.12);padding:2px 7px;border-radius:6px;border:1px solid rgba(255,139,61,.25);">${profile.carbCycleBadge}</span></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`);
   document.querySelector(".food-connect")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(nutritionPlanNote()));const foodHeadings=[...document.querySelectorAll(".food-section-head h2")];if(foodHeadings.length)foodHeadings.at(-1).textContent=ar?"وجبات اليوم":"Food entries today";
@@ -2086,6 +2459,7 @@ function changeFoodWater(delta){setFoodWater((Number(state.water[isoDay()])||0)+
 function applyCustomWater(mode){const input=document.querySelector("[data-water-custom]"),amount=Number(input?.value);if(!input||!Number.isFinite(amount)||amount<=0||amount>20000){input?.setCustomValidity(state.lang==="ar"?"أدخل كمية بين 1 و20000 مل.":"Enter an amount from 1 to 20,000 ml.");input?.reportValidity();return;}input.setCustomValidity("");setFoodWater(mode==="set"?amount:(Number(state.water[isoDay()])||0)+amount);}
 function deleteFoodEntry(id){state.foodEntries=state.foodEntries.filter(entry=>entry.id!==id);queueNutritionSummary();persist();renderNutrition();}
 function renderHygiene(){
+  notifyViewChange("hygiene");
   stopSessionClock();document.body.classList.remove("workout-mode");state.view="hygiene";state.activeTab="care";persistDebounced();updatePrimaryTabs();const ar=state.lang==="ar",g=REP_HEALTH_GUIDE.hygiene,b=dailyBucket("hygiene"),day=currentDay(),hair=g.hair[day],training=["Sunday","Monday","Tuesday","Wednesday","Thursday"].includes(day),sections=[...g.morning.map((x,i)=>["morning",i,x]),...g.evening.map((x,i)=>["evening",i,x]),...hair.map((x,i)=>["hair",i,x]),...(training?g.postWorkout.map((x,i)=>["post",i,x]):[]),...(training?g.afterWork.map((x,i)=>["after",i,x]):[])],done=sections.filter(([p,i])=>b.checked[`${p}-${i}`]).length,percent=Math.round(done/sections.length*100);
   const complete=p=>{const group=sections.filter(x=>x[0]===p);return group.length>0&&group.every(([,i])=>b.checked[`${p}-${i}`]);};
   app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"العناية اليومية":"DAILY CARE",ar?"امسح. نفّذ. أكمل.":"Scan. Do. Done.",ar?"روتين الصباح والمساء وما بعد التمرين مع تعليمات الشعر حسب اليوم.":"Morning, evening, post-workout, and the correct hair routine for today.")}
@@ -2128,35 +2502,47 @@ function showLogActivity(){
   if(document.querySelector(".activity-panel"))return;
   const ar=state.lang==="ar",defaultMinutes=60,defaultType=ACTIVITY_TYPES[0][0];
   const box=document.createElement("div");box.className="exit-confirm activity-panel";
-  box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"تسجيل نشاط":"Log an activity"}</strong>
-    <p class="activity-hint">${ar?"للرياضات غير المنظمة مثل البادل وكرة القدم — مدة وسعرات محروقة من ساعة أبل، لا قائمة تمارين موجهة.":"For unstructured sports like padel and football — duration and calories burned from your Apple Watch, not a guided exercise list."}</p>
+  box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"تسجيل نشاط رياضي":"Log Sport Activity"}</strong>
+    <p class="activity-hint">${ar?"للرياضات مثل البادل وكرة القدم — تسجل المدة والسعرات، وتحسب تلقائياً في خريطة الاستشفاء العضلي.":"For sports like Padel & Football — logs duration, Apple Watch active calories, and updates your Muscle Recovery Map."}</p>
     <div class="activity-types">${ACTIVITY_TYPES.map(([id,label],i)=>`<button data-activity-type="${id}" class="${i===0?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
     <input class="activity-custom" data-activity-custom type="text" maxlength="40" placeholder="${ar?"اسم النشاط":"Activity name"}" style="display:none">
-    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة من ساعة أبل":"Apple Watch Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
-    <p class="activity-hint">${ar?"استخدم السعرات النشطة، وليس إجمالي السعرات، من ملخص تمرين ساعة أبل.":"Use Active Calories—not Total Calories—from the Apple Watch workout summary."}</p>
-    <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية":"Optional notes"}"></textarea>
-    <button data-save-activity>${ar?"حفظ النشاط":"Save activity"}</button>
+    <div style="display:flex;gap:6px;margin:8px 0 10px;overflow-x:auto;">
+      ${[30, 45, 60, 90, 120].map(m=>`<button type="button" data-quick-duration="${m}" style="min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:900;cursor:pointer;">${m} ${ar?"د":"min"}</button>`).join("")}
+    </div>
+    <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة":"Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
+    <p class="activity-hint">${ar?"استخدم السعرات النشطة (Active Calories) من ملخص تمرين ساعة أبل.":"Use Active Calories from your Apple Watch workout summary."}</p>
+    <textarea class="activity-notes" data-activity-notes maxlength="200" placeholder="${ar?"ملاحظات اختيارية (شدة اللعب، النتيجة...)":"Optional notes (match intensity, score...)"}"></textarea>
+    <button data-save-activity>${ar?"حفظ النشاط":"Save Activity"}</button>
     <button class="quiet" data-close-activity>${ar?"إلغاء":"Cancel"}</button>`);
   document.body.appendChild(box);
   let selected=defaultType;
   const minutesInput=box.querySelector("[data-activity-minutes]"),caloriesInput=box.querySelector("[data-activity-calories]");
+  const updateCal=()=>{
+    const mins=Math.max(1,Number(minutesInput.value)||defaultMinutes);
+    caloriesInput.value=estimateCalories(selected,mins*60);
+  };
   box.querySelectorAll("[data-activity-type]").forEach(button=>button.onclick=()=>{
     selected=button.dataset.activityType;
     box.querySelectorAll("[data-activity-type]").forEach(b=>b.classList.toggle("is-active",b===button));
     box.querySelector("[data-activity-custom]").style.display=selected==="other"?"block":"none";
-    caloriesInput.value=estimateCalories(selected,Math.max(1,Number(minutesInput.value)||defaultMinutes)*60);
+    updateCal();
   });
+  box.querySelectorAll("[data-quick-duration]").forEach(btn=>btn.onclick=()=>{
+    minutesInput.value=btn.dataset.quickDuration;
+    updateCal();
+  });
+  minutesInput.oninput=updateCal;
   box.querySelector("[data-close-activity]").onclick=()=>box.remove();
   box.querySelector("[data-save-activity]").onclick=()=>{
     const minutes=minutesInput.value,calories=caloriesInput.value,notes=box.querySelector("[data-activity-notes]").value,custom=box.querySelector("[data-activity-custom]").value;
     if(logActivity(selected,custom,minutes,calories,notes)){
       if(navigator.vibrate)navigator.vibrate(30);
       box.remove();
-      if(state.view==="history")renderHistory();else renderHome();
+      if(state.view==="history")renderHistory();else if(state.view==="recovery")renderRecovery();else renderHome();
     }
   };
 }
-function renderBadDay(){const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";state.activeTab="train";persist();updatePrimaryTabs();app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`);document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
+function renderBadDay(){notifyViewChange("badDay");const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";state.activeTab="train";persist();updatePrimaryTabs();app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`);document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
 function startGuideTimer(label,seconds){let remaining=seconds,paused=false;const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=REP_SAFE_DOM.sanitize(`<button class="timed-close" aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><p>${esc(label)}</p><strong data-guide-value>${formatClock(remaining)}</strong><span>${state.lang==="ar"?"تنفس ببطء وحافظ على الراحة":"BREATHE SLOWLY · STAY COMFORTABLE"}</span><div class="timed-progress"><i data-guide-progress></i></div><div class="timed-actions"><button data-guide-pause>${U().pause}</button><button data-guide-finish>${U().skip}</button></div>`);document.body.appendChild(overlay);const close=()=>{clearInterval(tick);overlay.remove();};overlay.querySelector(".timed-close").onclick=close;overlay.querySelector("[data-guide-finish]").onclick=()=>{signalEnd();close();};overlay.querySelector("[data-guide-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};const tick=setInterval(()=>{if(paused)return;remaining--;overlay.querySelector("[data-guide-value]").textContent=formatClock(Math.max(0,remaining));overlay.querySelector("[data-guide-progress]").style.width=`${Math.max(0,remaining/seconds*100)}%`;if(remaining<=0){signalEnd();close();}},1000);}
 
 function startTimer(seconds, setIndex) {

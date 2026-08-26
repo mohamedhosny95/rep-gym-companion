@@ -20,6 +20,7 @@
     "test:staging": "node scripts/staging-contract.mjs",
     "verify": "npm run check && npm test",
     "verify:all": "npm run sync && npm run verify && npm run test:e2e && npm run test:recovery && npm run deploy:dry-run && npm run deploy:staging:dry-run",
+    "deploy": "wrangler deploy --env=\"\"",
     "deploy:preflight": "node scripts/deploy-preflight.mjs",
     "deploy:dry-run": "wrangler deploy --env=\"\" --dry-run",
     "deploy:staging:dry-run": "wrangler deploy --env staging --dry-run",
