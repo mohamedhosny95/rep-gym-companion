@@ -1379,23 +1379,7 @@ function renderExercise() {
     if(navigator.vibrate)navigator.vibrate(12);
   });
   document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persistDebounced();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
-  const swipe = document.querySelector("[data-swipe]");
-  let touchStartX = 0, touchStartY = 0;
-  swipe?.addEventListener("touchstart", e => {
-    touchStartX = e.changedTouches[0].clientX;
-    touchStartY = e.changedTouches[0].clientY;
-  }, {passive:true});
-  swipe?.addEventListener("touchend", e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
-      if(state.lang === "ar"){
-        dx > 0 ? next() : prev();
-      } else {
-        dx < 0 ? next() : prev();
-      }
-    }
-  }, {passive:true});
+  bindWorkoutSwipe(document.querySelector("[data-swipe]"));
   updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
@@ -1580,6 +1564,55 @@ function next(){
   const res=REP_TRAINING_SESSION.advanceExercise(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
   if(res.completed&&res.record)queueWorkout(res.record);
   exerciseTransitioning=!res.completed;persist();resetWorkoutScroll();renderExercise();
+}
+// Real-time drag tracking for swipe-to-navigate between exercises: the card
+// follows the finger 1:1 (with resistance past the first exercise), then
+// either completes the exit and calls next()/prev(), or springs back to
+// place if the drag didn't cross the threshold. touchend used a simple
+// distance check before this with no visual feedback during the gesture.
+function bindWorkoutSwipe(swipe){
+  if(!swipe)return;
+  let startX=0,startY=0,gesture=null;
+  const rtl=state.lang==="ar",threshold=55;
+  const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  swipe.addEventListener("touchstart",e=>{
+    startX=e.changedTouches[0].clientX;startY=e.changedTouches[0].clientY;gesture="pending";
+    swipe.style.transition="none";
+  },{passive:true});
+  swipe.addEventListener("touchmove",e=>{
+    if(gesture==="vertical")return;
+    const dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(gesture==="pending"){
+      if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+      if(Math.abs(dy)>Math.abs(dx)*1.2){gesture="vertical";return;}
+      gesture="horizontal";
+    }
+    e.preventDefault();
+    const draggingBack=rtl?dx<0:dx>0,canGoBack=state.index>0;
+    swipe.style.transform=`translateX(${draggingBack&&!canGoBack?dx*0.25:dx}px)`;
+  },{passive:false});
+  swipe.addEventListener("touchend",e=>{
+    if(gesture!=="horizontal"){gesture=null;return;}
+    gesture=null;
+    const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;
+    const passed=Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.4;
+    const goingNext=rtl?dx>0:dx<0,canGoBack=state.index>0;
+    if(passed&&(goingNext||canGoBack)){
+      if(reduceMotion){goingNext?next():prev();return;}
+      const exitX=dx<0?-swipe.getBoundingClientRect().width:swipe.getBoundingClientRect().width;
+      swipe.style.transition=`transform .18s var(--ease-out)`;
+      swipe.style.transform=`translateX(${exitX}px)`;
+      setTimeout(()=>{goingNext?next():prev();},180);
+    }else{
+      swipe.style.transition=reduceMotion?"none":`transform .22s var(--ease-spring)`;
+      swipe.style.transform="translateX(0)";
+    }
+  },{passive:true});
+  swipe.addEventListener("touchcancel",()=>{
+    gesture=null;
+    swipe.style.transition=reduceMotion?"none":"transform .18s ease";
+    swipe.style.transform="translateX(0)";
+  },{passive:true});
 }
 function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
