@@ -1,6 +1,6 @@
 # Premium Mobile Redesign Plan and Handoff
 
-Status: Phase 1 complete; Phase 2 polished through the expanded cinematic motion pass; Phase 3 discovery complete. Staging is deployed. Physical-device certification remains the merge gate.
+Status: Phase 1 complete; Phase 2 polished through the expanded cinematic motion pass; Phase 3 discovery complete; the redesign was squash-merged into `main` (PR #69, commit `15732ca`) with physical-device certification and the authenticated staging Notion contract explicitly waived. Phase 4 (Activity/Progress) first pass complete on `main`. Both waived gates remain open — see "Recommended next work" below for what actually was and wasn't re-verified in the most recent session.
 
 This document preserves the product direction, implementation rules, completed work, validation evidence, and remaining roadmap agreed during the redesign conversation. It is the handoff source of truth for continuing this work without losing the original constraints.
 
@@ -120,11 +120,25 @@ The active workout hierarchy is fixed:
 - Reused first-exercise media from each real session and retained the activity logger, custom routines, weekly plan, safety tools, and program export.
 - Moved program export below the workout library and made it progressively disclosed so it no longer blocks session selection on a phone.
 
-### Phase 4 — Activity and Progress — not started
+### Phase 4 — Activity and Progress — first pass complete
 
-- Improve activity history, training trends, strength progress, recovery context, and goal visibility.
-- Preserve current analytics definitions and data provenance.
-- Avoid decorative charts that do not support a real decision.
+- `renderHistory()` (Activity/Workout History) now shows a real day-streak badge (`computeStreak()`, already used on Home) and a session-type icon per history row, reusing the existing `sessions[id].icon`/`accent` used by `sessionCard()`.
+- The just-completed session's row (and any row whose real logged entries set a genuine PR) now carries a small "PR" tag, read from the `personalBest` flags `completeWorkout()` already computes in `training-session.js` — no new computation, no fake data.
+- `renderComplete()` (the post-workout screen) now reads those same `personalBest` flags from `state.history[0].entries` and, only when a real PR occurred, shows a "New personal best" card (exercise + weight × reps) and fires the existing `vibrateGym("pr")` haptic and `triggerConfetti()` — both helpers already existed and were used elsewhere, now also wired to true workout completion. This is the "connect Active Workout completion to real Activity/Progress history" link called for in the roadmap.
+- Scope was kept deliberately tight: `renderInsights()` (the Insights/Progress trends tab) was left as-is — it already reads real state (`computeStreak`, `computeRecoveryScore`, `computeStrainScore`, `weeklyTrainingVolume`, `buildInsights`) correctly; a fuller visual pass is still open for a future session.
+- Verified with `npm run check`, `npm run test:node` (112/112), `npm run test:runtime` (9/9), and a manual headless-browser pass seeding a realistic two-session PR scenario through the real render functions (screenshots reviewed, zero console/page errors).
+
+### Phase 5 remaining-cinematic-coverage audit (this session)
+
+Exercises with real three-frame motion (`cinematicMotionFrames` in `app.js`) remain the 13 already documented above. Auditing `cinematicMedia` against session frequency, the highest-value single-frame exercises still to expand, in priority order, are:
+
+1. `Stationary Bike` — Gym Session warm-up, 3×/week, the single most-used session.
+2. `Cat-Cow`, `Hip Flexor Stretch`, `Glute Bridges`, `Bird-Dog` — Morning Activation, up to 5×/week.
+3. `Football Warm-up Jog` / `Football Cooldown Jog` / `Football Static Stretches` — 2×/week.
+4. `Padel Warm-up Jog`, `Padel Dynamic Stretches`, `Padel Cooldown Walk`, `Padel Static Stretches` — 2×/week.
+5. `Easy Warm-up Walk`, `Easy Cooldown + Stretch` — treadmill fallback sessions.
+
+Producing the actual new three-frame WebP assets (same person, equipment, camera, crop, lighting, and muscle overlay across each cycle, per the non-negotiable rules above) requires an image-generation/photography pipeline that was not available as a tool in this session. No new frames were fabricated or duplicated from existing single frames to fake multi-frame coverage — doing so would misrepresent the feature. This list is ready for whoever has that capability to pick up directly.
 
 ### Phase 5 — Final polish — not started
 
@@ -201,8 +215,9 @@ The multi-frame renderer uses three stacked optimized WebP frames and CSS opacit
 
 ## Recommended next work
 
-1. Certify the staging build on one recent iPhone and one recent Android flagship, including safe areas, memory pressure, thermal behavior, haptics, timers, offline recovery, and a complete workout.
-2. Run the authenticated staging Notion contract when `REP_STAGING_SYNC_KEY` and `NOTION_TEST_TOKEN` are available locally; the deploy secrets are configured, but their values are intentionally not exported into the development shell.
-3. Merge only after physical-device evidence is recorded and the staging contract passes.
-4. Begin Phase 4 activity/progress refinement after that gate.
-5. Continue to preserve the original architecture and all real state/data constraints above.
+1. Certify the staging build on one recent iPhone and one recent Android flagship, including safe areas, memory pressure, thermal behavior, haptics, timers, offline recovery, and a complete workout. **Not done in the latest session** — no physical devices were available in that sandbox.
+2. Run the authenticated staging Notion contract when `REP_STAGING_SYNC_KEY` and `NOTION_TEST_TOKEN` are available locally. **Not done in the latest session** — those secrets, and a `CLOUDFLARE_API_TOKEN` to inspect/deploy the Worker, were not present in that environment. `npm run deploy:preflight`, `npm run deploy:dry-run`, and `npm run deploy:staging:dry-run` all passed locally, which only confirms the build and Wrangler config are structurally valid, not that the live contract passes.
+3. Do not promote to production until both gates above actually pass with recorded evidence — that has not changed since the merge.
+4. Phase 4 activity/progress first pass is complete (see above); a fuller visual pass on Insights/trends is still open.
+5. Continue expanding three-frame cinematic coverage using the priority list above once an image-generation/photography capability is available.
+6. Continue to preserve the original architecture and all real state/data constraints above.
