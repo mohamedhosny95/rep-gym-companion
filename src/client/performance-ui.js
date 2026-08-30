@@ -186,7 +186,7 @@
           <div class="muscle-heatmap-cell status-${data.status}" style="--tone-color:${data.color}">
             <div class="cell-head">
               <strong>${tr(ar,name,{"Chest":"الصدر","Back":"الظهر","Quads":"الأفخاذ الأمامية","Hamstrings":"الأفخاذ الخلفية","Glutes":"المؤخرة","Shoulders":"الأكتاف","Arms":"الذراعين","Core":"عضلات البطن"}[name]||name)}</strong>
-              <span class="status-badge" style="color:${data.color}">${tr(ar,data.statusLabel,{"Recovered / Primed":"مستشفى / مهيأ","Optimal Stimulus":"تحفيز مثالي","High Volume":"حجم مرتفع"}[data.statusLabel]||data.statusLabel)}</span>
+              <span class="status-badge" style="color:${data.color}">${tr(ar,data.statusLabel,{"Recovered / Primed":"متعافٍ / مهيأ","Optimal Stimulus":"تحفيز مثالي","High Volume":"حجم مرتفع"}[data.statusLabel]||data.statusLabel)}</span>
             </div>
             <div class="cell-body">
               <span><b>${data.sets}</b> ${tr(ar,"sets","مجموعات")}</span>

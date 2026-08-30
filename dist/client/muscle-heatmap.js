@@ -86,6 +86,12 @@
     return { status: "over", label: "Over-reaching (> MRV)", color: "#f43f5e", score: 60 };
   }
 
+  const MUSCLE_LABELS_AR = {
+    "Chest": "الصدر", "Lats": "العضلة الظهرية العريضة", "Quads": "الفخذ الأمامي", "Hamstrings": "أوتار الركبة",
+    "Side Delts": "الكتف الجانبي", "Biceps": "العضلة ذات الرأسين", "Triceps": "العضلة ثلاثية الرؤوس",
+    "Glutes": "الأرداف", "Lower Back": "أسفل الظهر"
+  };
+
   function renderHeatmapCard(state, ar){
     const volumes = computeWeeklyVolumes(state.history || []);
     const muscles = ["Chest", "Lats", "Quads", "Hamstrings", "Side Delts", "Biceps", "Triceps", "Glutes", "Lower Back"];
@@ -109,8 +115,8 @@
             return `
               <div class="muscle-vol-row" style="background:var(--panel-2);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.05);">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px;">
-                  <strong>${m}</strong>
-                  <span style="color:${status.color};font-weight:900;">${v.sets} ${ar?"مجموعات":"sets"} <small style="color:var(--muted);font-weight:normal;">/ ${lm.mav} opt</small></span>
+                  <strong>${ar?(MUSCLE_LABELS_AR[m]||m):m}</strong>
+                  <span style="color:${status.color};font-weight:900;">${v.sets} ${ar?"مجموعات":"sets"} <small style="color:var(--muted);font-weight:normal;">/ ${lm.mav} ${ar?"مثالي":"opt"}</small></span>
                 </div>
                 <div style="height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;">
                   <div style="width:${pct}%;height:100%;background:${status.color};border-radius:999px;transition:width .3s ease;"></div>
@@ -121,10 +127,10 @@
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:var(--muted);">
-          <span style="color:#38bdf8;">● < MEV</span>
-          <span style="color:var(--acid);font-weight:900;">● MAV (Optimal)</span>
-          <span style="color:#fb923c;">● Near MRV</span>
-          <span style="color:#f43f5e;">● > MRV</span>
+          <span style="color:#38bdf8;">● ${ar?"أقل من الحد الأدنى":"< MEV"}</span>
+          <span style="color:var(--acid);font-weight:900;">● ${ar?"مثالي":"MAV (Optimal)"}</span>
+          <span style="color:#fb923c;">● ${ar?"قريب من الحد الأقصى":"Near MRV"}</span>
+          <span style="color:#f43f5e;">● ${ar?"أعلى من الحد الأقصى":"> MRV"}</span>
         </div>
       </section>
     `;

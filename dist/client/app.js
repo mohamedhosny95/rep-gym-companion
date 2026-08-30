@@ -383,6 +383,8 @@ const state = {
   previewMode: false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
+window.state=state;
+window.sessions=sessions;
 const syncKeyStorage="rep-notion-pairing-key-v1";
 const repAuth=window.REP_AUTH;
 const app = document.querySelector("#app");
@@ -2523,7 +2525,8 @@ function startTimer(seconds, setIndex) {
   state.timer = { remaining: seconds, total: seconds, paused: false, set: setIndex, targetEndTime: now + seconds * 1000 };
   document.body.classList.add("rest-mode-active");
   timerDock.classList.remove("is-hidden"); timerDock.removeAttribute("inert");
-  timerDock.querySelector(".timer-copy strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  timerDock.querySelector(".timer-copy small").textContent = U().recovery; timerDock.querySelector(".timer-copy strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  document.querySelector("#timerAdd").setAttribute("aria-label", U().add15Seconds);
   renderRestPreview();
   updateMediaSession("rest", { set: setIndex, time: formatClock(seconds) });
   updateTimer();

@@ -11,7 +11,7 @@ window.REP_I18N = {
       swapHip:"Use Hip Thrust", swapBack:"Use Back Extension", startTimer:"Start exercise timer", stopTimer:"Stop timer", wake:"Keep awake", language:"العربية",
       restTitle:"REST", nextSet:"Next set", skip:"Skip", breatheReset:"breathe and reset", sessionComplete:"Session complete", thatCounts:"That counts.",
       completeSub:"is in the books. Recover well and come back consistent.", backSessions:"Back to sessions", reset:"Reset this checklist",
-      autoNext:"All sets complete · advancing", noPrevious:"No previous session yet", offlineReady:"Offline ready", offlineMode:"Offline mode"
+      autoNext:"All sets complete · advancing", noPrevious:"No previous session yet", offlineReady:"Offline ready", offlineMode:"Offline mode", add15Seconds:"Add 15 seconds"
       ,history:"Workout history",historyDesc:"Sessions, personal bests, and next-weight guidance.",openHistory:"View progress →",install:"Install app",installDesc:"Add Rep to your home screen for the best offline experience.",installNow:"Install",elapsed:"Elapsed",exitQuestion:"End this workout?",stay:"Keep training",exit:"Exit workout",addWeight:"Ready to add weight",holdWeight:"Keep this weight",noHistory:"Complete a workout to see your history.",updateReady:"A new offline version is ready.",reload:"Update now"
     },
     sessions:{
@@ -35,7 +35,7 @@ window.REP_I18N = {
       swapHip:"استخدم جهاز Hip Thrust", swapBack:"استخدم Back Extension", startTimer:"ابدأ مؤقت التمرين", stopTimer:"أوقف المؤقت", wake:"منع إطفاء الشاشة", language:"English",
       restTitle:"راحة", nextSet:"المجموعة التالية", skip:"تخطَّ", breatheReset:"تنفّس واستعد", sessionComplete:"اكتملت الحصة", thatCounts:"تم الإنجاز.",
       completeSub:"اكتملت. استشفِ جيداً وعد بثبات.", backSessions:"العودة للحصص", reset:"إعادة ضبط العلامات",
-      autoNext:"اكتملت المجموعات · الانتقال تلقائياً", noPrevious:"لا توجد حصة سابقة", offlineReady:"جاهز بدون إنترنت", offlineMode:"وضع عدم الاتصال"
+      autoNext:"اكتملت المجموعات · الانتقال تلقائياً", noPrevious:"لا توجد حصة سابقة", offlineReady:"جاهز بدون إنترنت", offlineMode:"وضع عدم الاتصال", add15Seconds:"أضف 15 ثانية"
       ,history:"سجل التمارين",historyDesc:"الحصص والأرقام الأفضل وإرشاد زيادة الوزن.",openHistory:"عرض التقدم ←",install:"تثبيت التطبيق",installDesc:"أضف Rep للشاشة الرئيسية لأفضل تجربة دون إنترنت.",installNow:"تثبيت",elapsed:"الوقت",exitQuestion:"إنهاء التمرين؟",stay:"أكمل التمرين",exit:"خروج",addWeight:"جاهز لزيادة الوزن",holdWeight:"ثبّت هذا الوزن",noHistory:"أكمل حصة لتظهر النتائج هنا.",updateReady:"توجد نسخة جديدة جاهزة.",reload:"حدّث الآن"
     },
     sessions:{
