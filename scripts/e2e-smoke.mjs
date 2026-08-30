@@ -244,6 +244,10 @@ try {
   await page.waitForTimeout(300);
   const historyText = await page.locator(".history-list").evaluate(el => el.textContent).catch(() => "");
   assertTrue(historyText.includes("Gym"), "Completed session appears in History");
+  assertTrue(await page.locator(".activity-overview .history-summary > div").count() === 4, "Activity overview summarizes only real history totals");
+  assertTrue(await page.locator(".personal-best-grid .pb-card").count() === 0, "Activity does not invent a personal best without a logged load");
+  assertTrue(await page.locator(".history-utilities:not([open])").count() === 1, "Activity keeps data and connection utilities progressively disclosed");
+  assertTrue(await page.locator(".history-utilities [data-export]").count() === 1, "Activity refinement preserves backup export access");
   await page.click("#homeButton");
   await page.waitForTimeout(200);
 
@@ -335,6 +339,7 @@ try {
   await page.waitForTimeout(200);
   await page.click('[data-health-view="insights"]');
   await page.waitForTimeout(300);
+  assertTrue(await page.locator(".progress-overview .progress-feature").count() === 1, "Progress leads with a real seven-day training summary");
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
   assertTrue(await page.locator(".weekly-health-review").count() === 1, "Weekly Health Review renders");
   assertTrue(await page.locator(".performance-analytics").count() === 1, "Performance Intelligence renders as one integrated insight layer");

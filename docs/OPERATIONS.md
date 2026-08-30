@@ -1,19 +1,22 @@
 # Operations and recovery
 
-## Release gate without GitHub Actions
+## Production release gate without GitHub Actions
 
 1. `npm ci`
-2. `npm run verify:all`
-3. `npm run deploy:staging:dry-run`
-4. Deploy staging and run `npm run test:staging` with the dedicated test integration.
-5. Inspect structured logs for errors and verify the mobile certification matrix.
-6. Record current Cloudflare deployment ID; deploy production manually.
-7. Probe `/api/system-health`, pair a test device, and sync one disposable record.
+2. `npm run verify:production`
+3. Confirm all required production secret names are present with `wrangler secret list`; never print their values.
+4. Record the current production deployment ID and complete the physical mobile certification matrix.
+5. Obtain explicit human production approval, then deploy production manually.
+6. Probe `/api/system-health`, pair a test device, and sync one disposable record.
+7. Inspect structured production logs for errors and retain the prior version ID for rollback.
 
-`verify:all` includes the browser certification suite and a fresh-profile,
+`verify:production` includes the browser certification suite, a fresh-profile,
 end-to-end encrypted backup export/import/tamper drill. The drill writes
 machine-readable evidence under `work/certification/` without retaining the
 passphrase or user data.
+
+Staging commands remain available for targeted diagnostics, but staging is not
+part of this production-directed release gate.
 
 Do not modify or depend on GitHub Actions until the monthly quota is available again.
 

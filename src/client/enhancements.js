@@ -187,7 +187,7 @@
     const reference=document.querySelector("[data-view-care-plan]");if(reference&&!document.querySelector("[data-wellness-expand]")){const button=document.createElement("button");button.className="wellness-expand";button.dataset.wellnessExpand="";button.textContent=state.wellnessExpanded?(ar?"عرض روتين الوقت الحالي":"Show current routine"):(ar?"عرض الروتين اليومي الكامل":"Show full daily routine");button.onclick=()=>{state.wellnessExpanded=!state.wellnessExpanded;renderHygiene();};reference.insertAdjacentElement("beforebegin",button);}
   }
   renderHygiene=function(){state.healthView="care";baseCare();healthNav();organizeWellness();};
-  renderInsights=function(){state.healthView="insights";baseInsights();healthNav();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyReviewCard(state.lang==="ar")));};
+  renderInsights=function(){state.healthView="insights";baseInsights();healthNav();(document.querySelector(".trends-grid")||document.querySelector(".health-subnav"))?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyReviewCard(state.lang==="ar")));};
   renderOverview=function(){baseOverview();const anchor=document.querySelector(".vitals-trio");anchor?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(coachCard(state.lang==="ar",true)));};
   function organizeTraining(){
     const ar=state.lang==="ar",hero=document.querySelector(".hero");if(!hero)return;
