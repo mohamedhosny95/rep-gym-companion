@@ -74,13 +74,29 @@ test("startup and social assets stay within their performance budgets",async()=>
 test("priority cinematic motions use complete, mobile-sized three-frame cycles",async()=>{
   const app=await read("dist/client/app.js"),css=await read("dist/client/styles.css"),block=app.match(/const cinematicMotionFrames = \{([\s\S]+?)\n\};/)?.[1]||"";
   const assets=[...block.matchAll(/"(assets\/cinematic\/[^\"]+\.webp)"/g)].map(match=>match[1]);
-  assert.equal(assets.length,18,"six priority exercises each declare three frames");
+  assert.equal(assets.length,39,"thirteen priority exercises each declare three frames");
   for(const asset of assets){
     const file=await stat(join(root,"dist","client",asset));
     assert.ok(file.size<180_000,`${asset} is ${file.size} bytes`);
   }
   assert.match(css,/cinematicFrameOne/);assert.match(css,/cinematicFrameTwo/);assert.match(css,/cinematicFrameThree/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?cinematic-motion>\.cinematic-frame:not\(:first-of-type\)\{opacity:0\}/);
+});
+
+test("active workout media stays bounded and exposes decode telemetry",async()=>{
+  const app=await read("dist/client/app.js"),telemetry=await read("dist/client/telemetry.js");
+  assert.match(app,/function primeUpcomingCinematicMedia/);assert.match(app,/data-rep-media-preload/);assert.match(app,/session\?\.exercises\?\.\[index\+1\]/);
+  assert.match(app,/function observeCinematicMedia/);assert.match(app,/img\.decode/);assert.match(app,/recordMedia/);
+  assert.match(telemetry,/mediaLoadMs:1200/);assert.match(telemetry,/mediaDecodeMs:120/);assert.match(telemetry,/recordMedia/);assert.match(telemetry,/maxDecodeMs/);
+});
+
+test("program discovery filters the real workout sessions without replacing their handlers",async()=>{
+  const app=await read("dist/client/app.js"),enhancements=await read("dist/client/enhancements.js"),css=await read("dist/client/styles.css");
+  assert.match(app,/data-program-category/);assert.match(app,/data-session="\$\{id\}"/);assert.match(app,/session-card-media/);
+  for(const filter of ["all","gym","home","sport","cardio"])assert.match(enhancements,new RegExp(`\\[\\"${filter}\\"`));
+  assert.match(enhancements,/data-program-filter="\$\{id\}"/);
+  assert.match(enhancements,/card\.hidden=filter!=="all"/);assert.match(enhancements,/sessionGrid\?\.querySelectorAll\("\[data-session\]"\)/);
+  assert.match(css,/\.program-discovery/);assert.match(css,/\.program-session-card\.has-session-media/);
 });
 
 test("browser pairing keeps only a non-secret marker and synchronizes tabs",async()=>{

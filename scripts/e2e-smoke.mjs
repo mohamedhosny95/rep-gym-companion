@@ -124,6 +124,13 @@ try {
   await page.click('[data-close-preflight]');
   await page.click('[data-training-view="program"]');
   await page.waitForTimeout(200);
+  assertTrue(await page.locator('.program-discovery').count() === 1, "Program opens the contextual workout library");
+  assertTrue(await page.locator('.program-session-card.has-session-media').count() === 6, "Every real workout plan has contextual discovery media");
+  assertTrue(await page.locator('.program-session-card.is-recommended').count() === 1, "Program marks today's real scheduled plan");
+  await page.click('[data-program-filter="sport"]');
+  assertTrue(await page.locator('.program-session-card[data-program-category="sport"]:visible').count() === 3, "Sport filter keeps football, padel, and outdoor plans visible");
+  assertTrue(await page.locator('[data-log-activity]:visible').count() === 0, "Filtered discovery removes unrelated actions");
+  await page.click('[data-program-filter="all"]');
 
   await page.click('[data-session="football"]');
   await page.waitForTimeout(150);
@@ -160,6 +167,9 @@ try {
     [".motion-controls","animation controls"]
   ]) assertTrue(await page.locator(selector).count() === 1, `Active workout exposes its ${label}`);
   assertTrue((await page.locator(".exercise-hero-stage .cinematic-motion img").first().getAttribute("src")).includes("assets/cinematic/"), "Active workout uses the exercise-specific cinematic asset");
+  assertTrue((await page.locator('link[data-rep-media-preload="next"]').getAttribute("href")).includes("leg-press"), "Active workout preloads only the real next exercise");
+  const initialMediaTelemetry=await page.evaluate(()=>window.REP_TELEMETRY.snapshot().media);
+  assertTrue(initialMediaTelemetry.loads>=1&&initialMediaTelemetry.failures===0, "Cinematic image load and decode telemetry records without failures");
   assertTrue(!(await page.locator(".topbar").isVisible()), "Generic app utilities stay out of the focused workout header");
   for (const width of [375,390,430]) {
     await page.setViewportSize({width,height:844});
@@ -189,8 +199,11 @@ try {
   assertTrue(nextClickable, "Next exercise button is reachable while the rest timer is active");
   await page.waitForTimeout(250);
   assertTrue(await page.locator(".live-set-entry").count() === 1, "Strength exercise exposes quick entry backed by the set log");
+  assertTrue(await page.locator(".exercise-hero-stage .cinematic-motion img").count() === 3, "Leg press uses a three-frame male movement cycle");
   await page.fill('[data-live-log][data-log="reps"]',"8");
-  assertTrue(await page.locator('.set-card-row:first-child [data-log="reps"]').inputValue() === "8", "Quick reps stay synchronized with the detailed set row");
+  const activeSetIndex=await page.locator('[data-live-log][data-log="reps"]').getAttribute("data-log-set");
+  const detailedRepValues=await page.locator(`.set-card-row [data-log="reps"][data-log-set="${activeSetIndex}"]`).evaluateAll(inputs=>inputs.map(input=>input.value));
+  assertTrue(detailedRepValues.length===1&&detailedRepValues[0]==="8", "Quick reps stay synchronized with the matching detailed set row");
   await page.click('[data-live-reps-step="1"]');
   assertTrue(await page.locator('[data-live-log][data-log="reps"]').inputValue() === "9", "Manual rep control updates the current logged set");
 
@@ -245,6 +258,34 @@ try {
   await page.click("[data-save-activity]");
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".activity-panel").count() === 0, "Activity panel closes after save");
+
+  // Complete every remaining priority session through the real player. This
+  // covers the home/plank, football-pitch, padel-court, and treadmill paths;
+  // the gym session was completed above.
+  for(const [sessionId,label,requiredExercise] of [
+    ["morning","Morning activation","Plank"],
+    ["football","Football","Football Build-up Strides"],
+    ["padel","Padel","Padel Sport-Specific Warm-up"],
+    ["cardio","Treadmill cardio","Incline Treadmill Walk"]
+  ]){
+    await page.click('[data-app-tab="train"]');
+    if(!(await page.locator(".program-discovery").count()))await page.click('[data-training-view="program"]');
+    await page.click(`[data-session="${sessionId}"]`);await page.click("[data-start-session]");
+    const visited=[];
+    for(let exercise=0;exercise<20;exercise++){
+      if(await page.locator(".complete").count())break;
+      visited.push((await page.locator(".workout-identity h1").textContent().catch(()=>""))||"");
+      while(await page.locator(".set-button:not(.is-done)").count()){
+        await page.locator(".set-button:not(.is-done)").first().click().catch(()=>{});await page.waitForTimeout(25);
+      }
+      const next=page.locator("[data-next]");if(!(await next.count()))break;
+      await next.click().catch(()=>{});await page.waitForTimeout(80);
+    }
+    await page.waitForSelector(".complete",{timeout:5000}).catch(()=>{});
+    assertTrue(await page.locator(".complete").count()===1,`${label} completes through the real workout player`);
+    assertTrue(visited.some(name=>name.includes(requiredExercise)),`${label} reaches ${requiredExercise} with real session state`);
+    await page.click("[data-home]");await page.waitForTimeout(120);
+  }
 
   // recovery + sleep (sleep tracker lives on the Vitals tab)
   await page.click('[data-app-tab="health"]');

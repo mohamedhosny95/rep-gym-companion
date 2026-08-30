@@ -1,6 +1,6 @@
 # Premium Mobile Redesign Plan and Handoff
 
-Status: Phase 1 complete; Phase 2 implemented and polished through the first cinematic motion pass.
+Status: Phase 1 complete; Phase 2 polished through the expanded cinematic motion pass; Phase 3 discovery complete. Staging is deployed. Physical-device certification remains the merge gate.
 
 This document preserves the product direction, implementation rules, completed work, validation evidence, and remaining roadmap agreed during the redesign conversation. It is the handoff source of truth for continuing this work without losing the original constraints.
 
@@ -100,15 +100,25 @@ The active workout hierarchy is fixed:
   - Lateral Shuffles & Carioca;
   - Padel Shoulder Prep;
   - Incline Treadmill Walk.
+- Expand three-frame male movement cycles to:
+  - Chest Press;
+  - Leg Press;
+  - Seated Cable Row;
+  - Back Extension;
+  - Football Dynamic Stretches;
+  - Football Build-up Strides;
+  - Padel Sport-Specific Warm-up.
 - Make the three-frame cycle respond to the existing speed, loop/pause, muscle, view, and reduced-motion states.
 - Lazy-load preview media and keep every frame below the mobile asset budget.
+- Load the active exercise at the correct priority, preload only the real next exercise, and record aggregate image load/decode telemetry without adding health data to telemetry.
 - Correct preview overlay styling so cinematic badges and cues remain legible on a phone.
 
-### Phase 3 — Discovery — not started
+### Phase 3 — Discovery — complete
 
-- Refine workout and exercise discovery without changing routes or session data.
-- Add premium workout cards, concise filters, contextual previews, and better drill-down hierarchy.
-- Reuse the same cinematic media system where appropriate.
+- Refined workout discovery without changing routes, session data, or start/resume behavior.
+- Added real-session cinematic cards, Today’s Plan emphasis, and All/Gym/Home/Sport/Cardio filters.
+- Reused first-exercise media from each real session and retained the activity logger, custom routines, weekly plan, safety tools, and program export.
+- Moved program export below the workout library and made it progressively disclosed so it no longer blocks session selection on a phone.
 
 ### Phase 4 — Activity and Progress — not started
 
@@ -155,7 +165,10 @@ The multi-frame renderer uses three stacked optimized WebP frames and CSS opacit
 - Active workout now hides generic app chrome and opens at the workout progress header.
 - Exercise media is full-bleed and exercise/context specific in side view.
 - Front view continues to use the existing anatomical atlas.
-- Six priority exercises now animate through real pose keyframes instead of drifting a single image.
+- Thirteen priority exercises now animate through real pose keyframes instead of drifting a single image.
+- The Program view now leads with filterable contextual workout cards backed by the existing sessions.
+- Program export remains available below the session library in a compact disclosure.
+- Ordinary exercise completion uses restrained micro-celebration; full celebration behavior remains available for larger milestones.
 - Timed exercises use a dedicated focused timer surface.
 - The primary action is larger, sticky, and thumb reachable.
 - Final rest exposes the real upcoming exercise and can advance immediately.
@@ -167,27 +180,29 @@ The multi-frame renderer uses three stacked optimized WebP frames and CSS opacit
 - Runtime configuration check passes.
 - TypeScript typecheck passes.
 - Server lint passes.
-- 110 Node tests pass.
+- 112 Node tests pass.
 - 9 Cloudflare runtime tests pass.
-- 162 end-to-end checks pass.
-- End-to-end coverage includes preview-before-start, active workout hierarchy, set logging synchronization, timers, rest/next flow, completion/history, offline reload, accessibility, console errors, and reduced motion.
+- 178 end-to-end checks pass.
+- End-to-end coverage includes discovery filters, preview-before-start, active workout hierarchy, current/next-only media loading, decode telemetry, set logging synchronization, timers, rest/next flow, completion/history, offline reload, accessibility, console errors, and reduced motion.
+- Full real-player sessions pass for Gym, Morning Activation including Plank, Football including Build-up Strides, Padel including Sport-Specific Warm-up, and Treadmill Cardio including Incline Treadmill Walk.
 - Active workout has no horizontal overflow at 320, 360, 375, 390, 414, 430 pixels.
 - Primary navigation retains 44-pixel touch targets at all tested widths.
-- Mobile performance during the final run: LCP 164 ms, CLS 0.000, longest application long task 0 ms.
-- Headed visual QA was completed at 320 × 720, 390 × 844, and 430 × 932.
-- Headed visual QA confirmed the football agility animation changes pose in the active workout while preserving the same male athlete, kit, stadium/pitch, crop, lighting, and muscle treatment.
+- Mobile performance during the final run: LCP 248 ms, CLS 0.000, longest application long task 0 ms.
+- Headed visual QA was completed at 320 × 700, 390 × 844, and 430 × 932, plus active Gym, Football, and Padel captures at 390 × 844.
+- Staging deploy completed at `https://rep-gym-companion-staging.mohamedahmedhosny95.workers.dev` (version `f1cf4ddc-64fd-4011-9b59-d81c865dd338`).
+- Staging phone smoke passed with six real plans, decoded active media, one real next-exercise preload, zero media failures, and zero console errors.
 
 ## Known visual differences and limitations
 
 - The references imply video-quality continuous movement. The current priority implementation uses optimized three-frame crossfades to keep the offline mobile experience lightweight.
-- Six priority exercises have true multi-frame cycles; the remaining cinematic exercises currently use a restrained single-frame drift.
+- Thirteen priority exercises have true multi-frame cycles; lower-priority cinematic exercises still use a restrained single-frame drift.
 - Muscle highlights are embedded in the generated media for the cinematic side view. The existing front anatomical atlas remains the interactive alternate view.
 - Browser validation covers mobile viewport behavior, but physical-device checks are still recommended for safe-area nuances, thermal behavior, memory pressure, and haptic feel.
 
 ## Recommended next work
 
-1. Device-test Phase 2 on one recent iPhone and one recent Android flagship.
-2. Add consistent multi-frame male cycles for the next highest-use gym and sport exercises.
-3. Add decoding/preload telemetry for slower mobile connections before expanding frame counts.
-4. Complete Phase 3 only after the active workout remains stable on real devices.
+1. Certify the staging build on one recent iPhone and one recent Android flagship, including safe areas, memory pressure, thermal behavior, haptics, timers, offline recovery, and a complete workout.
+2. Run the authenticated staging Notion contract when `REP_STAGING_SYNC_KEY` and `NOTION_TEST_TOKEN` are available locally; the deploy secrets are configured, but their values are intentionally not exported into the development shell.
+3. Merge only after physical-device evidence is recorded and the staging contract passes.
+4. Begin Phase 4 activity/progress refinement after that gate.
 5. Continue to preserve the original architecture and all real state/data constraints above.

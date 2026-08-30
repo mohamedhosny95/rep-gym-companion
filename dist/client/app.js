@@ -197,9 +197,16 @@ const cinematicMotionMedia = {
 const cinematicMotionFrames = {
   "Brisk Marching in Place":["assets/cinematic/home-march-neutral.webp","assets/cinematic/home-march.webp","assets/cinematic/home-march-opposite.webp"],
   "Plank":["assets/cinematic/home-plank-inhale.webp","assets/cinematic/home-plank.webp","assets/cinematic/home-plank-exhale.webp"],
+  "Chest Press":["assets/cinematic/chest-press-start.webp","assets/cinematic/chest-press.webp","assets/cinematic/chest-press-finish.webp"],
+  "Leg Press":["assets/cinematic/leg-press-start.webp","assets/cinematic/leg-press.webp","assets/cinematic/leg-press-finish.webp"],
+  "Seated Cable Row":["assets/cinematic/seated-cable-row-start.webp","assets/cinematic/seated-cable-row.webp","assets/cinematic/seated-cable-row-finish.webp"],
+  "Back Extension":["assets/cinematic/back-extension-lowered.webp","assets/cinematic/back-extension.webp","assets/cinematic/back-extension-neutral.webp"],
   "Lat Pulldown":["assets/cinematic/lat-pulldown-start.webp","assets/cinematic/lat-pulldown-mid.webp","assets/cinematic/lat-pulldown.webp"],
+  "Football Dynamic Stretches":["assets/cinematic/football-dynamic.webp","assets/cinematic/football-dynamic-transition.webp","assets/cinematic/football-dynamic-opposite.webp"],
   "Lateral Shuffles & Carioca":["assets/cinematic/football-agility-start.webp","assets/cinematic/football-agility.webp","assets/cinematic/football-agility-opposite.webp"],
+  "Football Build-up Strides":["assets/cinematic/football-stride-push.webp","assets/cinematic/football-stride.webp","assets/cinematic/football-stride-switch.webp"],
   "Padel Shoulder Prep":["assets/cinematic/padel-shoulder-prep-start.webp","assets/cinematic/padel-shoulder-prep.webp","assets/cinematic/padel-shoulder-prep-end.webp"],
+  "Padel Sport-Specific Warm-up":["assets/cinematic/padel-shadow-swing-backswing.webp","assets/cinematic/padel-shadow-swing.webp","assets/cinematic/padel-shadow-swing-followthrough.webp"],
   "Incline Treadmill Walk":["assets/cinematic/treadmill-incline.webp","assets/cinematic/treadmill-incline-mid.webp","assets/cinematic/treadmill-incline-opposite.webp"]
 };
 
@@ -227,13 +234,43 @@ function cinematicFramesFor(item){
 }
 function targetMusclesFor(item){return exerciseMuscleTargets[item?.name]||anatomy[item?.motion]?.[4]||item?.category;}
 
+function primeUpcomingCinematicMedia(session,index){
+  document.querySelectorAll("link[data-rep-media-preload]").forEach(link=>link.remove());
+  const next=session?.exercises?.[index+1];
+  if(!next)return;
+  const item=currentItem(next),src=cinematicFramesFor(item)[0];
+  if(!src)return;
+  const link=document.createElement("link"),started=performance.now();
+  link.rel="preload";link.as="image";link.href=src;link.fetchPriority="low";link.dataset.repMediaPreload="next";
+  link.addEventListener("load",()=>window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:1,stage:"next-preload",loadMs:performance.now()-started,decodeMs:0,ok:true}),{once:true});
+  link.addEventListener("error",()=>window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:1,stage:"next-preload",loadMs:performance.now()-started,decodeMs:0,ok:false}),{once:true});
+  document.head.appendChild(link);
+}
+
+function observeCinematicMedia(root,item){
+  root?.querySelectorAll("img[data-cinematic-frame]").forEach((img,index)=>{
+    let recorded=false;
+    const started=performance.now();
+    const finish=async ok=>{
+      if(recorded)return;recorded=true;
+      const decodeStarted=performance.now();
+      if(ok&&typeof img.decode==="function")try{await img.decode();}catch{}
+      const decodeMs=performance.now()-decodeStarted;
+      const resource=[...performance.getEntriesByName(img.currentSrc||img.src)].pop();
+      window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:index+1,stage:"current",loadMs:resource?.duration||performance.now()-started,decodeMs,bytes:resource?.transferSize||0,ok});
+    };
+    if(img.complete)queueMicrotask(()=>finish(img.naturalWidth>0));
+    else{img.addEventListener("load",()=>finish(true),{once:true});img.addEventListener("error",()=>finish(false),{once:true});}
+  });
+}
+
 function exerciseVisual(item,{preview=false}={}){
   const frames=state.viewMode==="side"?cinematicFramesFor(item):[];
   if(!frames.length)return anatomyVisual(item.motion);
   const asset=cinematicAssetFor(item)||frames[0];
   const guide=motionGuide[item.motion]||motionGuide.march,ar=state.lang==="ar";
   const mediaKey=asset.split("/").pop().replace(/\.webp$/,""),scene=mediaKey.split("-")[0];
-  const frameMarkup=frames.map((src,index)=>`<img class="cinematic-frame cinematic-frame-${index+1}" src="${src}" alt="" ${preview?'loading="lazy" fetchpriority="low"':index===0?'fetchpriority="high"':'loading="eager" fetchpriority="low"'} decoding="async">`).join("");
+  const frameMarkup=frames.map((src,index)=>`<img class="cinematic-frame cinematic-frame-${index+1}" data-cinematic-frame="${index+1}" src="${src}" alt="" ${preview?'loading="lazy" fetchpriority="low"':index===0?'fetchpriority="high"':'loading="eager" fetchpriority="low"'} decoding="async">`).join("");
   return `<div class="cinematic-motion motion-${item.motion} scene-${scene} media-${mediaKey} ${frames.length>1?"is-multi-frame":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--loop-speed:${8/state.speed}s" data-frame-count="${frames.length}">
     ${frameMarkup}
     <span class="cinematic-light" aria-hidden="true"></span>
@@ -609,7 +646,8 @@ function vibrateGym(type="set"){
   navigator.vibrate(patterns[type]||patterns.set);
 }
 
-function triggerConfetti(){
+function triggerConfetti({subtle=false}={}){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
   const canvas=document.createElement("canvas");
   canvas.className="confetti-canvas";
   canvas.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;";
@@ -618,8 +656,9 @@ function triggerConfetti(){
   const ctx=canvas.getContext("2d");
   if(!ctx){canvas.remove();return;}
   const colors=["#c9ff3d","#38bdf8","#f43f5e","#fbbf24","#a855f7","#34d399"];
-  const pieces=Array.from({length:70},()=>({
-    x:canvas.width/2+(Math.random()-0.5)*200,
+  const duration=subtle?700:2200;
+  const pieces=Array.from({length:subtle?18:70},()=>({
+    x:canvas.width/2+(Math.random()-0.5)*(subtle?90:200),
     y:canvas.height/2-50+(Math.random()-0.5)*100,
     vx:(Math.random()-0.5)*12,
     vy:-Math.random()*14-4,
@@ -635,7 +674,7 @@ function triggerConfetti(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     for(const p of pieces){
       p.x+=p.vx;p.y+=p.vy;p.vy+=0.35;p.rot+=p.vrot;
-      p.alpha=Math.max(0,1-elapsed/2200);
+      p.alpha=Math.max(0,1-elapsed/duration);
       ctx.save();
       ctx.globalAlpha=p.alpha;
       ctx.translate(p.x,p.y);
@@ -644,7 +683,7 @@ function triggerConfetti(){
       ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*1.6);
       ctx.restore();
     }
-    if(elapsed<2200)requestAnimationFrame(animate);else canvas.remove();
+    if(elapsed<duration)requestAnimationFrame(animate);else canvas.remove();
   }
   requestAnimationFrame(animate);
 }
@@ -855,10 +894,12 @@ function renderHome() {
   document.querySelector("[data-backup-export]")?.addEventListener("click", exportData);
   document.querySelector("[data-backup-snooze]")?.addEventListener("click", snoozeBackupReminder);
 }
+function programCategoryFor(id){return id==="gym"?"gym":id==="morning"?"home":["football","padel","general"].includes(id)?"sport":id==="cardio"?"cardio":"all";}
 function sessionCard(id, s, resume) {
-  const u=U(),ls=sessionText(id,s);
-  return `<button class="session-card ${resume?"resume-card":""}" data-session="${id}" style="--card-accent:${s.accent}">
-    <span><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
+  const u=U(),ls=sessionText(id,s),media=cinematicAssetFor(s.exercises[0]);
+  return `<button class="session-card program-session-card ${resume?"resume-card":""} ${media?"has-session-media":""}" data-session="${id}" data-program-category="${programCategoryFor(id)}" style="--card-accent:${s.accent}">
+    ${media?`<span class="session-card-media" aria-hidden="true"><img src="${media}" alt="" loading="lazy" decoding="async" fetchpriority="low"></span>`:""}
+    <span class="session-card-heading"><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
     <span class="session-icon">${ICONS[s.icon]||s.icon}</span><p>${ls.meta}<br>${ls.description}</p><small>${resume?u.continue:`${s.exercises.length} ${u.steps}`}</small></button>`;
 }
 // Read-only walkthrough: shows the exact same animated form demonstration
@@ -1162,6 +1203,7 @@ function renderExercise() {
   if (!session) return renderHome();
   if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
+  primeUpcomingCinematicMedia(session,state.index);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
   const subs = window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[base.name] || [];
@@ -1208,6 +1250,7 @@ function renderExercise() {
       <section class="set-checklist-panel"><div class="set-checklist-head"><small>${ar?"تقدم التمرين":"SET PROGRESS"}</small><strong>${done.length}/${item.sets} ${ar?"مكتملة":"complete"}</strong></div><div class="set-tracker" aria-label="${ar?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div></section>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
     </article></section>`);
+  observeCinematicMedia(document.querySelector(".exercise-hero-stage"),item);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
   document.querySelector("[data-workout-more]")?.addEventListener("click",openWorkoutUtilitySheet);
@@ -1446,8 +1489,7 @@ function toggleSet(setIndex) {
   persist();
   const allSetsDone=!already && state.completed[key].length===item.sets;
   if(allSetsDone){
-    vibrateGym("pr");
-    triggerConfetti();
+    triggerConfetti({subtle:true});
   }
   if (!already && item.rest) startTimer(item.rest, setIndex);
   renderExercise();

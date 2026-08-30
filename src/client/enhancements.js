@@ -215,9 +215,22 @@
       nav.insertAdjacentElement("afterend",card);
       card.querySelector("[data-start-today]").onclick=()=>showSessionPreview(id);
     } else if(state.trainingView==="program"){
-      const exporterCard=document.createElement("section");exporterCard.className="settings-card program-exporter-card";
-      exporterCard.innerHTML=REP_SAFE_DOM.sanitize(`<small>${ar?"مخطط البرنامج والتدوير التدريبي":"MESOCYCLE & PROGRAM BUILDER"}</small><h2>${ar?"مشاركة وتصدير الخطة التدريبية":"Share & Export Routine Plan"}</h2><p>${ar?"صدّر جدولك التدريبي ومجموعات التمارين كبطاقة رقمية لمشاركتها أو استيرادها على جهاز آخر.":"Export your training split, exercise list, and target sets as a portable digital routine card."}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button class="settings-primary" data-export-program>${ar?"📤 تصدير البرنامج (JSON)":"📤 Export Program (JSON)"}</button><button class="quiet-setting" data-share-program>${ar?"🔗 نسخ رابط الخطة":"🔗 Copy Share Link"}</button><button class="quiet-setting" data-export-report-card>${ar?"📄 تصدير تقرير PDF":"📄 Export Mesocycle PDF"}</button></div>`);
-      nav.insertAdjacentElement("afterend",exporterCard);
+      const focus=daySchedule().focus,recommendedId=["morning","gym","football","padel","general","cardio"].includes(focus)?focus:"morning";
+      const recommended=document.querySelector(`[data-session="${recommendedId}"]`);
+      recommended?.classList.add("is-recommended");
+      recommended?.insertAdjacentHTML("afterbegin",REP_SAFE_DOM.sanitize(`<span class="session-recommended-badge">${ar?"خطة اليوم":"TODAY'S PLAN"}</span>`));
+      const discovery=document.createElement("section");discovery.className="program-discovery";
+      discovery.innerHTML=REP_SAFE_DOM.sanitize(`<div class="program-discovery-head"><div><small>${ar?"مكتبة التمرين":"WORKOUT LIBRARY"}</small><h2>${ar?"اختر بيئتك، ثم ابدأ":"Choose your environment"}</h2><p>${ar?"كل خطة تستخدم تمارينك الحقيقية وسجل تقدمك الحالي.":"Every plan stays connected to your real exercises, progress, and history."}</p></div><span>${Object.keys(sessions).filter(id=>!["bad","gymLite"].includes(id)).length} ${ar?"خطط":"plans"}</span></div><div class="program-filter-row" role="group" aria-label="${ar?"تصفية خطط التدريب":"Filter workout plans"}">${[["all",ar?"الكل":"All"],["gym",ar?"الجيم":"Gym"],["home",ar?"المنزل":"Home"],["sport",ar?"الملاعب":"Sport"],["cardio",ar?"كارديو":"Cardio"]].map(([id,label],index)=>`<button type="button" data-program-filter="${id}" class="${index===0?"is-active":""}" aria-pressed="${index===0}">${label}</button>`).join("")}</div>`);
+      nav.insertAdjacentElement("afterend",discovery);
+      const applyFilter=filter=>{
+        sessionGrid?.querySelectorAll("[data-session]").forEach(card=>{card.hidden=filter!=="all"&&card.dataset.programCategory!==filter;});
+        const logActivity=sessionGrid?.querySelector("[data-log-activity]");if(logActivity)logActivity.hidden=filter!=="all";
+        discovery.querySelectorAll("[data-program-filter]").forEach(button=>{const active=button.dataset.programFilter===filter;button.classList.toggle("is-active",active);button.setAttribute("aria-pressed",String(active));});
+      };
+      discovery.querySelectorAll("[data-program-filter]").forEach(button=>button.onclick=()=>applyFilter(button.dataset.programFilter));
+      const exporterCard=document.createElement("details");exporterCard.className="settings-card program-exporter-card";
+      exporterCard.innerHTML=REP_SAFE_DOM.sanitize(`<summary><span><small>${ar?"مخطط البرنامج والتدوير التدريبي":"PROGRAM TOOLS"}</small><strong>${ar?"مشاركة وتصدير الخطة":"Share & export your plan"}</strong></span><b>+</b></summary><div class="program-exporter-body"><p>${ar?"صدّر جدولك التدريبي ومجموعات التمارين كبطاقة رقمية لمشاركتها أو استيرادها على جهاز آخر.":"Export your training split, exercise list, and target sets as a portable digital routine card."}</p><div><button class="settings-primary" data-export-program>${ar?"📤 تصدير البرنامج (JSON)":"📤 Export Program (JSON)"}</button><button class="quiet-setting" data-share-program>${ar?"🔗 نسخ رابط الخطة":"🔗 Copy Share Link"}</button><button class="quiet-setting" data-export-report-card>${ar?"📄 تصدير تقرير PDF":"📄 Export Mesocycle PDF"}</button></div></div>`);
+      sessionGrid?.insertAdjacentElement("afterend",exporterCard);
       exporterCard.querySelector("[data-export-program]")?.addEventListener("click",()=>{
         const exportData={app:"Rep Gym Companion",type:"mesocycle-program",version:1,exportedAt:new Date().toISOString(),schedule:state.preferences.schedule,sessions:window.sessions||{}};
         features.downloadJson(exportData,`rep-training-program-${Date.now()}.json`);
