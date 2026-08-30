@@ -20,7 +20,7 @@ window.REP_I18N = {
       football:["Football Warm-up & Cooldown","Monday · Before / after your game","Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites."],
       padel:["Padel Warm-up & Cooldown","Wednesday · Before / after your game","Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point."],
       general:["Any Activity Warm-up & Cooldown","Any day · Before / after any activity","A general-purpose warm-up and cool-down for any sport or activity not already covered — running, basketball, tennis, cycling, hiking, and more."],
-      cardio:["Fallback Cardio","Mon / Wed · Only if no game that week · 30–35 min","Football and padel already provide strong cardio stimulus, so this is a fallback only — use it for a week your game gets cancelled, not alongside it."]
+      cardio:["Cardio Workout","Any day without football or padel · 30–35 min","Choose this treadmill session when you are not playing football or padel. It gives you a complete moderate cardio workout without inventing a replacement game."]
     }
   },
   ar: {
@@ -44,7 +44,7 @@ window.REP_I18N = {
       football:["إحماء وتهدئة كرة القدم","الاثنين · قبل / بعد المباراة","كرة القدم توفر بالفعل تحفيزاً قوياً للقلب، فلا حاجة لحصة سير منفصلة اليوم — فقط سخّن قبل اللعب وهدّئ بعده. الخلفية والمقربة لهما الأولوية؛ فهما أكثر مواضع إصابات كرة القدم شيوعاً."],
       padel:["إحماء وتهدئة البادل","الأربعاء · قبل / بعد المباراة","البادل يوفر بالفعل تحفيزاً قوياً للقلب، فلا حاجة لحصة سير منفصلة اليوم — فقط سخّن قبل اللعب وهدّئ بعده. عمل الكتف والساعد أهم هنا من الأرجل؛ الضرب المتكرر فوق الرأس والقبض هما مصدر التعب الحقيقي في البادل."],
       general:["إحماء وتهدئة لأي نشاط","أي يوم · قبل / بعد أي نشاط","إحماء وتهدئة عامان لأي رياضة أو نشاط غير مغطى بعد — الجري وكرة السلة والتنس وركوب الدراجات والمشي الطويل وغيرها."],
-      cardio:["حصة كارديو احتياطية","الاثنين / الأربعاء · فقط إن لم تلعب هذا الأسبوع · 30–35 دقيقة","كرة القدم والبادل يوفران بالفعل تحفيزاً قوياً للقلب، فهذه حصة احتياطية فقط — استخدمها في أسبوع أُلغيت فيه المباراة، وليس بجانبها."]
+      cardio:["حصة كارديو","أي يوم بدون كرة قدم أو بادل · 30–35 دقيقة","اختر حصة السير هذه عندما لا تلعب كرة القدم أو البادل. تمنحك تمرين كارديو متوسطاً ومتكاملاً دون اعتبارها مباراة بديلة."]
     },
     exercises: {
       "Brisk Marching in Place":["المشي السريع في المكان","قف طويلاً والذراعان مرتاحان.","ارفع الركبتين باتجاه مستوى الورك مع تحريك الذراعين طبيعياً.","حافظ على الجذع مستقيماً واهبط بهدوء.","الميل للخلف أو ضرب الأرض بقوة."],

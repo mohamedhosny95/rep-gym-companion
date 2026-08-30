@@ -83,8 +83,8 @@ const sessions = {
     ]
   },
   cardio: {
-    name: "Fallback Cardio", short: "CARDIO", meta: "Mon / Wed · Only if no game that week · 30–35 min", icon: "pulse", accent: "#7dc9ff",
-    description: "Football and padel already provide strong cardio stimulus, so this is a fallback only — use it for a week your game gets cancelled, not alongside it.",
+    name: "Cardio Workout", short: "CARDIO", meta: "Any day without football or padel · 30–35 min", icon: "pulse", accent: "#7dc9ff",
+    description: "Choose this treadmill session when you are not playing football or padel. It gives you a complete moderate cardio workout without inventing a replacement game.",
     exercises: [
       ex("Easy Warm-up Walk", "3–5 min", "Easy pace", 0, "warm-up", "walk", "Set the treadmill flat or at a very gentle incline.", "Walk easily and let your stride settle.", "Breathe comfortably; prepare, don't test yourself.", "Jumping straight to main pace."),
       ex("Incline Treadmill Walk", "20–25 min", "RPE 5–6 · 4–6% incline", 0, "main", "inclinewalk", "Start around 4–6% incline at a comfortable walking pace.", "Hold RPE 5–6: short sentences are possible, full conversation is not.", "Brace gently, swing arms naturally, and look forward.", "Overstriding or holding the rails. Progress incline or pace, not duration."),

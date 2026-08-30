@@ -174,6 +174,6 @@
   const baseVitals=renderVitals,baseInsights=renderInsights,baseHome=renderHome;
   renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`));organizeHealthWorkflow();bind();};
   renderInsights=function(){baseInsights();(document.querySelector(".trends-grid")||document.querySelector(".health-subnav"))?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(trendCard()));bind();};
-  renderHome=function(){baseHome();const start=document.querySelector("[data-start-today]");if(start){const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});}};
+  renderHome=function(){baseHome();document.querySelectorAll("[data-start-today],[data-start-cardio-fallback]").forEach(start=>{const proceed=start.onclick;start.onclick=null;start.addEventListener("click",()=>{if(needsWorkoutPreflight())openWorkoutPreflight(()=>proceed?.());else proceed?.();});});};
   if(state.activeTab==="vitals")renderVitals();else if(state.activeTab==="insights")renderInsights();
 })();
