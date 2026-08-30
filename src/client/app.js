@@ -54,6 +54,7 @@ const sessions = {
       ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
       ex("Lateral Shuffles & Carioca", "2 × 20m each", "Activation", 0, "activation", "walk", "Open space, roughly 20m.", "Lateral shuffles 2×20m, then carioca (crossover steps) 2×20m.", "Stay low and light on your feet.", "Standing too tall or crossing the feet stiffly."),
       ex("Football Build-up Strides", "3–4 reps", "60% → 90% speed", 0, "build-up", "walk", "Open space, 30–40m.", "Short accelerations building from 60% up to 90% of top speed.", "Build speed gradually across each stride.", "Going full speed cold — this is a build, not a sprint test."),
+      ex("Football Match", "Your game", "Log after", 0, "match", "activity", "Wherever you're playing.", "Play your match at normal intensity — this step just holds your place in the session until you're back.", "Log your Active Calories and duration from your Apple Watch before moving on to the cooldown.", "Skipping the log — your weekly training load needs this number."),
       ex("Football Cooldown Jog", "3–5 min", "Light jog / walk", 0, "cooldown", "walk", "Open space to walk or jog easily.", "Bring the heart rate down gradually after the game.", "Easy pace, relaxed breathing.", "Stopping abruptly right after hard running."),
       ex("Football Static Stretches", "5 stretches", "30 sec / side each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Hamstrings · Quads · Hip flexors · Calves · Groin/adductors.", "Hamstrings and groin first — the two most common football strain sites given repeated sprinting and cutting.", "Bouncing or forcing range.", 5)
     ]
@@ -66,6 +67,7 @@ const sessions = {
       ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
       ex("Padel Shoulder Prep", "Band or bodyweight", "Rotations", 0, "activation", "stretch", "Standing, band optional.", "Shoulder rotations in both directions, with a band or just bodyweight.", "Smashes load the shoulder hard — this matters.", "Skipping this before overhead play."),
       ex("Padel Sport-Specific Warm-up", "Shadow swings · Light rally", "Timing", 0, "sport-specific", "walk", "Racket in hand, on court.", "Shadow swings with no ball, then light rallying to warm up timing.", "Build up shot pace gradually.", "Going full power on the first rally."),
+      ex("Padel Match", "Your game", "Log after", 0, "match", "activity", "On court.", "Play your match at normal intensity — this step just holds your place in the session until you're back.", "Log your Active Calories and duration from your Apple Watch before moving on to the cooldown.", "Skipping the log — your weekly training load needs this number."),
       ex("Padel Cooldown Walk", "2 min", "Light walk", 0, "cooldown", "walk", "On or off court.", "Walk easily to bring the heart rate down.", "Relaxed, easy breathing.", "Sitting down immediately after hard rallies."),
       ex("Padel Static Stretches", "4 stretches", "20–30 sec each", 0, "cooldown", "stretch", "Open floor, right after the game.", "Shoulders/rotator cuff · Forearm/wrist · Hip flexors · Calves.", "Shoulder and forearm stretches matter more here than the legs — repeated overhead and gripping motion is padel's real fatigue point.", "Bouncing or forcing range.", 4)
     ]
@@ -77,6 +79,7 @@ const sessions = {
       ex("Easy Jog or Brisk Walk", "3–4 min", "Cardio pulse raiser", 0, "warm-up", "walk", "Open space to walk or jog.", "Gradually raise heart rate and body temperature, building from an easy pace to a light jog over the full duration.", "Ease into it — this is preparation, not a test.", "Jumping straight to hard effort."),
       ex("Full-Body Dynamic Stretch", "2–3 min", "Joint mobility", 0, "dynamic", "march", "Open space to move freely.", "Arm circles, torso twists, and leg swings front-to-back and side-to-side through a full range of motion.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
       ex("Movement-Specific Drills", "2–3 min", "Neuromuscular prep", 0, "activation", "march", "Open space, mimicking the activity ahead.", "Light shuffles, skips, or short strides that mimic the movement patterns of the activity ahead, gradually increasing speed.", "Build toward full intensity gradually.", "Going full speed cold."),
+      ex("Log Your Activity", "Your session", "Log after", 0, "match", "activity", "Wherever you're playing.", "Do your activity at normal intensity — this step just holds your place in the session until you're back.", "Log your Active Calories and duration from your Apple Watch before moving on to the cooldown.", "Skipping the log — your weekly training load needs this number."),
       ex("Walk & Breathe Down", "2–3 min", "Heart rate recovery", 0, "cooldown", "walk", "Open space to walk easily.", "Walk at an easy pace until your breathing returns to normal.", "Relaxed, easy breathing.", "Stopping abruptly right after hard effort."),
       ex("Full-Body Static Stretch", "4 stretches", "30 sec each", 0, "cooldown", "stretch", "Open floor, right after the activity.", "Hamstrings · Quads · Calves · Shoulders.", "Hold each stretch gently without bouncing; breathe slowly and let the muscle relax.", "Bouncing or forcing range.", 4),
       ex("Hydrate & Refuel", "—", "Recovery", 0, "cooldown", "walk", "Right after the activity.", "Rehydrate with water or electrolytes and eat a protein-containing snack within the hour.", "Recovery starts the moment you stop moving.", "Skipping fluids or waiting too long to eat.")
@@ -168,17 +171,20 @@ const cinematicMedia = {
   "Football Dynamic Stretches":"assets/cinematic/football-dynamic.webp",
   "Lateral Shuffles & Carioca":"assets/cinematic/football-agility.webp",
   "Football Build-up Strides":"assets/cinematic/football-stride.webp",
+  "Football Match":"assets/cinematic/football-agility.webp",
   "Football Cooldown Jog":"assets/cinematic/football-jog.webp",
   "Football Static Stretches":"assets/cinematic/football-dynamic.webp",
   "Padel Warm-up Jog":"assets/cinematic/padel-jog.webp",
   "Padel Dynamic Stretches":"assets/cinematic/padel-dynamic.webp",
   "Padel Shoulder Prep":"assets/cinematic/padel-shoulder-prep.webp",
   "Padel Sport-Specific Warm-up":"assets/cinematic/padel-shadow-swing.webp",
+  "Padel Match":"assets/cinematic/padel-shadow-swing.webp",
   "Padel Cooldown Walk":"assets/cinematic/padel-jog.webp",
   "Padel Static Stretches":"assets/cinematic/padel-dynamic.webp",
   "Easy Jog or Brisk Walk":"assets/cinematic/outdoor-easy-jog.webp",
   "Full-Body Dynamic Stretch":"assets/cinematic/outdoor-dynamic-stretch.webp",
   "Movement-Specific Drills":"assets/cinematic/outdoor-movement-drill.webp",
+  "Log Your Activity":"assets/cinematic/outdoor-movement-drill.webp",
   "Walk & Breathe Down":"assets/cinematic/outdoor-easy-jog.webp",
   "Full-Body Static Stretch":"assets/cinematic/outdoor-static-stretch.webp",
   "Hydrate & Refuel":"assets/cinematic/outdoor-hydrate.webp",
@@ -215,10 +221,13 @@ const exerciseMuscleTargets = {
   "Lateral Shuffles & Carioca":"Adductors · Glutes · Calves",
   "Football Build-up Strides":"Glutes · Hamstrings · Calves",
   "Football Static Stretches":"Hamstrings · Quads · Adductors · Calves",
+  "Football Match":"Match intensity",
   "Padel Dynamic Stretches":"Shoulders · Hips · Calves",
   "Padel Shoulder Prep":"Rotator cuff · Rear delts · Scapular stabilizers",
   "Padel Sport-Specific Warm-up":"Shoulders · Forearms · Core",
+  "Padel Match":"Match intensity",
   "Padel Static Stretches":"Shoulders · Forearms · Hips",
+  "Log Your Activity":"Your activity",
   "Hydrate & Refuel":"Full-body recovery"
 };
 
@@ -265,7 +274,7 @@ function observeCinematicMedia(root,item){
 }
 
 function exerciseVisual(item,{preview=false}={}){
-  const frames=state.viewMode==="side"?cinematicFramesFor(item):[];
+  const frames=cinematicFramesFor(item);
   if(!frames.length)return anatomyVisual(item.motion);
   const asset=cinematicAssetFor(item)||frames[0];
   const guide=motionGuide[item.motion]||motionGuide.march,ar=state.lang==="ar";
@@ -285,7 +294,7 @@ function anatomyVisual(motion) {
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
   const phaseRail=motionPhaseRail();
-  if(state.viewMode==="side" && motion in motionAtlasRows){
+  if(motion in motionAtlasRows){
     const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
     return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
       <span class="media-ambient" aria-hidden="true"><i class="sprite-frame"></i></span><i class="sprite-frame media-focus-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
@@ -885,7 +894,7 @@ function renderHome() {
   });
   document.querySelector("[data-goto-vitals]")?.addEventListener("click", ()=>setPrimaryTab("vitals"));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
-  document.querySelector("[data-log-activity]").addEventListener("click", showLogActivity);
+  document.querySelector("[data-log-activity]").addEventListener("click", ()=>showLogActivity());
   document.querySelector("[data-history]").addEventListener("click", renderHistory);
   document.querySelector("[data-bad-day]").addEventListener("click", renderBadDay);
   document.querySelector("[data-review]").addEventListener("click", renderReview);
@@ -1215,7 +1224,7 @@ function renderExercise() {
   const focusSet=isAllDone?item.sets:(nextSetIndex+1);
   const focusLabel=isAllDone?(state.index===session.exercises.length-1?(ar?"جاهز للإنهاء":"Ready to finish"):(ar?"جاهز للحركة التالية":"Ready for next move")):(ar?`المجموعة ${focusSet} من ${item.sets}`:`Set ${focusSet} of ${item.sets}`);
   const progressDots=Array.from({length:item.sets},(_,i)=>`<i class="${done.includes(i)?"is-done":i===nextSetIndex?"is-current":""}" aria-hidden="true"></i>`).join("");
-  const hasCinematicMedia=Boolean(state.viewMode==="side"&&cinematicAssetFor(item));
+  const hasCinematicMedia=Boolean(cinematicAssetFor(item));
   const identityHtml=`<div class="exercise-info workout-identity"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${swapBtn}</div><p>${ar?"الهدف":"Target"}: <strong>${esc(targetMuscles)}</strong></p><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>`;
   const exerciseTransitionClass=exerciseTransitioning?" is-exercise-entering":"";
   exerciseTransitioning=false;
@@ -1239,6 +1248,7 @@ function renderExercise() {
         <div class="set-progress-dots">${progressDots}</div>
         ${quickSetEntry(base,item,nextSetIndex)}
         ${nextSetIndex!==undefined&&motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer><span>${u.startTimer}</span><strong>${formatClock(motionGuide[item.motion][2])}</strong></button>`:""}
+        ${item.motion==="activity"?`<button type="button" class="exercise-timer-button" data-open-activity-log><span>${ar?"سجّل نشاطك الآن":"Log your activity now"}</span><strong aria-hidden="true">📋</strong></button>`:""}
       </section>
       <div class="workout-action-band"><button class="workout-primary-action" data-next><span>${primaryButtonLabel}</span><b aria-hidden="true">→</b></button></div>
       ${motionControls()}
@@ -1265,6 +1275,7 @@ function renderExercise() {
   document.querySelector("[data-plate-math]")?.addEventListener("click",e=>showPlateCalculator(Number(e.currentTarget.dataset.plateMath)||60));
   document.querySelector("[data-voice-set-log]")?.addEventListener("click",()=>startVoiceSetLogger(base,item));
   document.querySelector("[data-exercise-timer]")?.addEventListener("click",()=>toggleExerciseTimer(item.motion));
+  document.querySelector("[data-open-activity-log]")?.addEventListener("click",()=>showLogActivity(state.session==="football"||state.session==="padel"?state.session:undefined));
   document.querySelectorAll("[data-clone-set]").forEach(btn=>{
     btn.onclick=()=>{
       const i=Number(btn.dataset.cloneSet), id=exerciseId(base), log=normalizedLog(id,item.sets);
@@ -2390,13 +2401,13 @@ function showCarePlan(){
   document.body.appendChild(box);
   box.querySelector("[data-close-care-plan]").onclick=()=>box.remove();
 }
-function showLogActivity(){
+function showLogActivity(presetType){
   if(document.querySelector(".activity-panel"))return;
-  const ar=state.lang==="ar",defaultMinutes=60,defaultType=ACTIVITY_TYPES[0][0];
+  const ar=state.lang==="ar",defaultMinutes=60,defaultType=ACTIVITY_TYPES.some(([id])=>id===presetType)?presetType:ACTIVITY_TYPES[0][0];
   const box=document.createElement("div");box.className="exit-confirm activity-panel";
   box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${ar?"تسجيل نشاط":"Log an activity"}</strong>
     <p class="activity-hint">${ar?"للرياضات غير المنظمة مثل البادل وكرة القدم — مدة وسعرات محروقة من ساعة أبل، لا قائمة تمارين موجهة.":"For unstructured sports like padel and football — duration and calories burned from your Apple Watch, not a guided exercise list."}</p>
-    <div class="activity-types">${ACTIVITY_TYPES.map(([id,label],i)=>`<button data-activity-type="${id}" class="${i===0?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
+    <div class="activity-types">${ACTIVITY_TYPES.map(([id,label])=>`<button data-activity-type="${id}" class="${id===defaultType?"is-active":""}">${ar?label.ar:label.en}</button>`).join("")}</div>
     <input class="activity-custom" data-activity-custom type="text" maxlength="40" placeholder="${ar?"اسم النشاط":"Activity name"}" style="display:none">
     <div class="activity-form-grid"><label>${ar?"المدة (دقيقة)":"Duration (min)"}<input type="number" data-activity-minutes min="1" max="300" step="5" value="${defaultMinutes}" inputmode="numeric"></label><label>${ar?"السعرات النشطة من ساعة أبل":"Apple Watch Active Calories"}<input type="number" data-activity-calories min="0" max="2000" step="5" value="${estimateCalories(defaultType,defaultMinutes*60)}" inputmode="numeric"></label></div>
     <p class="activity-hint">${ar?"استخدم السعرات النشطة، وليس إجمالي السعرات، من ملخص تمرين ساعة أبل.":"Use Active Calories—not Total Calories—from the Apple Watch workout summary."}</p>
@@ -2418,7 +2429,7 @@ function showLogActivity(){
     if(logActivity(selected,custom,minutes,calories,notes)){
       if(navigator.vibrate)navigator.vibrate(30);
       box.remove();
-      if(state.view==="history")renderHistory();else renderHome();
+      if(state.view==="player")renderExercise();else if(state.view==="history")renderHistory();else renderHome();
     }
   };
 }
