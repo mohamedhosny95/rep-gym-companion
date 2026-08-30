@@ -71,6 +71,18 @@ test("startup and social assets stay within their performance budgets",async()=>
   assert.doesNotMatch(html,/src="app\.js/);assert.doesNotMatch(html,/src="enhancements\.js/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
+test("priority cinematic motions use complete, mobile-sized three-frame cycles",async()=>{
+  const app=await read("dist/client/app.js"),css=await read("dist/client/styles.css"),block=app.match(/const cinematicMotionFrames = \{([\s\S]+?)\n\};/)?.[1]||"";
+  const assets=[...block.matchAll(/"(assets\/cinematic\/[^\"]+\.webp)"/g)].map(match=>match[1]);
+  assert.equal(assets.length,18,"six priority exercises each declare three frames");
+  for(const asset of assets){
+    const file=await stat(join(root,"dist","client",asset));
+    assert.ok(file.size<180_000,`${asset} is ${file.size} bytes`);
+  }
+  assert.match(css,/cinematicFrameOne/);assert.match(css,/cinematicFrameTwo/);assert.match(css,/cinematicFrameThree/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?cinematic-motion>\.cinematic-frame:not\(:first-of-type\)\{opacity:0\}/);
+});
+
 test("browser pairing keeps only a non-secret marker and synchronizes tabs",async()=>{
   const auth=await read("dist/client/auth.js"),enhancements=await read("dist/client/enhancements.js");
   assert.match(auth,/cookieMarker="cookie"/);assert.match(auth,/BroadcastChannel/);assert.match(auth,/addEventListener\("storage"/);

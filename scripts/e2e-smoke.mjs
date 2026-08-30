@@ -125,6 +125,21 @@ try {
   await page.click('[data-training-view="program"]');
   await page.waitForTimeout(200);
 
+  await page.click('[data-session="football"]');
+  await page.waitForTimeout(150);
+  const footballMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
+  assertTrue(footballMedia.length===6&&footballMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/football-'))), "Every football movement uses football-pitch media");
+  assertTrue(footballMedia.some(row=>row.name.includes('Lateral Shuffles')&&row.sources.length===3), "Football agility uses a three-frame male movement cycle");
+  await page.click('[data-cancel-preview]');
+  await page.waitForTimeout(150);
+  await page.click('[data-session="padel"]');
+  await page.waitForTimeout(150);
+  const padelMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
+  assertTrue(padelMedia.length===6&&padelMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/padel-'))), "Every padel movement uses male padel-court media");
+  assertTrue(padelMedia.some(row=>row.name.includes('Shoulder Prep')&&row.sources.length===3), "Padel shoulder prep uses a three-frame male movement cycle");
+  await page.click('[data-cancel-preview]');
+  await page.waitForTimeout(150);
+
   // Regression guard: tapping a session must show a preview, not jump straight in.
   await page.click('[data-session="gym"]');
   await page.waitForTimeout(300);
@@ -134,6 +149,33 @@ try {
   await page.click("[data-start-session]");
   await page.waitForTimeout(300);
   assertTrue(await page.evaluate(() => document.body.classList.contains("workout-mode")), "Start workout enters the player");
+  assertTrue((await page.evaluate(() => window.scrollY)) <= 1, "Active workout opens at the progress header instead of preserving preview scroll");
+  for (const [selector,label] of [
+    [".exercise-hero-stage","cinematic exercise animation"],
+    [".exercise-hero-stage .cinematic-motion","photorealistic exercise media"],
+    [".exercise-hero-stage .media-phase-rail","guided motion phase rail"],
+    [".hero-muscle-label","muscle visualization label"],
+    [".current-set-card","current set focus"],
+    [".workout-primary-action","primary set action"],
+    [".motion-controls","animation controls"]
+  ]) assertTrue(await page.locator(selector).count() === 1, `Active workout exposes its ${label}`);
+  assertTrue((await page.locator(".exercise-hero-stage .cinematic-motion img").first().getAttribute("src")).includes("assets/cinematic/"), "Active workout uses the exercise-specific cinematic asset");
+  assertTrue(!(await page.locator(".topbar").isVisible()), "Generic app utilities stay out of the focused workout header");
+  for (const width of [375,390,430]) {
+    await page.setViewportSize({width,height:844});
+    assertTrue(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `Active workout has no horizontal overflow at ${width}px`);
+  }
+  await page.setViewportSize({width:390,height:900});
+  await page.click('[data-motion-action="speed"]');
+  assertTrue(await page.locator(".workout-choice-grid [data-choice]").count() === 5, "Speed control opens restrained playback choices");
+  await page.click("[data-choice-close]");
+  await page.click("[data-exercise-timer]");
+  assertTrue(await page.locator(".timed-ring").count() === 1, "Timed exercise opens a prominent progress ring");
+  await page.click("[data-timed-pause]");
+  assertTrue(await page.locator(".workout-timed-mode.is-paused").count() === 1, "Timed exercise can pause without completing the set");
+  await page.click("[data-timed-add]");
+  assertTrue((await page.locator("[data-timed-total]").textContent()).includes("5:15"), "Timed exercise extension updates the real total");
+  await page.click("[data-timed-close]");
 
   // Regression guard: the rest-timer dock must not block Next/Previous.
   while (await page.locator(".set-button:not(.is-done)").count() > 0) {
@@ -145,6 +187,24 @@ try {
   let nextClickable = true;
   try { await nextBtn.click({ timeout: 3000 }); } catch { nextClickable = false; }
   assertTrue(nextClickable, "Next exercise button is reachable while the rest timer is active");
+  await page.waitForTimeout(250);
+  assertTrue(await page.locator(".live-set-entry").count() === 1, "Strength exercise exposes quick entry backed by the set log");
+  await page.fill('[data-live-log][data-log="reps"]',"8");
+  assertTrue(await page.locator('.set-card-row:first-child [data-log="reps"]').inputValue() === "8", "Quick reps stay synchronized with the detailed set row");
+  await page.click('[data-live-reps-step="1"]');
+  assertTrue(await page.locator('[data-live-log][data-log="reps"]').inputValue() === "9", "Manual rep control updates the current logged set");
+
+  while (await page.locator(".set-button:not(.is-done)").count() > 0) {
+    await page.locator(".set-button:not(.is-done)").first().click().catch(() => {});
+    await page.waitForTimeout(40);
+  }
+  await page.waitForTimeout(120);
+  assertTrue(await page.locator("#timerNextPreview:not(.is-hidden)").count() === 1, "Final rest opens a dedicated next-exercise preview");
+  assertTrue((await page.locator("#timerPreviewName").textContent()).includes("Back Extension"), "Rest preview is connected to the real next exercise");
+  assertTrue(await page.locator("#timerPreviewVisual :is(.media-focus-frame,.cinematic-motion img)").count() > 0, "Rest preview reuses the next exercise media");
+  await page.click("#timerNextNow");
+  await page.waitForTimeout(200);
+  assertTrue((await page.locator(".workout-identity h1").textContent()).includes("Back Extension"), "Start now advances directly from rest to the previewed exercise");
 
   // finish the rest of the session
   for (let i = 0; i < 10; i++) {
@@ -162,6 +222,8 @@ try {
   }
   await page.waitForSelector(".complete", { timeout: 8000 }).catch(() => {});
   assertTrue(await page.locator(".complete").count() > 0, "Session completes and shows the completion screen");
+  assertTrue(await page.locator(".complete-stat-grid > div").count() >= 3, "Completion handoff summarizes real session metrics");
+  assertTrue(await page.locator("[data-history-after]").count() === 1, "Completion handoff links directly to session history");
   await page.click("[data-home]").catch(() => {});
   await page.waitForTimeout(300);
 
