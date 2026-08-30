@@ -1948,12 +1948,13 @@ function computeStrainScore(dateStr=isoDay()){
   if(!totalLoad)return 0;
   return Math.round(21*(1-Math.exp(-totalLoad/220))*10)/10;
 }
-function ringGaugeSvg(percent,color,size=112,strokeWidth=10){
+function ringGaugeSvg(percent,color,size=112,strokeWidth=10,isEmpty=false){
   const radius=(size-strokeWidth)/2,circumference=2*Math.PI*radius,offset=circumference*(1-Math.max(0,Math.min(100,percent))/100);
+  if(isEmpty)return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-dasharray="1 ${Math.max(6,strokeWidth)}"/></svg>`;
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="${strokeWidth}"/><circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
 }
-function miniRing(percent,color,size=56,strokeWidth=6){
-  return `<div class="mini-ring" style="width:${size}px;height:${size}px">${ringGaugeSvg(percent,color,size,strokeWidth)}<span>${Math.round(percent)}%</span></div>`;
+function miniRing(percent,color,size=56,strokeWidth=6,isEmpty=false){
+  return `<div class="mini-ring" style="width:${size}px;height:${size}px">${ringGaugeSvg(percent,color,size,strokeWidth,isEmpty)}<span>${isEmpty?"—":`${Math.round(percent)}%`}</span></div>`;
 }
 function strainRecoveryCard(ar){
   const recovery=computeRecoveryScore(),strain=computeStrainScore(),sleepPerf=computeSleepPerformance();
@@ -1963,8 +1964,8 @@ function strainRecoveryCard(ar){
   const sleepNote=!sleepPerf?(ar?"سجّل نومك لرؤية النتيجة":"Log sleep to see a score"):sleepPerf.estimatedBaseline?(ar?`يُبنى خط الأساس — مقابل تقدير ${sleepPerf.need}h مؤقت`:`Building baseline — vs a temporary ${sleepPerf.need}h estimate`):`${sleepPerf.actual}h ${ar?"من":"of"} ${sleepPerf.need}h`;
   const strainNote=strain>=14?(ar?"إجهاد مرتفع اليوم":"High load today"):strain>=7?(ar?"إجهاد معتدل":"Moderate load"):(ar?"من التمارين المسجلة اليوم":"From today's logged training");
   return `<section class="vitals-trio">
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor,82,8)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
-    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor,82,8)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(sleepPerf?sleepPerf.performance:0,sleepColor,82,8,!sleepPerf)}<div class="vital-ring-label"><strong>${sleepPerf?`${sleepPerf.performance}%`:"—"}</strong><span>${ar?"النوم":"SLEEP"}</span></div></div><small>${sleepNote}</small></article>
+    <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(recovery?recovery.score:0,recColor,82,8,!recovery)}<div class="vital-ring-label"><strong>${recovery?`${recovery.score}%`:"—"}</strong><span>${ar?"الاستشفاء":"RECOVERY"}</span></div></div><small>${recNote}</small></article>
     <article class="vital-ring-card"><div class="vital-ring">${ringGaugeSvg(strain/21*100,"var(--blue)",82,8)}<div class="vital-ring-label"><strong>${strain}</strong><span>${ar?"الإجهاد":"STRAIN"}</span></div></div><small>${strainNote}</small></article>
   </section>`;
 }
@@ -1972,7 +1973,7 @@ function vitalsTeaserStrip(ar){
   const recovery=computeRecoveryScore(),strain=computeStrainScore();
   const recColor=recovery?{green:"var(--acid)",yellow:"var(--orange)",red:"#ff6b6b"}[recovery.band]:"var(--muted)";
   return `<button class="vitals-teaser" data-goto-vitals type="button">
-    ${miniRing(recovery?recovery.score:0,recColor,44,5)}
+    ${miniRing(recovery?recovery.score:0,recColor,44,5,!recovery)}
     <span class="vitals-teaser-copy"><small>${ar?"الاستشفاء اليوم":"RECOVERY TODAY"}</small><strong>${recovery?`${recovery.score}%`:"—"} · ${ar?"إجهاد":"Strain"} ${strain}</strong></span>
     <span class="vitals-teaser-arrow" aria-hidden="true">${ICONS.heartbeat}</span>
   </button>`;
@@ -2605,6 +2606,7 @@ function renderQuickLog(){
     menu.hidden=!opening;fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
   });
   menu.querySelectorAll("[data-quick-action]").forEach(button=>button.addEventListener("click",()=>{closeQuickLog();runQuickAction(button.dataset.quickAction);}));
+  updateQuickLogVisibility();
 }
 function closeQuickLog(){
   const fab=document.querySelector("#quickLogFab"),menu=document.querySelector("#quickLogMenu");
@@ -2613,6 +2615,18 @@ function closeQuickLog(){
 }
 document.addEventListener("click",e=>{if(!e.target.closest("#quickLog"))closeQuickLog();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeQuickLog();});
+// Collapsed at rest on a freshly-opened screen so it never sits on top of that
+// screen's own primary CTA; the moment the user scrolls it's no longer at that
+// fixed on-screen spot, so the FAB eases back in as a persistent quick action.
+let quickLogTicking=false;
+function updateQuickLogVisibility(){
+  quickLogTicking=false;
+  const container=document.querySelector("#quickLog");if(!container)return;
+  const menu=container.querySelector("#quickLogMenu");
+  if(menu&&!menu.hidden)return;
+  container.classList.toggle("is-collapsed",window.scrollY<40);
+}
+window.addEventListener("scroll",()=>{if(!quickLogTicking){quickLogTicking=true;requestAnimationFrame(updateQuickLogVisibility);}},{passive:true});
 function runQuickAction(action){
   if(action==="workout"){
     if(continuingSession()){startSession(state.session);return;}

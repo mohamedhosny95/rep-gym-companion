@@ -157,6 +157,7 @@
     else if(tab==="insights")renderInsights();
     else if(tab==="vitals")renderVitals();
     else renderHome();
+    focusViewHeading();
     if(navigator.onLine&&localStorage.getItem(syncKeyStorage)&&typeof fetchPendingVitals==="function")setTimeout(()=>{fetchPendingVitals(false).catch(()=>{});},100);
   };
   function localizeArabicUnits(){if(state.lang!=="ar")return;const walker=document.createTreeWalker(app,NodeFilter.SHOW_TEXT);while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest("input,textarea,script,style"))continue;node.nodeValue=node.nodeValue.replace(/(\d+(?:\.\d+)?)h\b/g,"$1 س").replace(/\bkg\b/g,"كجم").replace(/\bkcal\b/g,"سعرة");}}
