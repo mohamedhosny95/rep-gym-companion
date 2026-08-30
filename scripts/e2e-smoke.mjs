@@ -116,6 +116,8 @@ try {
   await page.waitForSelector("text=Move well.", { timeout: 10000 });
   assertTrue(true, "Training tab loads");
   assertTrue(await page.locator('.today-training-action').count() === 1, "Training opens on the focused Today view");
+  assertTrue(await page.locator('[data-start-cardio-fallback][data-session-id="cardio"]:visible').count() === 1, "Today exposes cardio when there is no football or padel");
+  assertTrue(await page.locator('[data-start-cardio-fallback]').evaluate(el=>el.getBoundingClientRect().height >= 44), "Cardio fallback keeps a 44px touch target");
   await assertAccessibleView(page,"Training Today");
   assertTrue(await page.locator('.workout-guard').count() === 0, "Training preflight stays out of the daily page until it is needed");
   await page.click('[data-start-today]');

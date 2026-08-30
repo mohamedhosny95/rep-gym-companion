@@ -51,7 +51,7 @@
 
   function showUndo(message,undo){clearTimeout(state.undoTimer);document.querySelector(".undo-bar")?.remove();const bar=document.createElement("div");bar.className="undo-bar";bar.innerHTML=REP_SAFE_DOM.sanitize(`<span>${esc(message)}</span><button>${state.lang==="ar"?"تراجع":"Undo"}</button>`);document.body.appendChild(bar);bar.querySelector("button").onclick=()=>{clearTimeout(state.undoTimer);bar.remove();undo();};state.undoTimer=setTimeout(()=>bar.remove(),6500);}
   function daySchedule(day=currentDay()){return state.preferences.schedule[day]||DEFAULT_SCHEDULE[day];}
-  function focusLabel(focus,ar=state.lang==="ar"){const labels={gym:["Gym","جيم"],football:["Football","كرة القدم"],padel:["Padel","بادل"],cardio:["Fallback Cardio","كارديو احتياطي"],recovery:["Active recovery","استشفاء نشط"],spa:["Spa recovery","استشفاء السبا"],rest:["Rest","راحة"],activespa:["Active recovery + Spa","استشفاء نشط + سبا"]};return labels[focus]?.[ar?1:0]||focus;}
+  function focusLabel(focus,ar=state.lang==="ar"){const labels={gym:["Gym","جيم"],football:["Football","كرة القدم"],padel:["Padel","بادل"],cardio:["Cardio Workout","حصة كارديو"],recovery:["Active recovery","استشفاء نشط"],spa:["Spa recovery","استشفاء السبا"],rest:["Rest","راحة"],activespa:["Active recovery + Spa","استشفاء نشط + سبا"]};return labels[focus]?.[ar?1:0]||focus;}
   function profileKey(){const focus=daySchedule().focus;return focus==="gym"?"gym":["cardio","football","padel"].includes(focus)?"active":"flex";}
   todayPlan=function(day=currentDay()){const plan=daySchedule(day),focus=focusLabel(plan.focus);return plan.morning?`${state.lang==="ar"?"تنشيط":"Activation"} + ${focus}`:focus;};
   nutritionPlanKey=function(){const key=profileKey();return key==="active"?"cardio":key==="flex"?"rest":"gym";};
@@ -211,9 +211,10 @@
     if(state.trainingView==="today"){
       const focus=daySchedule().focus,id=["gym","football","padel","cardio"].includes(focus)?focus:"bad";
       document.querySelector(".today-training-action")?.remove();
-      const card=document.createElement("section");card.className="today-training-action";card.innerHTML=REP_SAFE_DOM.sanitize(`<small>${ar?"الخطوة التالية":"NEXT ACTION"}</small><h2>${esc(todayPlan())}</h2><p>${ar?"ابدأ الخطة المحددة لهذا اليوم، ويمكنك تعديلها بعد مراجعة الاستشفاء.":"Start the plan selected for today; adjust it after checking your recovery."}</p><button data-start-today>${ar?"ابدأ خطة اليوم":"Start today's plan"}</button>`);
+      const card=document.createElement("section");card.className="today-training-action";card.innerHTML=REP_SAFE_DOM.sanitize(`<small>${ar?"الخطوة التالية":"NEXT ACTION"}</small><h2>${esc(todayPlan())}</h2><p>${ar?"ابدأ الخطة المحددة لهذا اليوم، أو اختر الكارديو عندما لا توجد كرة قدم أو بادل.":"Start today's plan, or choose cardio when there is no football or padel."}</p><div class="today-training-actions"><button data-start-today data-session-id="${id}">${ar?"ابدأ خطة اليوم":"Start today's plan"}</button>${id!=="cardio"?`<button class="today-cardio-fallback" data-start-cardio-fallback data-session-id="cardio">${ar?"لا توجد مباراة؟ اختر الكارديو":"No game? Choose cardio"}</button>`:""}</div>`);
       nav.insertAdjacentElement("afterend",card);
       card.querySelector("[data-start-today]").onclick=()=>showSessionPreview(id);
+      const cardioFallback=card.querySelector("[data-start-cardio-fallback]");if(cardioFallback)cardioFallback.onclick=()=>showSessionPreview("cardio");
     } else if(state.trainingView==="program"){
       const focus=daySchedule().focus,recommendedId=["morning","gym","football","padel","general","cardio"].includes(focus)?focus:"morning";
       const recommended=document.querySelector(`[data-session="${recommendedId}"]`);
