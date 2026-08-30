@@ -2609,7 +2609,7 @@ function showToast(message){
   document.querySelector(".toast")?.remove();
   const t=document.createElement("div");t.className="toast";t.textContent=message;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2600);
+  setTimeout(()=>{t.classList.add("is-leaving");setTimeout(()=>t.remove(),180);},2600);
 }
 document.querySelector("#wakeButton").addEventListener("click",toggleWakeLock);
 if(!("wakeLock" in navigator)){
@@ -2663,8 +2663,14 @@ function renderQuickLog(){
   const fab=container.querySelector("#quickLogFab"),menu=container.querySelector("#quickLogMenu");
   fab.addEventListener("click",()=>{
     const opening=menu.hidden;
-    if(opening)menu.querySelector('[data-quick-action="workout"] span').textContent=continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout");
-    menu.hidden=!opening;fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
+    if(opening){
+      menu.querySelector('[data-quick-action="workout"] span').textContent=continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout");
+      menu.hidden=false;
+      requestAnimationFrame(()=>menu.classList.add("is-open"));
+    }else{
+      closeQuickLog();
+    }
+    fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
   });
   menu.querySelectorAll("[data-quick-action]").forEach(button=>button.addEventListener("click",()=>{closeQuickLog();runQuickAction(button.dataset.quickAction);}));
   updateQuickLogVisibility();
@@ -2672,7 +2678,8 @@ function renderQuickLog(){
 function closeQuickLog(){
   const fab=document.querySelector("#quickLogFab"),menu=document.querySelector("#quickLogMenu");
   if(!fab||!menu||menu.hidden)return;
-  menu.hidden=true;fab.setAttribute("aria-expanded","false");fab.classList.remove("is-open");
+  menu.classList.remove("is-open");fab.setAttribute("aria-expanded","false");fab.classList.remove("is-open");
+  setTimeout(()=>{menu.hidden=true;},180);
 }
 document.addEventListener("click",e=>{if(!e.target.closest("#quickLog"))closeQuickLog();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeQuickLog();});

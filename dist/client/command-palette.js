@@ -124,8 +124,12 @@
     }
 
     function closePalette(){
-      overlay.remove();
+      if(overlay.classList.contains("is-closing")) return;
       document.removeEventListener("keydown", handleKeydown);
+      overlay.classList.add("is-closing");
+      const done=()=>overlay.remove();
+      overlay.addEventListener("animationend", done, { once: true });
+      setTimeout(done, 200);
     }
 
     function handleKeydown(e){
