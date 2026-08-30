@@ -930,11 +930,7 @@ function renderHome() {
       <div class="section-title"><h2>${u.weekly}</h2><span>${state.lang==="ar"?"الصباح + منتصفه":"AM + mid-morning"}</span></div>
       <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":d==="Mon"?"FB":d==="Wed"?"PDL":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
     </section>`);
-  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
-    const id = button.dataset.session;
-    const continuing = REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
-    continuing ? startSession(id) : showSessionPreview(id);
-  }));
+  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => showSessionPreview(button.dataset.session)));
   document.querySelector("[data-create-new-routine]")?.addEventListener("click", () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal());
   document.querySelectorAll("[data-edit-custom]").forEach(btn => {
     btn.onclick = () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal(btn.dataset.editCustom);
@@ -968,6 +964,7 @@ function sessionCard(id, s, resume) {
 // or expanding rows here has zero effect on what counts as an active session.
 function showSessionPreview(id,openIndices=new Set()){
   const s=sessions[id],ar=state.lang==="ar",ls=sessionText(id,s),u=U();
+  const continuing=REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
   REP_TRAINING_SESSION.previewWorkout(state,id);document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
   const rows=s.exercises.map((base,i)=>{
     const item=currentItem(base);
@@ -982,7 +979,7 @@ function showSessionPreview(id,openIndices=new Set()){
   app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="preview-container">${moduleHeader(ls.name,ar?"استعرض الخطة وتقنية كل حركة قبل البدء.":"Preview the plan and each move's technique before you start.",ls.description)}
     <section class="preview-meta"><span>${ls.meta}</span><span>${s.exercises.length} ${u.steps}</span></section>
     <section class="preview-list">${rows}</section>
-    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${ar?"← ابدأ التمرين":"Start workout →"}</button></nav></section>`);
+    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${continuing?(ar?"← تابع التمرين":"Resume workout →"):(ar?"← ابدأ التمرين":"Start workout →")}</button></nav></section>`);
   document.querySelector("[data-start-session]").onclick=()=>startSession(id);
   document.querySelector("[data-cancel-preview]").onclick=renderHome;
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
