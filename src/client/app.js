@@ -223,6 +223,37 @@ const CATEGORY_LABELS_AR = {
   "dynamic":"ديناميكي", "build-up":"بناء تدريجي", "match":"مباراة", "sport-specific":"خاص بالرياضة",
   "minimum":"الحد الأدنى", "main":"رئيسي", "push":"دفع", "pull":"سحب"
 };
+
+// Exact-string translations for the free-text prescription/intensity fields.
+// Keyed by the literal English value from ex() so the same exercise name can
+// carry different numbers across sessions (e.g. Leg Press 3x10-12 vs 2x10).
+const PRESCRIPTION_AR = {
+  "1 × 10–15":"1 × 10–15", "1 × 12–15":"1 × 12–15", "1 × 30–45 sec":"1 × 30–45 ثانية",
+  "1 × 6–8 / side":"1 × 6–8 / جهة", "1 × 8":"1 × 8",
+  "10 / leg · 10 steps · 20m":"10 / ساق · 10 خطوات · 20م",
+  "2 min":"دقيقتان", "2 × 10":"2 × 10", "2 × 15–20 sec":"2 × 15–20 ثانية", "2 × 20m each":"2 × 20م لكل جانب",
+  "20–25 min":"20–25 دقيقة", "2–3 min":"2–3 دقائق", "3 min":"3 دقائق", "3 × 10":"3 × 10", "3 × 10–12":"3 × 10–12",
+  "30–45 sec / side":"30–45 ثانية / جهة", "3–4 min":"3–4 دقائق", "3–4 reps":"3–4 مرات", "3–5 min":"3–5 دقائق",
+  "4 stretches":"4 إطالات", "5 min":"5 دقائق", "5 stretches":"5 إطالات",
+  "Band or bodyweight":"رباط مطاطي أو وزن الجسم",
+  "Leg swings · Lunges · Arm circles":"أرجحة الساق · اندفاعات · دوائر بالذراعين",
+  "Shadow swings · Light rally":"ضربات وهمية · تبادل خفيف",
+  "Your game":"مباراتك", "Your session":"نشاطك"
+};
+const INTENSITY_AR = {
+  "10 sec rest":"راحة 10 ثوانٍ", "2 sec close / open":"إغلاق 2ث / فتح 2ث", "2 sec squeeze":"ضغط 2 ثانية",
+  "20–30 sec / side":"20–30 ثانية / جهة", "20–30 sec each":"20–30 ثانية لكل جانب",
+  "30 sec / side each":"30 ثانية / جهة لكل", "30 sec each":"30 ثانية لكل",
+  "3–5 sec hold / release":"ثبات 3–5 ثوانٍ / تحرير",
+  "60% → 90% speed":"من 60% إلى 90% من السرعة",
+  "Activation":"تنشيط", "Both directions":"الاتجاهين", "Cardio pulse raiser":"رفع نبض القلب",
+  "Easy":"سهل", "General":"عام", "Heart rate recovery":"استشفاء معدل ضربات القلب",
+  "Joint mobility":"مرونة المفاصل",
+  "Leg swings · Walking lunges · High knees · Butt kicks":"أرجحة الساق · اندفاعات المشي · الركبة العالية · ضرب الكعب للمؤخرة",
+  "Light jog / walk":"هرولة خفيفة / مشي", "Light walk":"مشي خفيف", "Log after":"سجّل لاحقاً",
+  "Neuromuscular prep":"تحضير عصبي عضلي", "RPE 5–6 · 4–6% incline":"RPE 5–6 · ميل 4–6%",
+  "Recovery":"استشفاء", "Rotations":"دورانات", "Timing":"التوقيت"
+};
 function categoryLabel(category){return state.lang==="ar"?(CATEGORY_LABELS_AR[category]||category):category;}
 
 const exerciseMuscleTargets = {
@@ -461,7 +492,8 @@ function localizedItem(item){
   if(state.lang!=="ar") return item;
   const a=REP_I18N.ar.exercises[item.name]; if(!a)return item;
   const units=s=>String(s).replaceAll("min","دقيقة").replaceAll("sec","ثانية").replaceAll("side","جهة").replaceAll("rest","راحة").replaceAll("hold","ثبات").replaceAll("release","استرخاء").replace("Light resistance","مقاومة خفيفة").replace("Easy pace","سرعة سهلة").replace("squeeze","ضغط");
-  return {...item,name:a[0],baseName:item.name,prescription:units(item.prescription),intensity:units(item.intensity),setup:a[1],execution:a[2],cues:a[3],avoid:a[4]};
+  const translate=(s,dict)=>dict[s]||units(s);
+  return {...item,name:a[0],baseName:item.name,prescription:translate(item.prescription,PRESCRIPTION_AR),intensity:translate(item.intensity,INTENSITY_AR),setup:a[1],execution:a[2],cues:a[3],avoid:a[4]};
 }
 function esc(value) { return String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
 function currentDay() { return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]; }
