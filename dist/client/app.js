@@ -1262,6 +1262,7 @@ function renderExercise() {
   const session = sessions[state.session];
   if (!session) return renderHome();
   if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
+  const prevProgressWidth=document.querySelector(".workout-progress i")?.style.width||null;
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   primeUpcomingCinematicMedia(session,state.index);
   const key = `${state.session}-${state.index}`;
@@ -1311,6 +1312,13 @@ function renderExercise() {
       <section class="set-checklist-panel"><div class="set-checklist-head"><small>${ar?"تقدم التمرين":"SET PROGRESS"}</small><strong>${done.length}/${item.sets} ${ar?"مكتملة":"complete"}</strong></div><div class="set-tracker" aria-label="${ar?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div></section>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
     </article></section>`);
+  const progressBar=document.querySelector(".workout-progress i");
+  if(progressBar&&prevProgressWidth&&prevProgressWidth!==progressBar.style.width){
+    const targetWidth=progressBar.style.width;
+    progressBar.style.width=prevProgressWidth;
+    void progressBar.offsetWidth;
+    requestAnimationFrame(()=>{progressBar.style.width=targetWidth;});
+  }
   observeCinematicMedia(document.querySelector(".exercise-hero-stage"),item);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
