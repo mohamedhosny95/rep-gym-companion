@@ -119,24 +119,24 @@ function ex(name, prescription, intensity, rest, category, motion, setup, execut
 }
 
 const anatomy = {
-  march:       ["mobility", "500% 200%", "0% 0%", "0% 100%", "Hip flexors · Quads · Calves", "flip"],
-  catcow:      ["mobility", "500% 200%", "25% 0%", "25% 100%", "Spinal erectors · Abdominals"],
-  kneel:       ["mobility", "500% 200%", "50% 0%", "50% 100%", "Hip flexors"],
-  floor:       ["mobility", "500% 200%", "75% 0%", "75% 100%", "Glutes · Hamstrings"],
-  birddog:     ["mobility", "500% 200%", "100% 0%", "100% 100%", "Core · Glutes · Back"],
-  plank:       ["core", "400% 200%", "0% 0%", "0% 100%", "Core · Glutes"],
-  breathe:     ["core", "400% 200%", "33.333% 0%", "33.333% 100%", "Deep abdominal wall"],
-  kegel:       ["core", "400% 200%", "66.667% 0%", "66.667% 100%", "Pelvic floor"],
-  grip:        ["core", "400% 200%", "100% 0%", "100% 100%", "Forearm flexors · Hand"],
-  bike:        ["gym", "400% 300%", "0% 0%", "33.333% 0%", "Quads · Glutes · Calves"],
-  legpress:    ["gym", "400% 300%", "66.667% 0%", "100% 0%", "Quads · Glutes"],
-  hinge:       ["gym", "400% 300%", "0% 50%", "33.333% 50%", "Spinal erectors · Glutes · Hamstrings"],
-  chestpress:  ["gym", "400% 300%", "66.667% 50%", "100% 50%", "Chest · Front delts · Triceps"],
-  row:         ["gym", "400% 300%", "0% 100%", "33.333% 100%", "Lats · Rhomboids · Biceps"],
-  pulldown:    ["gym", "400% 300%", "66.667% 100%", "100% 100%", "Lats · Biceps"],
-  walk:        ["cardio", "300% 200%", "0% 0%", "0% 100%", "Glutes · Quads · Calves"],
-  inclinewalk: ["cardio", "300% 200%", "50% 0%", "50% 100%", "Glutes · Quads · Core"],
-  stretch:     ["cardio", "300% 200%", "100% 0%", "100% 100%", "Lats · Obliques"]
+  march:       ["mobility", "500% 200%", "0% 0%", "0% 100%", "Hip flexors · Quads · Calves", "flip", "مثنيات الورك · الفخذ الأمامي · السمانة"],
+  catcow:      ["mobility", "500% 200%", "25% 0%", "25% 100%", "Spinal erectors · Abdominals", null, "مقيمات العمود الفقري · عضلات البطن"],
+  kneel:       ["mobility", "500% 200%", "50% 0%", "50% 100%", "Hip flexors", null, "مثنيات الورك"],
+  floor:       ["mobility", "500% 200%", "75% 0%", "75% 100%", "Glutes · Hamstrings", null, "الأرداف · أوتار الركبة"],
+  birddog:     ["mobility", "500% 200%", "100% 0%", "100% 100%", "Core · Glutes · Back", null, "الجذع · الأرداف · الظهر"],
+  plank:       ["core", "400% 200%", "0% 0%", "0% 100%", "Core · Glutes", null, "الجذع · الأرداف"],
+  breathe:     ["core", "400% 200%", "33.333% 0%", "33.333% 100%", "Deep abdominal wall", null, "جدار البطن العميق"],
+  kegel:       ["core", "400% 200%", "66.667% 0%", "66.667% 100%", "Pelvic floor", null, "قاع الحوض"],
+  grip:        ["core", "400% 200%", "100% 0%", "100% 100%", "Forearm flexors · Hand", null, "عضلات الساعد القابضة · اليد"],
+  bike:        ["gym", "400% 300%", "0% 0%", "33.333% 0%", "Quads · Glutes · Calves", null, "الفخذ الأمامي · الأرداف · السمانة"],
+  legpress:    ["gym", "400% 300%", "66.667% 0%", "100% 0%", "Quads · Glutes", null, "الفخذ الأمامي · الأرداف"],
+  hinge:       ["gym", "400% 300%", "0% 50%", "33.333% 50%", "Spinal erectors · Glutes · Hamstrings", null, "مقيمات العمود الفقري · الأرداف · أوتار الركبة"],
+  chestpress:  ["gym", "400% 300%", "66.667% 50%", "100% 50%", "Chest · Front delts · Triceps", null, "الصدر · الدالية الأمامية · الترايسبس"],
+  row:         ["gym", "400% 300%", "0% 100%", "33.333% 100%", "Lats · Rhomboids · Biceps", null, "العضلة الظهرية العريضة · المعينية · البايسبس"],
+  pulldown:    ["gym", "400% 300%", "66.667% 100%", "100% 100%", "Lats · Biceps", null, "العضلة الظهرية العريضة · البايسبس"],
+  walk:        ["cardio", "300% 200%", "0% 0%", "0% 100%", "Glutes · Quads · Calves", null, "الأرداف · الفخذ الأمامي · السمانة"],
+  inclinewalk: ["cardio", "300% 200%", "50% 0%", "50% 100%", "Glutes · Quads · Core", null, "الأرداف · الفخذ الأمامي · الجذع"],
+  stretch:     ["cardio", "300% 200%", "100% 0%", "100% 100%", "Lats · Obliques", null, "العضلة الظهرية العريضة · المائلة"]
 };
 
 const motionGuide = {
@@ -216,19 +216,28 @@ const cinematicMotionFrames = {
   "Incline Treadmill Walk":["assets/cinematic/treadmill-incline.webp","assets/cinematic/treadmill-incline-mid.webp","assets/cinematic/treadmill-incline-opposite.webp"]
 };
 
+const CATEGORY_LABELS_AR = {
+  "warm-up":"إحماء", "squat":"سكوات", "hinge":"ثني الورك", "horizontal push":"دفع أفقي",
+  "horizontal pull":"سحب أفقي", "vertical pull":"سحب عمودي", "cooldown":"تهدئة", "mobility":"مرونة",
+  "core":"الجذع", "activation":"تنشيط", "pelvic health":"صحة الحوض", "grip":"قبضة",
+  "dynamic":"ديناميكي", "build-up":"بناء تدريجي", "match":"مباراة", "sport-specific":"خاص بالرياضة",
+  "minimum":"الحد الأدنى", "main":"رئيسي", "push":"دفع", "pull":"سحب"
+};
+function categoryLabel(category){return state.lang==="ar"?(CATEGORY_LABELS_AR[category]||category):category;}
+
 const exerciseMuscleTargets = {
-  "Football Dynamic Stretches":"Hips · Hamstrings · Quads",
-  "Lateral Shuffles & Carioca":"Adductors · Glutes · Calves",
-  "Football Build-up Strides":"Glutes · Hamstrings · Calves",
-  "Football Static Stretches":"Hamstrings · Quads · Adductors · Calves",
-  "Football Match":"Match intensity",
-  "Padel Dynamic Stretches":"Shoulders · Hips · Calves",
-  "Padel Shoulder Prep":"Rotator cuff · Rear delts · Scapular stabilizers",
-  "Padel Sport-Specific Warm-up":"Shoulders · Forearms · Core",
-  "Padel Match":"Match intensity",
-  "Padel Static Stretches":"Shoulders · Forearms · Hips",
-  "Log Your Activity":"Your activity",
-  "Hydrate & Refuel":"Full-body recovery"
+  "Football Dynamic Stretches":["Hips · Hamstrings · Quads","الورك · أوتار الركبة · الفخذ الأمامي"],
+  "Lateral Shuffles & Carioca":["Adductors · Glutes · Calves","المقربة · الأرداف · السمانة"],
+  "Football Build-up Strides":["Glutes · Hamstrings · Calves","الأرداف · أوتار الركبة · السمانة"],
+  "Football Static Stretches":["Hamstrings · Quads · Adductors · Calves","أوتار الركبة · الفخذ الأمامي · المقربة · السمانة"],
+  "Football Match":["Match intensity","شدة المباراة"],
+  "Padel Dynamic Stretches":["Shoulders · Hips · Calves","الكتفان · الورك · السمانة"],
+  "Padel Shoulder Prep":["Rotator cuff · Rear delts · Scapular stabilizers","الكفة المدورة · الدالية الخلفية · مثبتات الكتف"],
+  "Padel Sport-Specific Warm-up":["Shoulders · Forearms · Core","الكتفان · الساعدان · الجذع"],
+  "Padel Match":["Match intensity","شدة المباراة"],
+  "Padel Static Stretches":["Shoulders · Forearms · Hips","الكتفان · الساعدان · الورك"],
+  "Log Your Activity":["Your activity","نشاطك"],
+  "Hydrate & Refuel":["Full-body recovery","استشفاء كامل الجسم"]
 };
 
 function motionPhaseRail(){
@@ -241,7 +250,13 @@ function cinematicFramesFor(item){
   const asset=cinematicAssetFor(item);
   return cinematicMotionFrames[item?.baseName||item?.name]||(asset?[asset]:[]);
 }
-function targetMusclesFor(item){return exerciseMuscleTargets[item?.baseName||item?.name]||anatomy[item?.motion]?.[4]||item?.category;}
+function targetMusclesFor(item){
+  const ar=state.lang==="ar",custom=exerciseMuscleTargets[item?.baseName||item?.name];
+  if(custom)return ar?(custom[1]||custom[0]):custom[0];
+  const entry=anatomy[item?.motion];
+  if(entry)return ar?(entry[6]||entry[4]):entry[4];
+  return categoryLabel(item?.category);
+}
 
 function primeUpcomingCinematicMedia(session,index){
   document.querySelectorAll("link[data-rep-media-preload]").forEach(link=>link.remove());
@@ -290,7 +305,8 @@ function exerciseVisual(item,{preview=false}={}){
 }
 
 function anatomyVisual(motion) {
-  const [atlas,size,a,b,muscles,flip] = anatomy[motion] || anatomy.march;
+  const [atlas,size,a,b,musclesEn,flip,musclesAr] = anatomy[motion] || anatomy.march;
+  const muscles = state.lang==="ar"?(musclesAr||musclesEn):musclesEn;
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
   const phaseRail=motionPhaseRail();
@@ -923,7 +939,7 @@ function showSessionPreview(id,openIndices=new Set()){
     const item=currentItem(base);
     return `<details class="preview-row" ${openIndices.has(i)?"open":""}><summary><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></summary>
       <div class="preview-row-body">
-        <div class="visual-wrap anatomy-wrap" role="img" aria-label="Exercise demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${exerciseVisual(item,{preview:true})}<span class="motion-tempo">${u.anatomyLoop}</span></div>
+        <div class="visual-wrap anatomy-wrap" role="img" aria-label="Exercise demonstration of ${esc(item.name)}"><span class="visual-label">${esc(categoryLabel(item.category))}</span>${exerciseVisual(item,{preview:true})}<span class="motion-tempo">${u.anatomyLoop}</span></div>
         ${motionControls()}
         <div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div>
       </div>
@@ -1238,7 +1254,7 @@ function renderExercise() {
     <div class="progress-bar workout-progress"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
       <div class="exercise-hero ${hasCinematicMedia?"is-cinematic":""}">
-        <div class="visual-wrap anatomy-wrap exercise-hero-stage" role="img" aria-label="${hasCinematicMedia?(ar?"عرض سينمائي":"Cinematic demonstration"):(ar?"عرض تشريحي متحرك":"Animated anatomical demonstration")} ${esc(item.name)}"><span class="visual-label">${esc(item.category)} · ${esc(item.intensity)}</span>${exerciseVisual(item)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
+        <div class="visual-wrap anatomy-wrap exercise-hero-stage" role="img" aria-label="${hasCinematicMedia?(ar?"عرض سينمائي":"Cinematic demonstration"):(ar?"عرض تشريحي متحرك":"Animated anatomical demonstration")} ${esc(item.name)}"><span class="visual-label">${esc(categoryLabel(item.category))} · ${esc(item.intensity)}</span>${exerciseVisual(item)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
         <div class="hero-muscle-label"><small>${ar?"العضلات المستهدفة":"TARGET MUSCLES"}</small><strong>${esc(targetMuscles)}</strong></div>
         ${hasCinematicMedia?identityHtml:""}
       </div>
@@ -1356,13 +1372,13 @@ function toggleExerciseTimer(motion){
   if(state.exerciseTimer){stopExerciseClock();return;}
   const total=motionGuide[motion]?.[2]||30,item=currentItem(sessions[state.session].exercises[state.index]),sided=["kneel","birddog","stretch"].includes(motion),u=U(),ar=state.lang==="ar";
   const key=`${state.session}-${state.index}`,done=state.completed[key]||[],nextSet=Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
-  const targetMuscles=anatomy[item.motion]?.[4]||item.category;
+  const targetMuscles=targetMusclesFor(item);
   state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided,targetEndTime:Date.now()+total*1000,lastSpokenSecond:null};
   const overlay=document.createElement("div");
   overlay.className="timed-mode workout-timed-mode";
   overlay.setAttribute("aria-labelledby","timedExerciseTitle");
   overlay.innerHTML=REP_SAFE_DOM.sanitize(`<section class="timed-workout-card">
-    <header class="timed-workout-head"><div><small>${esc(item.category)} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</small><h2 id="timedExerciseTitle">${esc(item.name)}</h2></div><button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}">×</button></header>
+    <header class="timed-workout-head"><div><small>${esc(categoryLabel(item.category))} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</small><h2 id="timedExerciseTitle">${esc(item.name)}</h2></div><button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}">×</button></header>
     <div class="timed-workout-visual visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}">${exerciseVisual(item,{preview:true})}<span>${esc(targetMuscles)}</span></div>
     <div class="timed-workout-focus">
       <div class="timed-ring" data-timed-ring style="--progress:100%"><div><strong data-timed-value>${formatClock(total)}</strong><small data-timed-total>/ ${formatClock(total)}</small></div></div>
@@ -1759,7 +1775,6 @@ function foodProfile(){
     ...base,
     ...(customTargets||{}),
     label: base.label,
-    carbCycleBadge,
     cycleType: type
   };
 }
@@ -2301,7 +2316,7 @@ function frequentMealsTray(ar){
 
 function renderNutrition(){
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="nutrition";state.activeTab="food";state.foodMealType=state.foodMealType||autoMealType();persistDebounced();updatePrimaryTabs();const ar=state.lang==="ar",profile=foodProfile(),entries=todayFoodEntries(),totals=foodTotals(entries),water=Number(state.water[isoDay()])||0,note=state.foodNote||"";
-  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${profile.label}</strong><span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:900;color:var(--orange);background:rgba(255,139,61,.12);padding:2px 7px;border-radius:6px;border:1px solid rgba(255,139,61,.25);">${profile.carbCycleBadge}</span></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]].map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${["Breakfast","Lunch","Dinner","Snack"].map(type=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${type}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`);
+  app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="recovery-head module-head food-head"><p class="eyebrow">${ar?"متتبع الطعام":"FOOD TRACKER"}</p><h1>${ar?"اكتب ما أكلت.":"Write what you ate."}</h1><p>${ar?"بنفس طريقة بوت تتبع الطعام: اكتب ملاحظة أو أضف صورة أو امسح باركود، راجع التقدير ثم احفظه.":"Just like your Food Tracking bot: add a note, photo, voice description, or barcode; review the estimate; then save."}</p><span class="guide-version">${ar?"تقديرات التغذية ليست نصيحة طبية":"Nutrition values are estimates, not medical advice"}</span><p class="integration-disclosure">${ar?"عند استخدام التحليل، يُرسل الوصف أو الصورة إلى Google Gemini. ولا تُرسل الوجبة إلى Notion حتى تضغط حفظ.":"When analysis is used, the description or image is sent to Google Gemini. The meal is not sent to Notion until you save it."}</p></section><section class="food-profile"><div><small>${ar?"ملف اليوم":"TODAY'S PROFILE"}</small><strong>${ar?({gym:"يوم تدريب",active:"يوم نشاط",flex:"يوم مرن"}[profile.cycleType]||profile.label):profile.label}</strong><span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:900;color:var(--orange);background:rgba(255,139,61,.12);padding:2px 7px;border-radius:6px;border:1px solid rgba(255,139,61,.25);">${profile.carbCycleBadge}</span></div><span>${entries.length} ${ar?"إدخالات":"entries"}<br>${syncStatusText()}</span></section>${reminderStrip("food")}${foodConnectionCard(ar)}<section class="macro-dashboard">${meter(ar?"السعرات":"Calories",totals.calories,profile.calories,"kcal","#ffd36a")}${meter(ar?"البروتين":"Protein",totals.protein_g,profile.protein,"g")}${meter(ar?"الكربوهيدرات":"Carbs",totals.carbs_g,profile.carbs,"g","var(--blue)")}${meter(ar?"الدهون":"Fat",totals.fat_g,profile.fat,"g","var(--orange)")}${macroDonutRing(totals,profile,ar)}</section><section class="meal-composer"><div class="meal-composer-head"><div><small>${ar?"وجبة جديدة":"NEW MEAL NOTE"}</small><h2>${ar?"ماذا أكلت؟":"What did you eat?"}</h2></div><span class="estimate-pill">AI ESTIMATE</span></div>${frequentMealsTray(ar)}<div class="quick-meal-chips" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;">${(ar?[["🍳 4 بيضات + توست","4 بيضات وشريحتا توست بالزبدة"],["🥤 واي بروتين + كرياتين","سكوب واي بروتين و5 جم كرياتين في الماء"],["🍗 200 جم دجاج + أرز","200 جم صدر دجاج مشوي مع كوب ونصف أرز أبيض"],["🥣 شوفان + زبدة فول سوداني + موز","كوب شوفان، ملعقتا زبدة فول سوداني، وموزة"],["🥩 200 جم ستيك + بطاطس","200 جم ستيك لحم وبطاطس مشوية"]]:[["🍳 4 Eggs + 2 Toast","4 eggs and 2 toast slices with butter"],["🥤 Whey + Creatine","1 scoop whey protein and 5g creatine in water"],["🍗 200g Chicken + Rice","200g grilled chicken breast with 1.5 cup white rice"],["🥣 Oatmeal + PB + Banana","1 cup oatmeal, 2 tbsp peanut butter, 1 banana"],["🥩 200g Steak + Potatoes","200g beef steak and roasted potatoes"]]).map(([chip,desc])=>`<button class="quick-chip-btn" type="button" data-quick-meal="${esc(desc)}" style="padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);color:var(--text);font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;">${esc(chip)}</button>`).join("")}</div><div class="meal-type-row">${[["Breakfast",ar?"فطور":"Breakfast"],["Lunch",ar?"غداء":"Lunch"],["Dinner",ar?"عشاء":"Dinner"],["Snack",ar?"سناك":"Snack"]].map(([type,label])=>`<button data-meal-type="${type}" class="${state.foodMealType===type?"is-active":""}">${label}</button>`).join("")}</div><textarea class="meal-note" data-food-note maxlength="1200" placeholder="${ar?"مثال: 180 جم دجاج مشوي، كوب أرز وسلطة...":"Example: 180g grilled chicken, one cup of rice, and salad…"}">${esc(note)}</textarea><div class="log-method-row">${[["Ingredients",ar?"مكونات":"Ingredients"],["Restaurant",ar?"مطعم":"Restaurant"]].map(([method,label])=>`<button data-log-method="${method}" class="${state.foodLogMethod===method?"is-active":""}">${label}</button>`).join("")}</div><div class="meal-tools"><label>▣ ${ar?"صورة":"Photo"}<input data-food-photo type="file" accept="image/*" capture="environment"></label><label>▤ ${ar?"معرض الصور":"Gallery"}<input data-food-gallery type="file" accept="image/*"></label><button data-food-voice>◉ ${ar?"صوت":"Voice"}</button><label>▥ ${ar?"باركود":"Barcode"}<input data-food-barcode type="file" accept="image/*" capture="environment"></label><button data-live-barcode type="button">🔍 ${ar?"مسح مباشر":"Live Scan"}</button></div><button class="analyze-meal" data-analyze-food ${state.foodBusy?"disabled":""}>${state.foodBusy?(ar?"جارٍ التحليل…":"Analyzing…"):(ar?"تحليل الملاحظة":"Analyze note")}</button><button class="analyze-meal" data-manual-food style="margin-top:7px;background:transparent;color:var(--muted);border:1px solid var(--line)">${ar?"حفظ كملاحظة بدون تحليل":"Save as note without AI"}</button><p class="composer-status ${state.foodError?"is-error":""}" data-food-status>${esc(state.foodStatus||"")}</p>${foodRetryControl(ar)}</section>${foodDraftCard()}${mealTemplatesSection(ar)}<div class="food-section-head"><h2>${ar?"متتبعات اليوم":"Today's trackers"}</h2></div>${supplementsCard(ar)}${weightTrackerCard(ar)}${waterTrackerCard(water,profile.water,ar)}<div class="food-section-head"><h2>${ar?"ملاحظات اليوم":"Today's notes"}</h2><span>${entries.length} ${ar?"وجبات":"meals"}</span></div><section class="food-log">${entries.length?entries.map(foodEntryCard).join(""):`<div class="food-empty">${ar?"لا توجد وجبات مسجلة اليوم. اكتب أول ملاحظة طعام في الأعلى.":"No meals logged today. Write your first food note above."}</div>`}</section>`);
   document.querySelector(".food-connect")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(nutritionPlanNote()));const foodHeadings=[...document.querySelectorAll(".food-section-head h2")];if(foodHeadings.length)foodHeadings.at(-1).textContent=ar?"وجبات اليوم":"Food entries today";
   bindFoodTracker();
 }

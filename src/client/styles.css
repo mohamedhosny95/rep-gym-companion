@@ -213,7 +213,7 @@ h1, h2, h3, p { margin-top: 0; }
 .progress-bar i { display: block; height: 100%; border-radius: inherit; background: var(--acid); transition: width .25s ease; }
 .exercise-card { flex: 1; display: flex; flex-direction: column; }
 .visual-wrap { min-height: 290px; height: min(39dvh, 390px); border: 1px solid var(--line); border-radius: 28px; background: linear-gradient(145deg, #19201c, #101311); overflow: hidden; position: relative; display: grid; place-items: center; }
-.visual-label { position: absolute; top: 16px; left: 16px; z-index: 2; padding: 7px 10px; background: rgba(11,13,12,.65); border: 1px solid rgba(255,255,255,.1); border-radius: 99px; color: var(--acid); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.visual-label { position: absolute; top: 16px; left: 16px; z-index: 2; padding: 7px 10px; background: rgba(11,13,12,.65); border: 1px solid rgba(255,255,255,.1); border-radius: 99px; color: var(--acid); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; unicode-bidi: plaintext; }
 .motion-tempo { position: absolute; right: 16px; bottom: 13px; z-index: 2; color: rgba(255,255,255,.48); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
 .anatomy-wrap .motion-tempo { color: rgba(22,28,24,.42); }
 .anatomy-wrap { background: #eef0ef; }
@@ -338,7 +338,7 @@ h1, h2, h3, p { margin-top: 0; }
 .exercise-info { padding: 12px 2px 6px; }
 .exercise-info h1 { margin-bottom: 6px; font-size: clamp(26px, 6vw, 38px); line-height: 1.1; letter-spacing: -.035em; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .02em; }
+.chip { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .02em; unicode-bidi: plaintext; }
 .chip.primary { background: var(--acid); border-color: var(--acid); color: var(--acid-ink); }
 .superset-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 12px; padding: 8px 12px; background: linear-gradient(135deg, rgba(255,139,61,.1), rgba(255,139,61,.03)); border: 1px dashed rgba(255,139,61,.35); border-radius: 14px; }
 .set-tracker { display: flex; gap: 8px; margin: 12px 0; }
@@ -389,6 +389,7 @@ h1, h2, h3, p { margin-top: 0; }
 .preview-row summary::-webkit-details-marker{display:none}
 .preview-row summary::after{content:"+";color:var(--acid);font-size:20px;text-align:end}
 .preview-row[open] summary::after{content:"–"}
+.preview-row summary small{unicode-bidi:plaintext}
 .preview-row summary>span{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--acid);color:var(--acid-ink);font-weight:900;font-size:13px}
 .preview-row strong{display:block;font-size:15px;font-weight:800}
 .preview-row small{display:block;margin-top:3px;color:var(--muted);font-size:12px;font-weight:600}
@@ -886,7 +887,7 @@ small,.food-sync-state,.capability-row span,.quick-meal span,.settings-card>p,.v
 .workout-identity .chip{border-color:var(--workout-line);background:#171a1d;color:#b7bbc1}.workout-identity .chip.primary{border-color:rgba(255,139,76,.42);background:rgba(255,139,76,.12);color:var(--workout-accent-strong)}
 .workout-identity .exercise-swap-btn,.workout-identity .swap-button{flex:none;border-color:rgba(255,139,76,.32);background:rgba(255,139,76,.08);color:var(--workout-accent-strong)}
 .current-set-card{margin:4px 0 10px;padding:15px;border:1px solid var(--workout-line);border-radius:20px;background:linear-gradient(145deg,#1b1e22,#121417);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;box-shadow:0 15px 38px rgba(0,0,0,.24)}
-.current-set-copy small{display:block;color:var(--workout-accent-strong);font-size:8px;font-weight:950;letter-spacing:.16em}.current-set-copy strong{display:block;margin:4px 0 3px;font-size:20px;letter-spacing:-.03em}.current-set-copy span{color:#92979f;font-size:11px}
+.current-set-copy small{display:block;color:var(--workout-accent-strong);font-size:8px;font-weight:950;letter-spacing:.16em}.current-set-copy strong{display:block;margin:4px 0 3px;font-size:20px;letter-spacing:-.03em}.current-set-copy span{color:#92979f;font-size:11px;unicode-bidi:plaintext}
 .set-progress-dots{display:flex;gap:6px;align-items:center}.set-progress-dots i{width:8px;height:8px;border:1px solid #565a61;border-radius:50%;background:transparent;transition:all var(--motion-fast) ease}.set-progress-dots i.is-current{width:20px;border-color:var(--workout-accent);border-radius:99px;background:rgba(255,139,76,.34)}.set-progress-dots i.is-done{border-color:var(--workout-accent);background:var(--workout-accent);box-shadow:0 0 10px rgba(255,139,76,.35)}
 .current-set-card .exercise-timer-button{grid-column:1/-1;min-height:50px;margin:2px 0 0;padding:0 14px;border-color:rgba(125,201,255,.3);background:rgba(125,201,255,.07);display:flex;align-items:center;justify-content:space-between}.current-set-card .exercise-timer-button strong{font-size:18px}
 .workout-action-band{position:sticky;z-index:15;bottom:calc(10px + var(--safe-bottom));margin:0 -2px 10px;padding:7px;border:1px solid var(--workout-line);border-radius:19px;background:rgba(10,11,12,.86);box-shadow:0 18px 50px rgba(0,0,0,.56);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
