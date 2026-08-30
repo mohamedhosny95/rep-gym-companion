@@ -147,6 +147,9 @@
       const span=button.querySelector("span");
       if(span)span.textContent=labels[tab]||tab;
     });
+    const ar=state.lang==="ar";
+    const paletteLabel=document.querySelector("#commandPaletteButton span");if(paletteLabel)paletteLabel.textContent=ar?"لوحة الأوامر":"Command palette";
+    const previewLabel=document.querySelector("#previewModeButton span");if(previewLabel)previewLabel.textContent=ar?"وضع المعاينة":"Preview mode";
   };
   setPrimaryTab=function(tab){
     if(tab==="health")tab=state.healthView==="care"?"care":"vitals";

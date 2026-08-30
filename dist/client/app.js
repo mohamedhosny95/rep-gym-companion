@@ -236,12 +236,12 @@ function motionPhaseRail(){
   return `<span class="media-phase-rail" aria-hidden="true"><i></i>${phaseLabels.map(label=>`<b>${label}</b>`).join("")}</span>`;
 }
 
-function cinematicAssetFor(item){return cinematicMedia[item?.name]||cinematicMotionMedia[item?.motion]||null;}
+function cinematicAssetFor(item){return cinematicMedia[item?.baseName||item?.name]||cinematicMotionMedia[item?.motion]||null;}
 function cinematicFramesFor(item){
   const asset=cinematicAssetFor(item);
-  return cinematicMotionFrames[item?.name]||(asset?[asset]:[]);
+  return cinematicMotionFrames[item?.baseName||item?.name]||(asset?[asset]:[]);
 }
-function targetMusclesFor(item){return exerciseMuscleTargets[item?.name]||anatomy[item?.motion]?.[4]||item?.category;}
+function targetMusclesFor(item){return exerciseMuscleTargets[item?.baseName||item?.name]||anatomy[item?.motion]?.[4]||item?.category;}
 
 function primeUpcomingCinematicMedia(session,index){
   document.querySelectorAll("link[data-rep-media-preload]").forEach(link=>link.remove());
@@ -445,7 +445,7 @@ function localizedItem(item){
   if(state.lang!=="ar") return item;
   const a=REP_I18N.ar.exercises[item.name]; if(!a)return item;
   const units=s=>String(s).replaceAll("min","دقيقة").replaceAll("sec","ثانية").replaceAll("side","جهة").replaceAll("rest","راحة").replaceAll("hold","ثبات").replaceAll("release","استرخاء").replace("Light resistance","مقاومة خفيفة").replace("Easy pace","سرعة سهلة").replace("squeeze","ضغط");
-  return {...item,name:a[0],prescription:units(item.prescription),intensity:units(item.intensity),setup:a[1],execution:a[2],cues:a[3],avoid:a[4]};
+  return {...item,name:a[0],baseName:item.name,prescription:units(item.prescription),intensity:units(item.intensity),setup:a[1],execution:a[2],cues:a[3],avoid:a[4]};
 }
 function esc(value) { return String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
 function currentDay() { return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]; }
