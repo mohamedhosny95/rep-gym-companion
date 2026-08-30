@@ -2524,6 +2524,19 @@ document.querySelector("#timerAdd").addEventListener("click",()=>{
   updateTimer();
 });
 document.querySelector("#homeButton").addEventListener("click",()=>setPrimaryTab("home"));
+function closeTopMore(){
+  const btn=document.querySelector("#topMoreButton"),menu=document.querySelector("#topMoreMenu");
+  if(!btn||!menu||menu.hidden)return;
+  menu.hidden=true;btn.setAttribute("aria-expanded","false");
+}
+document.querySelector("#topMoreButton")?.addEventListener("click",()=>{
+  const btn=document.querySelector("#topMoreButton"),menu=document.querySelector("#topMoreMenu");
+  const opening=menu.hidden;
+  menu.hidden=!opening;btn.setAttribute("aria-expanded",String(opening));
+});
+document.querySelector("#topMoreMenu")?.addEventListener("click",e=>{if(e.target.closest("button"))closeTopMore();});
+document.addEventListener("click",e=>{if(!e.target.closest("#topMoreButton")&&!e.target.closest("#topMoreMenu"))closeTopMore();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeTopMore();});
 document.querySelector("#previewModeButton")?.addEventListener("click",togglePreviewMode);
 document.querySelectorAll("[data-app-tab]").forEach(button=>button.addEventListener("click",()=>setPrimaryTab(button.dataset.appTab)));
 document.querySelector("#soundButton").addEventListener("click",e=>{state.muted=!state.muted;e.currentTarget.setAttribute("aria-pressed",state.muted);e.currentTarget.textContent=state.muted?"×":"◖";persist();});
