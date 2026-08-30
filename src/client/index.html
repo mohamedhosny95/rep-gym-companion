@@ -54,14 +54,24 @@
   <div class="quick-log" id="quickLog"></div>
 
   <div class="timer-dock is-hidden" id="timerDock" role="timer" aria-live="off" inert>
+    <section class="timer-next-preview is-hidden" id="timerNextPreview" aria-label="Next exercise preview" aria-hidden="true">
+      <div class="timer-preview-visual" id="timerPreviewVisual" aria-hidden="true"></div>
+      <div class="timer-preview-copy">
+        <small id="timerPreviewLabel">UP NEXT</small>
+        <strong id="timerPreviewName"></strong>
+        <span id="timerPreviewMeta"></span>
+      </div>
+      <button id="timerNextNow" class="timer-next-now" type="button"><span>Start now</span> →</button>
+    </section>
     <div class="timer-ring" id="timerRing"><span id="timerValue">1:30</span></div>
     <div class="timer-copy">
+      <small>RECOVERY</small>
       <strong>REST</strong>
       <span id="timerNext">Next set</span>
     </div>
-    <button id="timerAdd" class="timer-action">+15</button>
-    <button id="timerPause" class="timer-action">Pause</button>
-    <button id="timerSkip" class="timer-skip">Skip</button>
+    <button id="timerAdd" class="timer-action" type="button" aria-label="Add 15 seconds">+15</button>
+    <button id="timerPause" class="timer-action" type="button">Pause</button>
+    <button id="timerSkip" class="timer-skip" type="button">Skip</button>
   </div>
 
   <script src="vendor/dompurify.min.js?v=__BUILD_VERSION__" defer></script>

@@ -147,24 +147,159 @@ const motionGuide = {
 
 const motionAtlasRows = { legpress:0, hinge:1, chestpress:2, row:3, pulldown:4, floor:5, birddog:6 };
 
+const cinematicMedia = {
+  "Brisk Marching in Place":"assets/cinematic/home-march.webp",
+  "Cat-Cow":"assets/cinematic/home-cat-cow.webp",
+  "Hip Flexor Stretch":"assets/cinematic/home-hip-flexor.webp",
+  "Glute Bridges":"assets/cinematic/home-glute-bridge.webp",
+  "Bird-Dog":"assets/cinematic/home-bird-dog.webp",
+  "Plank":"assets/cinematic/home-plank.webp",
+  "Stomach Vacuum":"assets/cinematic/home-breathing.webp",
+  "Pelvic Floor (Kegel)":"assets/cinematic/home-breathing.webp",
+  "Hand Grip":"assets/cinematic/home-hand-grip.webp",
+  "Stationary Bike":"assets/cinematic/stationary-bike.webp",
+  "Leg Press":"assets/cinematic/leg-press.webp",
+  "Back Extension":"assets/cinematic/back-extension.webp",
+  "Chest Press":"assets/cinematic/chest-press.webp",
+  "Seated Cable Row":"assets/cinematic/seated-cable-row.webp",
+  "Lat Pulldown":"assets/cinematic/lat-pulldown.webp",
+  "Cooldown Stretches":"assets/cinematic/cooldown-stretches.webp",
+  "Football Warm-up Jog":"assets/cinematic/football-jog.webp",
+  "Football Dynamic Stretches":"assets/cinematic/football-dynamic.webp",
+  "Lateral Shuffles & Carioca":"assets/cinematic/football-agility.webp",
+  "Football Build-up Strides":"assets/cinematic/football-stride.webp",
+  "Football Cooldown Jog":"assets/cinematic/football-jog.webp",
+  "Football Static Stretches":"assets/cinematic/football-dynamic.webp",
+  "Padel Warm-up Jog":"assets/cinematic/padel-jog.webp",
+  "Padel Dynamic Stretches":"assets/cinematic/padel-dynamic.webp",
+  "Padel Shoulder Prep":"assets/cinematic/padel-shoulder-prep.webp",
+  "Padel Sport-Specific Warm-up":"assets/cinematic/padel-shadow-swing.webp",
+  "Padel Cooldown Walk":"assets/cinematic/padel-jog.webp",
+  "Padel Static Stretches":"assets/cinematic/padel-dynamic.webp",
+  "Easy Jog or Brisk Walk":"assets/cinematic/outdoor-easy-jog.webp",
+  "Full-Body Dynamic Stretch":"assets/cinematic/outdoor-dynamic-stretch.webp",
+  "Movement-Specific Drills":"assets/cinematic/outdoor-movement-drill.webp",
+  "Walk & Breathe Down":"assets/cinematic/outdoor-easy-jog.webp",
+  "Full-Body Static Stretch":"assets/cinematic/outdoor-static-stretch.webp",
+  "Hydrate & Refuel":"assets/cinematic/outdoor-hydrate.webp",
+  "Easy Warm-up Walk":"assets/cinematic/treadmill-warmup.webp",
+  "Incline Treadmill Walk":"assets/cinematic/treadmill-incline.webp",
+  "Easy Cooldown + Stretch":"assets/cinematic/treadmill-cooldown.webp"
+};
+
+const cinematicMotionMedia = {
+  inclinedbpress:"assets/cinematic/chest-press.webp",
+  latpulldown:"assets/cinematic/lat-pulldown.webp",
+  backextension:"assets/cinematic/back-extension.webp",
+  legpress:"assets/cinematic/leg-press.webp"
+};
+
+const cinematicMotionFrames = {
+  "Brisk Marching in Place":["assets/cinematic/home-march-neutral.webp","assets/cinematic/home-march.webp","assets/cinematic/home-march-opposite.webp"],
+  "Plank":["assets/cinematic/home-plank-inhale.webp","assets/cinematic/home-plank.webp","assets/cinematic/home-plank-exhale.webp"],
+  "Chest Press":["assets/cinematic/chest-press-start.webp","assets/cinematic/chest-press.webp","assets/cinematic/chest-press-finish.webp"],
+  "Leg Press":["assets/cinematic/leg-press-start.webp","assets/cinematic/leg-press.webp","assets/cinematic/leg-press-finish.webp"],
+  "Seated Cable Row":["assets/cinematic/seated-cable-row-start.webp","assets/cinematic/seated-cable-row.webp","assets/cinematic/seated-cable-row-finish.webp"],
+  "Back Extension":["assets/cinematic/back-extension-lowered.webp","assets/cinematic/back-extension.webp","assets/cinematic/back-extension-neutral.webp"],
+  "Lat Pulldown":["assets/cinematic/lat-pulldown-start.webp","assets/cinematic/lat-pulldown-mid.webp","assets/cinematic/lat-pulldown.webp"],
+  "Football Dynamic Stretches":["assets/cinematic/football-dynamic.webp","assets/cinematic/football-dynamic-transition.webp","assets/cinematic/football-dynamic-opposite.webp"],
+  "Lateral Shuffles & Carioca":["assets/cinematic/football-agility-start.webp","assets/cinematic/football-agility.webp","assets/cinematic/football-agility-opposite.webp"],
+  "Football Build-up Strides":["assets/cinematic/football-stride-push.webp","assets/cinematic/football-stride.webp","assets/cinematic/football-stride-switch.webp"],
+  "Padel Shoulder Prep":["assets/cinematic/padel-shoulder-prep-start.webp","assets/cinematic/padel-shoulder-prep.webp","assets/cinematic/padel-shoulder-prep-end.webp"],
+  "Padel Sport-Specific Warm-up":["assets/cinematic/padel-shadow-swing-backswing.webp","assets/cinematic/padel-shadow-swing.webp","assets/cinematic/padel-shadow-swing-followthrough.webp"],
+  "Incline Treadmill Walk":["assets/cinematic/treadmill-incline.webp","assets/cinematic/treadmill-incline-mid.webp","assets/cinematic/treadmill-incline-opposite.webp"]
+};
+
+const exerciseMuscleTargets = {
+  "Football Dynamic Stretches":"Hips · Hamstrings · Quads",
+  "Lateral Shuffles & Carioca":"Adductors · Glutes · Calves",
+  "Football Build-up Strides":"Glutes · Hamstrings · Calves",
+  "Football Static Stretches":"Hamstrings · Quads · Adductors · Calves",
+  "Padel Dynamic Stretches":"Shoulders · Hips · Calves",
+  "Padel Shoulder Prep":"Rotator cuff · Rear delts · Scapular stabilizers",
+  "Padel Sport-Specific Warm-up":"Shoulders · Forearms · Core",
+  "Padel Static Stretches":"Shoulders · Forearms · Hips",
+  "Hydrate & Refuel":"Full-body recovery"
+};
+
+function motionPhaseRail(){
+  const phaseLabels=state.lang==="ar"?["ابدأ","تحكم","ارجع"]:["START","CONTROL","RETURN"];
+  return `<span class="media-phase-rail" aria-hidden="true"><i></i>${phaseLabels.map(label=>`<b>${label}</b>`).join("")}</span>`;
+}
+
+function cinematicAssetFor(item){return cinematicMedia[item?.name]||cinematicMotionMedia[item?.motion]||null;}
+function cinematicFramesFor(item){
+  const asset=cinematicAssetFor(item);
+  return cinematicMotionFrames[item?.name]||(asset?[asset]:[]);
+}
+function targetMusclesFor(item){return exerciseMuscleTargets[item?.name]||anatomy[item?.motion]?.[4]||item?.category;}
+
+function primeUpcomingCinematicMedia(session,index){
+  document.querySelectorAll("link[data-rep-media-preload]").forEach(link=>link.remove());
+  const next=session?.exercises?.[index+1];
+  if(!next)return;
+  const item=currentItem(next),src=cinematicFramesFor(item)[0];
+  if(!src)return;
+  const link=document.createElement("link"),started=performance.now();
+  link.rel="preload";link.as="image";link.href=src;link.fetchPriority="low";link.dataset.repMediaPreload="next";
+  link.addEventListener("load",()=>window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:1,stage:"next-preload",loadMs:performance.now()-started,decodeMs:0,ok:true}),{once:true});
+  link.addEventListener("error",()=>window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:1,stage:"next-preload",loadMs:performance.now()-started,decodeMs:0,ok:false}),{once:true});
+  document.head.appendChild(link);
+}
+
+function observeCinematicMedia(root,item){
+  root?.querySelectorAll("img[data-cinematic-frame]").forEach((img,index)=>{
+    let recorded=false;
+    const started=performance.now();
+    const finish=async ok=>{
+      if(recorded)return;recorded=true;
+      const decodeStarted=performance.now();
+      if(ok&&typeof img.decode==="function")try{await img.decode();}catch{}
+      const decodeMs=performance.now()-decodeStarted;
+      const resource=[...performance.getEntriesByName(img.currentSrc||img.src)].pop();
+      window.REP_TELEMETRY?.recordMedia?.({exercise:item.name,frame:index+1,stage:"current",loadMs:resource?.duration||performance.now()-started,decodeMs,bytes:resource?.transferSize||0,ok});
+    };
+    if(img.complete)queueMicrotask(()=>finish(img.naturalWidth>0));
+    else{img.addEventListener("load",()=>finish(true),{once:true});img.addEventListener("error",()=>finish(false),{once:true});}
+  });
+}
+
+function exerciseVisual(item,{preview=false}={}){
+  const frames=state.viewMode==="side"?cinematicFramesFor(item):[];
+  if(!frames.length)return anatomyVisual(item.motion);
+  const asset=cinematicAssetFor(item)||frames[0];
+  const guide=motionGuide[item.motion]||motionGuide.march,ar=state.lang==="ar";
+  const mediaKey=asset.split("/").pop().replace(/\.webp$/,""),scene=mediaKey.split("-")[0];
+  const frameMarkup=frames.map((src,index)=>`<img class="cinematic-frame cinematic-frame-${index+1}" data-cinematic-frame="${index+1}" src="${src}" alt="" ${preview?'loading="lazy" fetchpriority="low"':index===0?'fetchpriority="high"':'loading="eager" fetchpriority="low"'} decoding="async">`).join("");
+  return `<div class="cinematic-motion motion-${item.motion} scene-${scene} media-${mediaKey} ${frames.length>1?"is-multi-frame":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--loop-speed:${8/state.speed}s" data-frame-count="${frames.length}">
+    ${frameMarkup}
+    <span class="cinematic-light" aria-hidden="true"></span>
+    <span class="phase-pill"><i></i> ${ar?"عرض حركي":"BIOMECHANICS"}</span>
+    <span class="guide-callout">${guide[ar?1:0]}</span>
+    ${motionPhaseRail()}
+  </div>`;
+}
+
 function anatomyVisual(motion) {
   const [atlas,size,a,b,muscles,flip] = anatomy[motion] || anatomy.march;
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=REP_I18N[state.lang].ui, guide=motionGuide[motion]||motionGuide.march;
+  const phaseRail=motionPhaseRail();
   if(state.viewMode==="side" && motion in motionAtlasRows){
     const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
     return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
-      <i class="sprite-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
+      <span class="media-ambient" aria-hidden="true"><i class="sprite-frame"></i></span><i class="sprite-frame media-focus-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
       <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> 6 ${state.lang==="ar"?"إطارات":"KEY FRAMES"}</span>
-      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+      <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>${phaseRail}
     </div>`;
   }
   const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
   return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
-    <i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i>
+    <span class="media-ambient" aria-hidden="true"><i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i></span>
+    <i class="anatomy-frame frame-a media-focus-frame" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b media-focus-frame" style="background-image:url('${atlasFile}');background-position:${b}"></i>
     <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
     <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> ${u.startFinish}</span>
-    <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>
+    <span class="guide-callout">${guide[state.lang==="ar"?1:0]}</span>${phaseRail}
   </div>`;
 }
 
@@ -206,6 +341,8 @@ new MutationObserver(()=>{
   });
 }).observe(app,{childList:true});
 const timerDock = document.querySelector("#timerDock");
+const timerNextPreview = document.querySelector("#timerNextPreview");
+let exerciseTransitioning = false;
 
 let previewSnapshot = null;
 function togglePreviewMode(){
@@ -509,7 +646,8 @@ function vibrateGym(type="set"){
   navigator.vibrate(patterns[type]||patterns.set);
 }
 
-function triggerConfetti(){
+function triggerConfetti({subtle=false}={}){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
   const canvas=document.createElement("canvas");
   canvas.className="confetti-canvas";
   canvas.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;";
@@ -518,8 +656,9 @@ function triggerConfetti(){
   const ctx=canvas.getContext("2d");
   if(!ctx){canvas.remove();return;}
   const colors=["#c9ff3d","#38bdf8","#f43f5e","#fbbf24","#a855f7","#34d399"];
-  const pieces=Array.from({length:70},()=>({
-    x:canvas.width/2+(Math.random()-0.5)*200,
+  const duration=subtle?700:2200;
+  const pieces=Array.from({length:subtle?18:70},()=>({
+    x:canvas.width/2+(Math.random()-0.5)*(subtle?90:200),
     y:canvas.height/2-50+(Math.random()-0.5)*100,
     vx:(Math.random()-0.5)*12,
     vy:-Math.random()*14-4,
@@ -535,7 +674,7 @@ function triggerConfetti(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     for(const p of pieces){
       p.x+=p.vx;p.y+=p.vy;p.vy+=0.35;p.rot+=p.vrot;
-      p.alpha=Math.max(0,1-elapsed/2200);
+      p.alpha=Math.max(0,1-elapsed/duration);
       ctx.save();
       ctx.globalAlpha=p.alpha;
       ctx.translate(p.x,p.y);
@@ -544,7 +683,7 @@ function triggerConfetti(){
       ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*1.6);
       ctx.restore();
     }
-    if(elapsed<2200)requestAnimationFrame(animate);else canvas.remove();
+    if(elapsed<duration)requestAnimationFrame(animate);else canvas.remove();
   }
   requestAnimationFrame(animate);
 }
@@ -755,10 +894,12 @@ function renderHome() {
   document.querySelector("[data-backup-export]")?.addEventListener("click", exportData);
   document.querySelector("[data-backup-snooze]")?.addEventListener("click", snoozeBackupReminder);
 }
+function programCategoryFor(id){return id==="gym"?"gym":id==="morning"?"home":["football","padel","general"].includes(id)?"sport":id==="cardio"?"cardio":"all";}
 function sessionCard(id, s, resume) {
-  const u=U(),ls=sessionText(id,s);
-  return `<button class="session-card ${resume?"resume-card":""}" data-session="${id}" style="--card-accent:${s.accent}">
-    <span><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
+  const u=U(),ls=sessionText(id,s),media=cinematicAssetFor(s.exercises[0]);
+  return `<button class="session-card program-session-card ${resume?"resume-card":""} ${media?"has-session-media":""}" data-session="${id}" data-program-category="${programCategoryFor(id)}" style="--card-accent:${s.accent}">
+    ${media?`<span class="session-card-media" aria-hidden="true"><img src="${media}" alt="" loading="lazy" decoding="async" fetchpriority="low"></span>`:""}
+    <span class="session-card-heading"><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
     <span class="session-icon">${ICONS[s.icon]||s.icon}</span><p>${ls.meta}<br>${ls.description}</p><small>${resume?u.continue:`${s.exercises.length} ${u.steps}`}</small></button>`;
 }
 // Read-only walkthrough: shows the exact same animated form demonstration
@@ -772,7 +913,7 @@ function showSessionPreview(id,openIndices=new Set()){
     const item=currentItem(base);
     return `<details class="preview-row" ${openIndices.has(i)?"open":""}><summary><span>${i+1}</span><div><strong>${esc(item.name)}</strong><small>${esc(item.prescription)}${item.intensity?` · ${esc(item.intensity)}`:""}</small></div></summary>
       <div class="preview-row-body">
-        <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${anatomyVisual(item.motion)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
+        <div class="visual-wrap anatomy-wrap" role="img" aria-label="Exercise demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${exerciseVisual(item,{preview:true})}<span class="motion-tempo">${u.anatomyLoop}</span></div>
         ${motionControls()}
         <div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div>
       </div>
@@ -788,7 +929,12 @@ function showSessionPreview(id,openIndices=new Set()){
 }
 function startSession(id) {
   REP_TRAINING_SESSION.startWorkout(state,id,sessions);
-  updatePrimaryTabs();document.body.classList.add("workout-mode");persist();renderExercise();startSessionClock();
+  updatePrimaryTabs();document.body.classList.add("workout-mode");persist();resetWorkoutScroll();renderExercise();startSessionClock();
+}
+
+function resetWorkoutScroll(){
+  window.scrollTo({top:0,left:0,behavior:"auto"});
+  requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:"auto"}));
 }
 
 function currentItem(base){
@@ -882,7 +1028,66 @@ function cardioPanel(item){
   return `<section class="load-panel cardio-panel"><div class="set-log-head"><strong>${state.lang==="ar"?"سجل الكارديو":"Cardio log"}</strong><span>${state.lang==="ar"?"التقدم بعد 3–4 أسابيع":"3–4 week gate"}</span></div><div class="metric-grid"><label><span>${state.lang==="ar"?"الدقائق":"Minutes"}</span><input data-cardio="minutes" type="number" min="0" max="60" value="${esc(d.minutes||25)}"></label><label><span>RPE</span><input data-cardio="rpe" type="number" min="1" max="10" step="0.5" value="${esc(d.rpe||6)}"></label><label><span>${state.lang==="ar"?"الميل %":"Incline %"}</span><input data-cardio="incline" type="number" min="0" max="20" step="0.5" value="${esc(d.incline||5)}"></label><label><span>${state.lang==="ar"?"السرعة":"Pace km/h"}</span><input data-cardio="pace" type="number" min="0" max="15" step="0.1" value="${esc(d.pace||"")}"></label></div><div class="progression-callout">${advice}</div></section>`;
 }
 function cardioAdvice(){return REP_TRAINING_SESSION.cardioAdvice(state.history,state.lang);}
-function motionControls(){const u=U();return `<div class="motion-controls" aria-label="Animation controls"><button data-motion-action="play" aria-pressed="${state.paused}">${state.paused?"▶":"Ⅱ"}<span>${state.paused?u.play:u.pause}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.side:u.front}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
+function motionControls(){const u=U(),ar=state.lang==="ar";return `<div class="motion-controls" aria-label="${ar?"عناصر تحكم الحركة":"Animation controls"}"><button data-motion-action="play" aria-pressed="${!state.paused}"><b>${state.paused?"▶":"Ⅱ"}</b><span>${ar?"تكرار":state.paused?"Loop":"Looping"}</span></button><button data-motion-action="speed"><b>${state.speed}×</b><span>${u.speed}</span></button><button data-motion-action="view"><b>◫</b><span>${state.viewMode==="front"?u.front:u.side}</span></button><button data-motion-action="muscles" aria-pressed="${state.muscles}"><b>◉</b><span>${u.muscles}</span></button></div>`;}
+
+function quickSetEntry(base,item,setIndex){
+  if(!isLoadExercise(item)||setIndex===undefined)return "";
+  const ar=state.lang==="ar",log=normalizedLog(exerciseId(base),item.sets),set=log.sets[setIndex]||{};
+  const isLb=state.preferences?.weightUnit==="lb",unit=isLb?"lb":"kg";
+  const weight=isLb?(window.weightInput?window.weightInput(set.weight):set.weight):set.weight;
+  const target=String(item.prescription||"").split("×").pop().trim();
+  return `<div class="live-set-entry" aria-label="${ar?"إدخال سريع للمجموعة الحالية":"Quick entry for current set"}">
+    <label class="live-set-field"><small>${ar?"الوزن":"WEIGHT"}</small><span><input data-live-log data-log="weight" data-log-set="${setIndex}" type="number" min="0" step="${isLb?"1":"0.5"}" inputmode="decimal" value="${esc(weight||"")}" placeholder="—" aria-label="${ar?"وزن المجموعة الحالية":"Current set weight"}"><em>${unit}</em></span></label>
+    <div class="live-rep-counter"><small>${ar?"التكرارات · يدوي":"REPS · MANUAL"}</small><div><button type="button" data-live-reps-step="-1" aria-label="${ar?"إنقاص تكرار":"Decrease reps"}">−</button><input data-live-log data-log="reps" data-log-set="${setIndex}" type="number" min="0" max="99" step="1" inputmode="numeric" value="${esc(set.reps||"")}" placeholder="0" aria-label="${ar?"تكرارات المجموعة الحالية":"Current set reps"}"><span>/ ${esc(target)}</span><button type="button" data-live-reps-step="1" aria-label="${ar?"إضافة تكرار":"Add rep"}">+</button></div></div>
+    <label class="live-set-field"><small>RPE</small><span><input data-live-log data-log="rpe" data-log-set="${setIndex}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${esc(set.rpe||"")}" placeholder="—" aria-label="${ar?"معدل الجهد للمجموعة الحالية":"Current set RPE"}"></span></label>
+  </div>`;
+}
+
+function openWorkoutChoiceSheet(kind){
+  document.querySelector(".workout-choice-backdrop")?.remove();
+  const ar=state.lang==="ar",isSpeed=kind==="speed";
+  const options=isSpeed
+    ? [.5,.75,1,1.25,1.5].map(value=>({value:String(value),label:`${value}×`,active:Number(state.speed)===value}))
+    : [{value:"side",label:ar?"جانبي":"Side",active:state.viewMode==="side"},{value:"front",label:ar?"أمامي":"Front",active:state.viewMode==="front"}];
+  const overlay=document.createElement("div");
+  overlay.className="rep-modal-backdrop workout-choice-backdrop";
+  overlay.setAttribute("aria-labelledby","workoutChoiceTitle");
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<section class="rep-modal-sheet workout-choice-sheet"><div class="sheet-grabber" aria-hidden="true"></div><div class="sheet-header"><div><small>${ar?"عرض الحركة":"MOTION DISPLAY"}</small><h2 id="workoutChoiceTitle">${isSpeed?(ar?"سرعة التكرار":"Playback speed"):(ar?"زاوية العرض":"View angle")}</h2></div><button class="sheet-close" data-choice-close aria-label="${ar?"إغلاق":"Close"}">×</button></div><div class="workout-choice-grid">${options.map(option=>`<button type="button" data-choice="${option.value}" class="${option.active?"is-active":""}" aria-pressed="${option.active}"><span>${option.label}</span>${option.active?"<b>✓</b>":""}</button>`).join("")}</div></section>`);
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.querySelector("[data-choice-close]").onclick=close;
+  overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
+  overlay.querySelectorAll("[data-choice]").forEach(button=>button.onclick=()=>{
+    if(isSpeed)state.speed=Number(button.dataset.choice);else state.viewMode=button.dataset.choice;
+    persist();close();
+    if(state.view==="preview"){
+      const open=new Set([...document.querySelectorAll(".preview-row")].map((el,i)=>el.open?i:-1).filter(i=>i>=0));
+      showSessionPreview(state.previewSession,open);
+    }else renderExercise();
+  });
+  overlay.querySelector("[data-choice-close]").focus();
+}
+
+function openWorkoutUtilitySheet(){
+  document.querySelector(".workout-choice-backdrop")?.remove();
+  const ar=state.lang==="ar",wakeSupported="wakeLock" in navigator;
+  const overlay=document.createElement("div");
+  overlay.className="rep-modal-backdrop workout-choice-backdrop";
+  overlay.setAttribute("aria-labelledby","workoutUtilityTitle");
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<section class="rep-modal-sheet workout-choice-sheet"><div class="sheet-grabber" aria-hidden="true"></div><div class="sheet-header"><div><small>${ar?"الحصة النشطة":"ACTIVE SESSION"}</small><h2 id="workoutUtilityTitle">${ar?"خيارات التمرين":"Workout options"}</h2></div><button class="sheet-close" data-choice-close aria-label="${ar?"إغلاق":"Close"}">×</button></div><div class="workout-utility-list"><button type="button" data-workout-utility="wake" ${wakeSupported?"":"disabled"}><span>☼</span><div><strong>${ar?"إبقاء الشاشة مضاءة":"Keep screen awake"}</strong><small>${state.wakeLock?(ar?"مفعّل":"On"):(ar?"متوقف":"Off")}</small></div></button><button type="button" data-workout-utility="sound"><span>${state.muted?"×":"◖"}</span><div><strong>${ar?"صوت المؤقت":"Timer sound"}</strong><small>${state.muted?(ar?"مكتوم":"Muted"):(ar?"مفعّل":"On")}</small></div></button>${window.REP_HEART_RATE?`<button type="button" data-workout-utility="heart"><span>♥</span><div><strong>${ar?"معدل ضربات القلب":"Heart rate"}</strong><small>${ar?"توصيل أو عرض المستشعر":"Connect or view sensor"}</small></div></button>`:""}<button type="button" class="is-danger" data-workout-utility="exit"><span>×</span><div><strong>${ar?"إنهاء الحصة":"Exit workout"}</strong><small>${ar?"سيُطلب منك التأكيد":"Confirmation required"}</small></div></button></div></section>`);
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.querySelector("[data-choice-close]").onclick=close;
+  overlay.addEventListener("click",event=>{if(event.target===overlay)close();});
+  overlay.querySelectorAll("[data-workout-utility]").forEach(button=>button.onclick=()=>{
+    const action=button.dataset.workoutUtility;close();
+    if(action==="wake")document.querySelector("#wakeButton")?.click();
+    if(action==="sound")document.querySelector("#soundButton")?.click();
+    if(action==="heart")window.REP_HEART_RATE?.openHrModal();
+    if(action==="exit")showExitConfirm();
+  });
+  overlay.querySelector("[data-choice-close]").focus();
+}
 
 function showSwapModal(exerciseName){
   const subs=window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[exerciseName]||[];
@@ -914,7 +1119,7 @@ function startTempoCoach(base, item){
       <button class="round-button" data-tempo-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
     </div>
     <div class="visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}" style="width:100%;height:180px;min-height:180px;margin-bottom:6px;border-radius:18px;">
-      ${anatomyVisual(item.motion)}
+      ${exerciseVisual(item,{preview:true})}
     </div>
     <div style="margin:6px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
       <div class="tempo-ring" style="width:100px;height:100px;border-radius:50%;border:4px solid var(--acid);display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;transform:scale(1);">
@@ -998,43 +1203,59 @@ function renderExercise() {
   if (!session) return renderHome();
   if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
+  primeUpcomingCinematicMedia(session,state.index);
   const key = `${state.session}-${state.index}`;
   const done = state.completed[key] || [];
   const subs = window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[base.name] || [];
   const swapBtn = subs.length ? `<button class="exercise-swap-btn" data-swap-modal="${esc(base.name)}">${state.lang==="ar"?"🔄 بدائل":"🔄 Swap"}</button>` : (base.name==="Back Extension"?`<button class="swap-button" data-swap>${state.swaps.backExtension?u.swapBack:u.swapHip}</button>`:"");
   const nextSetIndex = Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
   const isAllDone = nextSetIndex === undefined;
+  const ar=state.lang==="ar",targetMuscles=targetMusclesFor(item);
+  const focusSet=isAllDone?item.sets:(nextSetIndex+1);
+  const focusLabel=isAllDone?(state.index===session.exercises.length-1?(ar?"جاهز للإنهاء":"Ready to finish"):(ar?"جاهز للحركة التالية":"Ready for next move")):(ar?`المجموعة ${focusSet} من ${item.sets}`:`Set ${focusSet} of ${item.sets}`);
+  const progressDots=Array.from({length:item.sets},(_,i)=>`<i class="${done.includes(i)?"is-done":i===nextSetIndex?"is-current":""}" aria-hidden="true"></i>`).join("");
+  const hasCinematicMedia=Boolean(state.viewMode==="side"&&cinematicAssetFor(item));
+  const identityHtml=`<div class="exercise-info workout-identity"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${swapBtn}</div><p>${ar?"الهدف":"Target"}: <strong>${esc(targetMuscles)}</strong></p><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>`;
+  const exerciseTransitionClass=exerciseTransitioning?" is-exercise-entering":"";
+  exerciseTransitioning=false;
   const primaryButtonLabel = isAllDone ? (state.index===session.exercises.length-1?u.finish:u.next) : (item.sets===1?u.markDone:(state.lang==="ar"?`✓ تسجيل مجموعة ${nextSetIndex+1} (راحة ${item.rest||90}ث)`:`✓ Log Set ${nextSetIndex+1} (Rest ${item.rest||90}s)`));
-  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player" data-swipe>
-    <div class="player-header">
-      <button class="round-button" data-prev aria-label="${state.lang==="ar"?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
-      <div class="player-progress"><strong>${ls.name}</strong><span>${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        ${window.REP_HEART_RATE ? window.REP_HEART_RATE.renderHrBadge(state.lang==="ar") : ""}
-        <button class="round-button" data-exit aria-label="${state.lang==="ar"?"إنهاء الحصة":"Exit session"}">×</button>
-      </div>
+  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="player workout-player${exerciseTransitionClass}${hasCinematicMedia?" has-cinematic-media":""}" data-swipe>
+    <div class="player-header workout-header">
+      <button class="round-button workout-back" data-prev aria-label="${ar?"التمرين السابق":"Previous exercise"}" ${state.index===0?"disabled":""}>‹</button>
+      <div class="player-progress"><small>${ar?"الحصة النشطة":"ACTIVE WORKOUT"}</small><strong>${ls.name}</strong><span>${ar?"الحركة":"Exercise"} ${state.index+1} ${u.of} ${session.exercises.length} · <b id="sessionElapsed">0:00</b></span></div>
+      <button class="round-button workout-more" data-workout-more aria-label="${ar?"خيارات التمرين":"Workout options"}">•••</button>
     </div>
-    <div class="progress-bar"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
+    <div class="progress-bar workout-progress"><i style="width:${((state.index+1)/session.exercises.length)*100}%"></i></div>
     <article class="exercise-card">
-      <div class="visual-wrap anatomy-wrap" role="img" aria-label="Animated anatomical demonstration of ${esc(item.name)}"><span class="visual-label">${esc(item.category)}</span>${anatomyVisual(item.motion)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
-      ${motionControls()}
-      <div class="exercise-info"><div class="exercise-title-row"><h1>${esc(item.name)}</h1>${swapBtn}</div><div class="chips"><span class="chip primary">${esc(item.prescription)}</span><span class="chip">${esc(item.intensity)}</span>${item.rest?`<span class="chip">${item.rest}s ${u.rest}</span>`:""}</div></div>
-      <div class="superset-bar" style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:6px 12px;background:rgba(255,139,61,.08);border:1px dashed rgba(255,139,61,.3);border-radius:10px;">
-        <span style="font-size:11px;font-weight:900;color:var(--orange);">⚡ ${state.lang==="ar"?"سوبر سيت متاح":"SUPERSET MODE"}</span>
-        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"تبديل مع التالي ↻":"Next Move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;cursor:pointer;">${state.lang==="ar"?"السابق ↺":"Prev Move ↺"}</button>` : "")}
+      <div class="exercise-hero ${hasCinematicMedia?"is-cinematic":""}">
+        <div class="visual-wrap anatomy-wrap exercise-hero-stage" role="img" aria-label="${hasCinematicMedia?(ar?"عرض سينمائي":"Cinematic demonstration"):(ar?"عرض تشريحي متحرك":"Animated anatomical demonstration")} ${esc(item.name)}"><span class="visual-label">${esc(item.category)} · ${esc(item.intensity)}</span>${exerciseVisual(item)}<span class="motion-tempo">${u.anatomyLoop}</span></div>
+        <div class="hero-muscle-label"><small>${ar?"العضلات المستهدفة":"TARGET MUSCLES"}</small><strong>${esc(targetMuscles)}</strong></div>
+        ${hasCinematicMedia?identityHtml:""}
       </div>
-      ${motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer>${u.startTimer} · ${formatClock(motionGuide[item.motion][2])}</button>`:""}
+      ${hasCinematicMedia?"":identityHtml}
+      <section class="current-set-card" aria-label="${ar?"المجموعة الحالية":"Current set"}">
+        <div class="current-set-copy"><small>${ar?"الحالي":"CURRENT"}</small><strong>${focusLabel}</strong><span>${isAllDone?(ar?"تم تسجيل جميع المجموعات":"All sets logged"):esc(item.prescription)}</span></div>
+        <div class="set-progress-dots">${progressDots}</div>
+        ${quickSetEntry(base,item,nextSetIndex)}
+        ${nextSetIndex!==undefined&&motionGuide[item.motion]?.[2]?`<button class="exercise-timer-button" data-exercise-timer><span>${u.startTimer}</span><strong>${formatClock(motionGuide[item.motion][2])}</strong></button>`:""}
+      </section>
+      <div class="workout-action-band"><button class="workout-primary-action" data-next><span>${primaryButtonLabel}</span><b aria-hidden="true">→</b></button></div>
+      ${motionControls()}
+      <div class="superset-bar">
+        <span><small>${ar?"التنقل السريع":"QUICK MOVE"}</small><strong>${ar?"تغيير ترتيب الحركة":"Change exercise order"}</strong></span>
+        ${state.index < session.exercises.length - 1 ? `<button type="button" data-jump-exercise="${state.index+1}">${ar?"التالي ↻":"Next move ↻"}</button>` : (state.index > 0 ? `<button type="button" data-jump-exercise="${state.index-1}">${ar?"السابق ↺":"Previous ↺"}</button>` : "")}
+      </div>
       ${loadPanel(base,item)}
       ${cardioPanel(item)}
-      <div class="set-tracker" aria-label="${state.lang==="ar"?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div>
+      <section class="set-checklist-panel"><div class="set-checklist-head"><small>${ar?"تقدم التمرين":"SET PROGRESS"}</small><strong>${done.length}/${item.sets} ${ar?"مكتملة":"complete"}</strong></div><div class="set-tracker" aria-label="${ar?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div></section>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
-      <nav class="bottom-nav"><button class="nav-button" data-prev ${state.index===0?"disabled":""}>${state.lang==="ar"?"→":"←"} ${u.previous}</button><button class="nav-button primary" data-next>${primaryButtonLabel}</button></nav>
     </article></section>`);
+  observeCinematicMedia(document.querySelector(".exercise-hero-stage"),item);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
-  document.querySelector("[data-exit]").addEventListener("click", showExitConfirm);
+  document.querySelector("[data-workout-more]")?.addEventListener("click",openWorkoutUtilitySheet);
   document.querySelector("[data-open-hr-modal]")?.addEventListener("click", ()=>window.REP_HEART_RATE?.openHrModal());
-  document.querySelectorAll("[data-jump-exercise]").forEach(btn=>{btn.onclick=()=>{state.index=Number(btn.dataset.jumpExercise);persist();renderExercise();};});
+  document.querySelectorAll("[data-jump-exercise]").forEach(btn=>{btn.onclick=()=>{cancelRestTimer();state.index=Number(btn.dataset.jumpExercise);exerciseTransitioning=true;persist();resetWorkoutScroll();renderExercise();};});
   document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => toggleSet(Number(b.dataset.set))));
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
   document.querySelector("[data-swap]")?.addEventListener("click",()=>{state.swaps.backExtension=!state.swaps.backExtension;persist();renderExercise();});
@@ -1053,12 +1274,9 @@ function renderExercise() {
         persistDebounced();
         const isLb=state.preferences?.weightUnit==="lb";
         const displayWeight=isLb?(window.weightInput?window.weightInput(log.sets[i].weight):log.sets[i].weight):log.sets[i].weight;
-        const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
-        const repsInput=document.querySelector(`input[data-log="reps"][data-log-set="${i}"]`);
-        const rpeInput=document.querySelector(`input[data-log="rpe"][data-log-set="${i}"]`);
-        if(weightInput) weightInput.value=String(displayWeight||"");
-        if(repsInput) repsInput.value=log.sets[i].reps;
-        if(rpeInput) rpeInput.value=log.sets[i].rpe;
+        document.querySelectorAll(`input[data-log="weight"][data-log-set="${i}"]`).forEach(input=>input.value=String(displayWeight||""));
+        document.querySelectorAll(`input[data-log="reps"][data-log-set="${i}"]`).forEach(input=>input.value=log.sets[i].reps);
+        document.querySelectorAll(`input[data-log="rpe"][data-log-set="${i}"]`).forEach(input=>input.value=log.sets[i].rpe);
         if(window.vibrateGym) window.vibrateGym("set");
       }
     };
@@ -1073,12 +1291,23 @@ function renderExercise() {
       const nextStoredKg=isLb?Math.round((nextDisplay/2.2046226)*100)/100:nextDisplay;
       log.sets[i].weight=String(nextStoredKg);
       persistDebounced();
-      const weightInput=document.querySelector(`input[data-log="weight"][data-log-set="${i}"]`);
-      if(weightInput) weightInput.value=String(nextDisplay);
+      document.querySelectorAll(`input[data-log="weight"][data-log-set="${i}"]`).forEach(input=>input.value=String(nextDisplay));
       if(window.vibrateGym) window.vibrateGym("set");
     };
   });
-  document.querySelectorAll("[data-log]").forEach(input=>input.addEventListener("input",()=>saveLog(base,item)));
+  document.querySelectorAll("[data-log]").forEach(input=>input.addEventListener("input",()=>{
+    const field=input.dataset.log,setIndex=input.dataset.logSet;
+    document.querySelectorAll(`input[data-log="${field}"][data-log-set="${setIndex}"]`).forEach(peer=>{if(peer!==input)peer.value=input.value;});
+    saveLog(base,item);
+  }));
+  document.querySelectorAll("[data-live-reps-step]").forEach(button=>button.onclick=()=>{
+    const input=document.querySelector("[data-live-log][data-log='reps']");
+    if(!input)return;
+    input.value=String(Math.max(0,Math.min(99,(Number(input.value)||0)+Number(button.dataset.liveRepsStep))));
+    input.dispatchEvent(new Event("input",{bubbles:true}));
+    const counter=button.closest(".live-rep-counter");counter?.classList.remove("is-counting");void counter?.offsetWidth;counter?.classList.add("is-counting");
+    if(navigator.vibrate)navigator.vibrate(12);
+  });
   document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persistDebounced();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
   const swipe = document.querySelector("[data-swipe]");
   let touchStartX = 0, touchStartY = 0;
@@ -1101,8 +1330,8 @@ function renderExercise() {
 }
 function motionAction(action){
   if(action==="play")state.paused=!state.paused;
-  if(action==="speed")state.speed=state.speed===1?.5:1;
-  if(action==="view")state.viewMode=state.viewMode==="side"?"front":"side";
+  if(action==="speed")return openWorkoutChoiceSheet("speed");
+  if(action==="view")return openWorkoutChoiceSheet("view");
   if(action==="muscles")state.muscles=!state.muscles;
   persist();
   if(state.view==="preview"){
@@ -1114,54 +1343,47 @@ function formatClock(seconds){const m=Math.floor(seconds/60),s=String(seconds%60
 function toggleExerciseTimer(motion){
   if(state.exerciseTimer){stopExerciseClock();return;}
   const total=motionGuide[motion]?.[2]||30,item=currentItem(sessions[state.session].exercises[state.index]),sided=["kneel","birddog","stretch"].includes(motion),u=U(),ar=state.lang==="ar";
-  state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided};
+  const key=`${state.session}-${state.index}`,done=state.completed[key]||[],nextSet=Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));
+  const targetMuscles=anatomy[item.motion]?.[4]||item.category;
+  state.exerciseTimer={remaining:total,total,paused:false,halfway:false,sided,targetEndTime:Date.now()+total*1000,lastSpokenSecond:null};
   const overlay=document.createElement("div");
-  overlay.className="timed-mode";
-  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="timed-mode-card">
-    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div style="text-align:start;"><span style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">${esc(item.category)} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</span><h2 style="margin:2px 0 0;font-size:18px;">${esc(item.name)}</h2></div>
-      <button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}" style="width:40px;height:40px;font-size:20px;">×</button>
+  overlay.className="timed-mode workout-timed-mode";
+  overlay.setAttribute("aria-labelledby","timedExerciseTitle");
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<section class="timed-workout-card">
+    <header class="timed-workout-head"><div><small>${esc(item.category)} · ${ar?"تمرين موقّت":"TIMED EXERCISE"}</small><h2 id="timedExerciseTitle">${esc(item.name)}</h2></div><button class="round-button" data-timed-close aria-label="${ar?"إغلاق":"Close"}">×</button></header>
+    <div class="timed-workout-visual visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}">${exerciseVisual(item,{preview:true})}<span>${esc(targetMuscles)}</span></div>
+    <div class="timed-workout-focus">
+      <div class="timed-ring" data-timed-ring style="--progress:100%"><div><strong data-timed-value>${formatClock(total)}</strong><small data-timed-total>/ ${formatClock(total)}</small></div></div>
+      <div class="timed-workout-status"><small>${ar?`المجموعة ${(nextSet??0)+1} من ${item.sets}`:`SET ${(nextSet??0)+1} OF ${item.sets}`}</small><strong data-timed-phase>${ar?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL"}</strong><span>${sided?(ar?"سيتم تنبيهك لتبديل الجهة":"A cue will signal the side change"):(ar?"حافظ على إيقاع هادئ":"Keep a controlled rhythm")}</span></div>
     </div>
-    <div class="visual-wrap anatomy-wrap" role="img" aria-label="Demonstration of ${esc(item.name)}" style="width:100%;height:180px;min-height:180px;margin-bottom:6px;border-radius:18px;">
-      ${anatomyVisual(item.motion)}
-    </div>
-    <strong data-timed-value style="font-size:clamp(54px, 14vw, 76px);line-height:1;margin:4px 0 2px;font-weight:900;color:var(--acid);">${formatClock(total)}</strong>
-    <span data-timed-phase style="font-size:13px;font-weight:800;color:#cbd2ce;letter-spacing:.05em;">${ar?"ابدأ الحركة بثبات":"HOLD WITH CONTROL"}</span>
-    <div class="timed-progress" style="width:100%;height:8px;margin:10px 0;background:#2a302d;border-radius:99px;overflow:hidden;"><i data-timed-progress style="display:block;height:100%;width:100%;background:var(--acid);transition:width .25s linear;"></i></div>
-    <div class="timed-actions" style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-      <button data-timed-add type="button" style="min-height:48px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:#181d1a;color:#fff;font-weight:900;font-size:13px;">+15s</button>
-      <button data-timed-pause type="button" style="min-height:48px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:#181d1a;color:#fff;font-weight:900;font-size:13px;">${u.pause}</button>
-      <button data-timed-skip type="button" style="min-height:48px;border:0;border-radius:12px;background:var(--acid);color:var(--acid-ink);font-weight:900;font-size:13px;">${u.done}</button>
-    </div>
-    <div style="margin-top:6px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:12px;font-size:11px;color:var(--muted);text-align:start;width:100%;">
-      <strong style="color:var(--text);">${u.cue}:</strong> ${esc(item.cues)}
-    </div>
-    <label style="margin-top:6px;font-size:11px;color:#aeb8b2;display:flex;align-items:center;gap:6px;"><input type="checkbox" data-voice ${state.voice?"checked":""}> ${ar?"إرشادات صوتية":"Spoken cues"}</label>
-  </div>`);
+    <div class="timed-primary-actions"><button data-timed-pause type="button">${u.pause}</button><button class="is-primary" data-timed-skip type="button">${ar?"إكمال المجموعة":"Complete set"}</button></div>
+    <div class="timed-secondary-actions"><button data-timed-add type="button">+15s</button><label><input type="checkbox" data-voice ${state.voice?"checked":""}> ${ar?"إرشادات صوتية":"Spoken cues"}</label></div>
+    <div class="timed-cue"><small>${u.cue}</small><p>${esc(item.cues)}</p></div>
+  </section>`);
   document.body.appendChild(overlay);
   overlay.querySelector("[data-timed-close]").onclick=stopExerciseClock;
   overlay.querySelector("[data-timed-skip]").onclick=finishExerciseTimer;
-  overlay.querySelector("[data-timed-add]").onclick=()=>{if(state.exerciseTimer){state.exerciseTimer.remaining+=15;state.exerciseTimer.total+=15;updateExerciseTimer();}};
-  overlay.querySelector("[data-timed-pause]").onclick=e=>{state.exerciseTimer.paused=!state.exerciseTimer.paused;e.currentTarget.textContent=state.exerciseTimer.paused?u.resume:u.pause;};
+  overlay.querySelector("[data-timed-add]").onclick=()=>{const t=state.exerciseTimer;if(!t)return;t.remaining+=15;t.total+=15;if(!t.paused)t.targetEndTime=Date.now()+t.remaining*1000;updateExerciseTimer();};
+  overlay.querySelector("[data-timed-pause]").onclick=e=>{const t=state.exerciseTimer;if(!t)return;if(!t.paused)t.remaining=Math.max(0,Math.ceil((t.targetEndTime-Date.now())/1000));t.paused=!t.paused;if(!t.paused)t.targetEndTime=Date.now()+t.remaining*1000;e.currentTarget.textContent=t.paused?u.resume:u.pause;overlay.classList.toggle("is-paused",t.paused);updateExerciseTimer();};
   overlay.querySelector("[data-voice]").onchange=e=>{state.voice=e.target.checked;persist();};
   speak(ar?"ابدأ":"Start");
   updateExerciseTimer();
   state.exerciseTimer.interval=setInterval(()=>{
     const t=state.exerciseTimer;if(!t||t.paused)return;
-    t.remaining--;
+    t.remaining=Math.max(0,Math.ceil((t.targetEndTime-Date.now())/1000));
     updateExerciseTimer();
     if(!t.halfway&&t.remaining<=Math.ceil(t.total/2)){
       t.halfway=true;
       speak(t.sided?(ar?"بدّل الجهة":"Switch sides"):(ar?"منتصف الوقت":"Halfway"));
       if(navigator.vibrate)navigator.vibrate(100);
     }
-    if(t.remaining<=3&&t.remaining>0)speak(String(t.remaining));
+    if(t.remaining<=3&&t.remaining>0&&t.lastSpokenSecond!==t.remaining){t.lastSpokenSecond=t.remaining;speak(String(t.remaining));}
     if(t.remaining<=0)finishExerciseTimer();
-  },1000);
+  },250);
 }
-function updateExerciseTimer(){const t=state.exerciseTimer;if(!t)return;document.querySelector("[data-timed-value]").textContent=formatClock(t.remaining);document.querySelector("[data-timed-progress]").style.width=`${Math.max(0,t.remaining/t.total*100)}%`;document.querySelector("[data-timed-phase]").textContent=t.halfway?(t.sided?(state.lang==="ar"?"الجهة الثانية":"SECOND SIDE"):(state.lang==="ar"?"النصف الثاني":"SECOND HALF")):(state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL");}
+function updateExerciseTimer(){const t=state.exerciseTimer;if(!t)return;const progress=Math.max(0,t.remaining/t.total*100);document.querySelector("[data-timed-value]").textContent=formatClock(t.remaining);document.querySelector("[data-timed-total]").textContent=`/ ${formatClock(t.total)}`;document.querySelector("[data-timed-ring]")?.style.setProperty("--progress",`${progress}%`);document.querySelector("[data-timed-phase]").textContent=t.paused?(state.lang==="ar"?"متوقف مؤقتاً":"PAUSED"):t.halfway?(t.sided?(state.lang==="ar"?"الجهة الثانية":"SECOND SIDE"):(state.lang==="ar"?"النصف الثاني":"SECOND HALF")):(state.lang==="ar"?"ابدأ الحركة بتحكم":"MOVE WITH CONTROL");}
 function speak(text){if(!state.voice||state.muted||!window.speechSynthesis)return;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang=state.lang==="ar"?"ar-EG":"en-US";utterance.rate=.95;window.speechSynthesis.speak(utterance);}
-function finishExerciseTimer(){if(!state.exerciseTimer)return;const key=`${state.session}-${state.index}`,item=sessions[state.session].exercises[state.index],done=state.completed[key]||[],nextSet=Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();signalEnd();speak(state.lang==="ar"?"تم":"Complete");if(nextSet!==undefined)state.completed[key]=[...done,nextSet];persist();renderExercise();if((state.completed[key]||[]).length===item.sets)setTimeout(()=>{if(state.view==="player")next();},900);else if(item.rest)startTimer(item.rest,nextSet);}
+function finishExerciseTimer(){if(!state.exerciseTimer)return;const key=`${state.session}-${state.index}`,item=sessions[state.session].exercises[state.index],done=state.completed[key]||[],nextSet=Array.from({length:item.sets},(_,i)=>i).find(i=>!done.includes(i));clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".workout-timed-mode")?.remove();signalEnd();speak(state.lang==="ar"?"تم":"Complete");if(nextSet!==undefined)toggleSet(nextSet);else renderExercise();}
 function saveLog(base,item){
   const id=exerciseId(base),log=normalizedLog(id,item.sets);
   document.querySelectorAll("[data-log-set]").forEach(input=>{const i=Number(input.dataset.logSet);log.sets[i][input.dataset.log]=input.value;});persistDebounced();
@@ -1267,19 +1489,23 @@ function toggleSet(setIndex) {
   persist();
   const allSetsDone=!already && state.completed[key].length===item.sets;
   if(allSetsDone){
-    vibrateGym("pr");
-    triggerConfetti();
+    triggerConfetti({subtle:true});
   }
   if (!already && item.rest) startTimer(item.rest, setIndex);
   renderExercise();
-  if(!already&&!item.rest&&allSetsDone)setTimeout(()=>{if(state.view==="player")next();},650);
+  if(!already&&!item.rest&&allSetsDone){
+    const completedSession=state.session,completedIndex=state.index;
+    setTimeout(()=>{
+      if(state.view==="player"&&state.session===completedSession&&state.index===completedIndex)next();
+    },650);
+  }
 }
-function prev(){ stopExerciseClock();if(REP_TRAINING_SESSION.previousExercise(state).moved){persist();renderExercise();} }
+function prev(){ stopExerciseClock();cancelRestTimer();if(REP_TRAINING_SESSION.previousExercise(state).moved){exerciseTransitioning=true;persist();resetWorkoutScroll();renderExercise();} }
 function next(){
-  stopExerciseClock();
+  stopExerciseClock();cancelRestTimer();
   const res=REP_TRAINING_SESSION.advanceExercise(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
   if(res.completed&&res.record)queueWorkout(res.record);
-  persist();renderExercise();
+  exerciseTransitioning=!res.completed;persist();resetWorkoutScroll();renderExercise();
 }
 function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
@@ -1292,7 +1518,7 @@ function abandonSession(){
   REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
-  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();if(state.timer){clearInterval(state.timer.interval);state.timer=null;timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");}abandonSession();persist();renderHome();};
+  if(document.querySelector(".exit-confirm"))return;const u=U(),box=document.createElement("div");box.className="exit-confirm";box.innerHTML=REP_SAFE_DOM.sanitize(`<strong>${u.exitQuestion}</strong><button data-stay>${u.stay}</button><button class="danger" data-leave>${u.exit}</button>`);document.body.appendChild(box);box.querySelector("[data-stay]").onclick=()=>box.remove();box.querySelector("[data-leave]").onclick=()=>{box.remove();cancelRestTimer();abandonSession();persist();renderHome();};
 }
 // MET (metabolic equivalent) per session type, used only for a rough estimate -
 // there's no heart-rate or wearable data source here, so this is duration x
@@ -1420,12 +1646,19 @@ function renderReview(){
 }
 
 function renderComplete() {
-  stopSessionClock();document.body.classList.remove("workout-mode");
+  stopSessionClock();cancelRestTimer();document.body.classList.remove("workout-mode");document.body.classList.add("workout-complete-mode");
   const session = sessions[state.session],u=U(),ls=sessionText(state.session,session),last=state.history[0],ar=state.lang==="ar";
-  const calorieLine=last?.calories?`<p class="complete-calories">${ar?`~${last.calories} سعرة حرارية (تقدير)`:`~${last.calories} kcal burned (estimate)`}</p>`:"";
-  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="complete"><div><div class="complete-badge">✓</div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p>${ls.name} ${u.completeSub}</p>${calorieLine}<button class="nav-button primary" data-home>${u.backSessions}</button><button class="nav-button" data-reset>${u.reset}</button></div></section>`);
-  document.querySelector("[data-home]").addEventListener("click", renderHome);
+  const stats=[
+    [formatClock(last?.duration||0),ar?"المدة":"DURATION"],
+    [String(last?.sets||0),ar?"المجموعات":"SETS"],
+    [String(last?.entries?.length||session.exercises.length),ar?"الحركات":"MOVES"],
+    ...(last?.calories?[[`~${last.calories}`,ar?"سعرة تقديرية":"KCAL EST."]]:[])
+  ];
+  app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="complete workout-complete"><div class="workout-complete-card"><div class="complete-badge"><span>✓</span></div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p class="complete-session-name">${ls.name}</p><p class="complete-copy">${u.completeSub}</p><div class="complete-stat-grid">${stats.map(([value,label])=>`<div><strong>${esc(value)}</strong><span>${label}</span></div>`).join("")}</div><div class="complete-actions"><button class="complete-primary" data-history-after>${ar?"عرض سجل الحصة":"View session history"} <b>→</b></button><button data-home>${u.backSessions}</button></div><button class="complete-reset" data-reset>${ar?"إعادة هذه الحصة":"Repeat this workout"}</button></div></section>`);
+  document.querySelector("[data-history-after]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");renderHistory();});
+  document.querySelector("[data-home]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");renderHome();});
   document.querySelector("[data-reset]").addEventListener("click", () => {
+    document.body.classList.remove("workout-complete-mode");document.body.classList.add("workout-mode");
     REP_TRAINING_SESSION.resetWorkout(state);
     state.sessionStartedAt = Date.now();
     startSessionClock();
@@ -2171,12 +2404,48 @@ function showLogActivity(){
 function renderBadDay(){const ar=state.lang==="ar",gate=recoveryGate();state.view="badDay";state.activeTab="train";persist();updatePrimaryTabs();app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader(ar?"خطة اليوم الصعب":"BAD DAY MODE",ar?"احمِ الاستمرارية.":"Protect the streak.",ar?"اختر أصغر نسخة تستطيع تنفيذها بأمان. خطتك الأصلية لن تتغير.":"Choose the smallest version you can do safely. Your normal program stays untouched.")}${gate.hold?`<section class="decision-card hold"><div><small>${ar?"بوابة الاستشفاء":"RECOVERY GATE"}</small><h2>${ar?"اليوم الخفيف هو الاختيار الصحيح":"Light is the correct call today"}</h2><p>${gate.flags} ${ar?"علامات خطر":"red flags"}</p></div></section>`:""}<section class="fallback-grid"><button data-fallback="bad"><span>01</span><small>5–7 MIN</small><h2>${ar?"الحد الأدنى":"The floor"}</h2><p>${ar?"3 دقائق مشي في المكان + كيجل 3 × 10.":"3 minutes marching + Kegels 3 × 10."}</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-fallback="gymLite"><span>02</span><small>25–30 MIN</small><h2>${ar?"جيم مختصر":"Reduced gym"}</h2><p>Leg Press · Chest Press · Seated Row</p><strong>${ar?"ابدأ الآن ←":"Start now →"}</strong></button><button data-active-recovery><span>03</span><small>5 MIN</small><h2>${ar?"استشفاء فقط":"Recovery only"}</h2><p>${ar?"الرجلان على الحائط وتنفس بطيء.":"Legs up the wall with slow breathing."}</p><strong>${ar?"ابدأ المؤقت ←":"Start timer →"}</strong></button></section>`);document.querySelectorAll("[data-fallback]").forEach(b=>b.onclick=()=>startSession(b.dataset.fallback));document.querySelector("[data-active-recovery]").onclick=()=>startGuideTimer(ar?"الرجلان على الحائط":"Legs up the wall",300);}
 function startGuideTimer(label,seconds){let remaining=seconds,paused=false;const overlay=document.createElement("div");overlay.className="timed-mode";overlay.innerHTML=REP_SAFE_DOM.sanitize(`<button class="timed-close" aria-label="${state.lang==="ar"?"إغلاق":"Close"}">×</button><p>${esc(label)}</p><strong data-guide-value>${formatClock(remaining)}</strong><span>${state.lang==="ar"?"تنفس ببطء وحافظ على الراحة":"BREATHE SLOWLY · STAY COMFORTABLE"}</span><div class="timed-progress"><i data-guide-progress></i></div><div class="timed-actions"><button data-guide-pause>${U().pause}</button><button data-guide-finish>${U().skip}</button></div>`);document.body.appendChild(overlay);const close=()=>{clearInterval(tick);overlay.remove();};overlay.querySelector(".timed-close").onclick=close;overlay.querySelector("[data-guide-finish]").onclick=()=>{signalEnd();close();};overlay.querySelector("[data-guide-pause]").onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?U().resume:U().pause;};const tick=setInterval(()=>{if(paused)return;remaining--;overlay.querySelector("[data-guide-value]").textContent=formatClock(Math.max(0,remaining));overlay.querySelector("[data-guide-progress]").style.width=`${Math.max(0,remaining/seconds*100)}%`;if(remaining<=0){signalEnd();close();}},1000);}
 
+function clearRestPreview(){
+  timerDock.classList.remove("has-next-preview");
+  timerNextPreview.classList.add("is-hidden");
+  timerNextPreview.setAttribute("aria-hidden","true");
+  document.querySelector("#timerPreviewVisual").replaceChildren();
+}
+
+function renderRestPreview(){
+  const session=sessions[state.session],item=session?.exercises[state.index],t=state.timer;
+  const nextBase=item&&t&&t.set>=item.sets-1?session.exercises[state.index+1]:null;
+  if(!nextBase){clearRestPreview();return;}
+  const nextItem=currentItem(nextBase),ar=state.lang==="ar";
+  document.querySelector("#timerPreviewVisual").innerHTML=REP_SAFE_DOM.sanitize(exerciseVisual(nextItem,{preview:true}));
+  document.querySelector("#timerPreviewLabel").textContent=ar?"التالي":"UP NEXT";
+  document.querySelector("#timerPreviewName").textContent=nextItem.name;
+  document.querySelector("#timerPreviewMeta").textContent=`${nextItem.prescription} · ${nextItem.intensity}`;
+  const nextNow=document.querySelector("#timerNextNow");
+  nextNow.querySelector("span").textContent=ar?"ابدأ الآن":"Start now";
+  nextNow.setAttribute("aria-label",ar?`ابدأ ${nextItem.name} الآن`:`Start ${nextItem.name} now`);
+  timerNextPreview.classList.remove("is-hidden");
+  timerNextPreview.setAttribute("aria-hidden","false");
+  timerDock.classList.add("has-next-preview");
+}
+
+function cancelRestTimer({notify=false}={}){
+  if(state.timer?.interval)clearInterval(state.timer.interval);
+  state.timer=null;
+  clearRestPreview();
+  timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");
+  document.body.classList.remove("rest-mode-active");
+  if(notify)signalEnd();
+  updateMediaSession("exercise");
+}
+
 function startTimer(seconds, setIndex) {
-  if (state.timer?.interval) clearInterval(state.timer.interval);
+  cancelRestTimer();
   const now = Date.now();
   state.timer = { remaining: seconds, total: seconds, paused: false, set: setIndex, targetEndTime: now + seconds * 1000 };
+  document.body.classList.add("rest-mode-active");
   timerDock.classList.remove("is-hidden"); timerDock.removeAttribute("inert");
-  timerDock.querySelector("strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  timerDock.querySelector(".timer-copy strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  renderRestPreview();
   updateMediaSession("rest", { set: setIndex, time: formatClock(seconds) });
   updateTimer();
   state.timer.interval = setInterval(() => {
@@ -2193,7 +2462,11 @@ function startTimer(seconds, setIndex) {
 function updateTimer(){
   const t=state.timer;if(!t)return; const min=Math.floor(t.remaining/60),sec=String(t.remaining%60).padStart(2,"0");
   document.querySelector("#timerValue").textContent=`${min}:${sec}`; document.querySelector("#timerRing").style.setProperty("--progress",`${Math.max(0,t.remaining/t.total*100)}%`);
-  document.querySelector("#timerNext").textContent=`${U().set} ${t.set+1} · ${U().breatheReset}`;
+  const session=sessions[state.session],item=session?.exercises[state.index],hasAnotherSet=item&&t.set+1<item.sets;
+  const nextItem=session?.exercises[state.index+1];
+  document.querySelector("#timerNext").textContent=hasAnotherSet
+    ? `${U().set} ${t.set+2} · ${currentItem(item).name}`
+    : nextItem?`${state.lang==="ar"?"التالي":"Next"} · ${currentItem(nextItem).name}`:U().breatheReset;
   updateMediaSession("rest", {set: t.set, time: `${min}:${sec}`});
   if(!t.paused && (t.remaining === 3 || t.remaining === 2 || t.remaining === 1)){
     playCountdownBeep(520, 0.08);
@@ -2204,12 +2477,18 @@ function updateTimer(){
   }
 }
 function finishTimer(){
-  if(!state.timer)return;clearInterval(state.timer.interval);signalEnd();timerDock.classList.add("is-hidden");timerDock.setAttribute("inert","");state.timer=null;
-  updateMediaSession("exercise");
-  const item=sessions[state.session]?.exercises[state.index],key=`${state.session}-${state.index}`,allDone=item&&(state.completed[key]||[]).length===item.sets;
-  if(allDone)setTimeout(()=>{if(state.view==="player")next();},800);else document.querySelector(`.set-button:not(.is-done)`)?.classList.add("is-next");
+  if(!state.timer)return;const item=sessions[state.session]?.exercises[state.index],key=`${state.session}-${state.index}`,allDone=item&&(state.completed[key]||[]).length===item.sets,completedSession=state.session,completedIndex=state.index;
+  cancelRestTimer({notify:true});
+  if(allDone)setTimeout(()=>{
+    if(state.view==="player"&&state.session===completedSession&&state.index===completedIndex)next();
+  },800);else document.querySelector(`.set-button:not(.is-done)`)?.classList.add("is-next");
 }
 document.querySelector("#timerSkip").addEventListener("click",finishTimer);
+document.querySelector("#timerNextNow").addEventListener("click",()=>{
+  if(!state.timer||!timerDock.classList.contains("has-next-preview"))return;
+  cancelRestTimer();
+  next();
+});
 document.querySelector("#timerPause").addEventListener("click",()=>{
   if(!state.timer)return;
   state.timer.paused=!state.timer.paused;
