@@ -4,3 +4,4 @@
 !.env.example
 work/
 node_modules/
+.wrangler/

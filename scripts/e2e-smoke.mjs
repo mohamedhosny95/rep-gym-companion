@@ -137,14 +137,14 @@ try {
   await page.click('[data-session="football"]');
   await page.waitForTimeout(150);
   const footballMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
-  assertTrue(footballMedia.length===6&&footballMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/football-'))), "Every football movement uses football-pitch media");
+  assertTrue(footballMedia.length===7&&footballMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/football-'))), "Every football movement uses football-pitch media");
   assertTrue(footballMedia.some(row=>row.name.includes('Lateral Shuffles')&&row.sources.length===3), "Football agility uses a three-frame male movement cycle");
   await page.click('[data-cancel-preview]');
   await page.waitForTimeout(150);
   await page.click('[data-session="padel"]');
   await page.waitForTimeout(150);
   const padelMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
-  assertTrue(padelMedia.length===6&&padelMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/padel-'))), "Every padel movement uses male padel-court media");
+  assertTrue(padelMedia.length===7&&padelMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/padel-'))), "Every padel movement uses male padel-court media");
   assertTrue(padelMedia.some(row=>row.name.includes('Shoulder Prep')&&row.sources.length===3), "Padel shoulder prep uses a three-frame male movement cycle");
   await page.click('[data-cancel-preview]');
   await page.waitForTimeout(150);

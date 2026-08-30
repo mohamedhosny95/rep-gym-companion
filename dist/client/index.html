@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Health OS">
   <meta name="theme-color" content="#070908">
-  <link rel="stylesheet" href="styles.css?v=e85bfbf6f74b">
+  <link rel="stylesheet" href="styles.css?v=1ee44cbf5b0d">
 </head>
 <body>
   <div class="app-shell">
@@ -31,13 +31,16 @@
       </button>
       <div class="top-actions">
         <span class="offline-pill" id="networkStatus"><i></i> Offline ready</span>
-        <button class="icon-button" id="previewModeButton" aria-label="Toggle Preview / Sandbox Mode" title="Preview Mode (No changes saved)">🔬</button>
-        <button class="icon-button" id="commandPaletteButton" aria-label="Open Command Palette (Cmd+K)" title="Command Palette (Cmd+K)">🔍</button>
-        <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
-        <button class="icon-button sync-shortcut" id="syncButton" aria-label="Sync everything" title="Sync everything"><span data-sync-icon aria-hidden="true">↻</span><span data-sync-badge hidden></span></button>
-        <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
         <button class="icon-button" id="wakeButton" aria-label="Keep screen awake" aria-pressed="false">☼</button>
         <button class="icon-button" id="soundButton" aria-label="Mute timer sounds" aria-pressed="false">◖</button>
+        <button class="icon-button sync-shortcut" id="syncButton" aria-label="Sync everything" title="Sync everything"><span data-sync-icon aria-hidden="true">↻</span><span data-sync-badge hidden></span></button>
+        <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
+        <button class="icon-button" id="topMoreButton" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
+      </div>
+      <div class="top-more-menu" id="topMoreMenu" hidden>
+        <button class="top-more-item" id="commandPaletteButton" aria-label="Open Command Palette (Cmd+K)"><i aria-hidden="true">🔍</i><span>Command palette</span></button>
+        <button class="top-more-item" id="previewModeButton" aria-label="Toggle Preview / Sandbox Mode" title="Preview Mode (No changes saved)"><i aria-hidden="true">🔬</i><span>Preview mode</span></button>
+        <button class="top-more-item" id="langButton" aria-label="Switch language">العربية</button>
       </div>
     </header>
 
@@ -74,20 +77,20 @@
     <button id="timerSkip" class="timer-skip" type="button">Skip</button>
   </div>
 
-  <script src="vendor/dompurify.min.js?v=e85bfbf6f74b" defer></script>
-  <script src="safe-dom.js?v=e85bfbf6f74b" defer></script>
-  <script src="build-meta.js?v=e85bfbf6f74b" defer></script>
-  <script src="auth.js?v=e85bfbf6f74b" defer></script>
-  <script src="storage.js?v=e85bfbf6f74b" defer></script>
-  <script src="ui-state.js?v=e85bfbf6f74b" defer></script>
-  <script src="ui-shell.js?v=e85bfbf6f74b" defer></script>
-  <script src="health-data.js?v=e85bfbf6f74b" defer></script>
-  <script src="i18n.js?v=e85bfbf6f74b" defer></script>
-  <script src="features.js?v=e85bfbf6f74b" defer></script>
-  <script src="health-engine.js?v=e85bfbf6f74b" defer></script>
-  <script src="health-coverage.js?v=e85bfbf6f74b" defer></script>
-  <script src="performance-insights.js?v=e85bfbf6f74b" defer></script>
-  <script src="training-session.js?v=e85bfbf6f74b" defer></script>
-  <script src="bootstrap.js?v=e85bfbf6f74b" defer></script>
+  <script src="vendor/dompurify.min.js?v=1ee44cbf5b0d" defer></script>
+  <script src="safe-dom.js?v=1ee44cbf5b0d" defer></script>
+  <script src="build-meta.js?v=1ee44cbf5b0d" defer></script>
+  <script src="auth.js?v=1ee44cbf5b0d" defer></script>
+  <script src="storage.js?v=1ee44cbf5b0d" defer></script>
+  <script src="ui-state.js?v=1ee44cbf5b0d" defer></script>
+  <script src="ui-shell.js?v=1ee44cbf5b0d" defer></script>
+  <script src="health-data.js?v=1ee44cbf5b0d" defer></script>
+  <script src="i18n.js?v=1ee44cbf5b0d" defer></script>
+  <script src="features.js?v=1ee44cbf5b0d" defer></script>
+  <script src="health-engine.js?v=1ee44cbf5b0d" defer></script>
+  <script src="health-coverage.js?v=1ee44cbf5b0d" defer></script>
+  <script src="performance-insights.js?v=1ee44cbf5b0d" defer></script>
+  <script src="training-session.js?v=1ee44cbf5b0d" defer></script>
+  <script src="bootstrap.js?v=1ee44cbf5b0d" defer></script>
 </body>
 </html>

@@ -31,13 +31,16 @@
       </button>
       <div class="top-actions">
         <span class="offline-pill" id="networkStatus"><i></i> Offline ready</span>
-        <button class="icon-button" id="previewModeButton" aria-label="Toggle Preview / Sandbox Mode" title="Preview Mode (No changes saved)">🔬</button>
-        <button class="icon-button" id="commandPaletteButton" aria-label="Open Command Palette (Cmd+K)" title="Command Palette (Cmd+K)">🔍</button>
-        <button class="text-button" id="langButton" aria-label="Switch language">العربية</button>
-        <button class="icon-button sync-shortcut" id="syncButton" aria-label="Sync everything" title="Sync everything"><span data-sync-icon aria-hidden="true">↻</span><span data-sync-badge hidden></span></button>
-        <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
         <button class="icon-button" id="wakeButton" aria-label="Keep screen awake" aria-pressed="false">☼</button>
         <button class="icon-button" id="soundButton" aria-label="Mute timer sounds" aria-pressed="false">◖</button>
+        <button class="icon-button sync-shortcut" id="syncButton" aria-label="Sync everything" title="Sync everything"><span data-sync-icon aria-hidden="true">↻</span><span data-sync-badge hidden></span></button>
+        <button class="icon-button" id="settingsButton" aria-label="Open settings">⚙</button>
+        <button class="icon-button" id="topMoreButton" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
+      </div>
+      <div class="top-more-menu" id="topMoreMenu" hidden>
+        <button class="top-more-item" id="commandPaletteButton" aria-label="Open Command Palette (Cmd+K)"><i aria-hidden="true">🔍</i><span>Command palette</span></button>
+        <button class="top-more-item" id="previewModeButton" aria-label="Toggle Preview / Sandbox Mode" title="Preview Mode (No changes saved)"><i aria-hidden="true">🔬</i><span>Preview mode</span></button>
+        <button class="top-more-item" id="langButton" aria-label="Switch language">العربية</button>
       </div>
     </header>
 
