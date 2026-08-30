@@ -170,38 +170,10 @@
     </section>`;
   }
 
-  function muscleHeatmapPanel(model,ar){
-    const heatmap=model.muscleVolume||engine.muscleVolumeHeatmap(state);
-    const muscles=Object.entries(heatmap);
-    return `<section class="performance-card muscle-heatmap-card">
-      <div class="performance-head">
-        <div>
-          <small>${tr(ar,"WEEKLY MUSCLE RECOVERY & VOLUME","استشفاء وحجم العضلات الأسبوعي")}</small>
-          <h2>${tr(ar,"7-Day Muscle Group Stimulus","مستوى تحفيز المجموعات العضلية خلال 7 أيام")}</h2>
-        </div>
-        <span class="confidence-pill tone-high">${tr(ar,"Adaptive MEV/MRV","حسابات الحجم التكيفي")}</span>
-      </div>
-      <div class="muscle-heatmap-grid">
-        ${muscles.map(([name,data])=>`
-          <div class="muscle-heatmap-cell status-${data.status}" style="--tone-color:${data.color}">
-            <div class="cell-head">
-              <strong>${tr(ar,name,{"Chest":"الصدر","Back":"الظهر","Quads":"الأفخاذ الأمامية","Hamstrings":"الأفخاذ الخلفية","Glutes":"المؤخرة","Shoulders":"الأكتاف","Arms":"الذراعين","Core":"عضلات البطن"}[name]||name)}</strong>
-              <span class="status-badge" style="color:${data.color}">${tr(ar,data.statusLabel,{"Recovered / Primed":"متعافٍ / مهيأ","Optimal Stimulus":"تحفيز مثالي","High Volume":"حجم مرتفع"}[data.statusLabel]||data.statusLabel)}</span>
-            </div>
-            <div class="cell-body">
-              <span><b>${data.sets}</b> ${tr(ar,"sets","مجموعات")}</span>
-              <small>${data.volumeKg.toLocaleString()} kg</small>
-            </div>
-            <div class="volume-bar-bg"><div class="volume-bar-fill" style="width:${Math.min(100,(data.sets/20)*100)}%;background-color:${data.color}"></div></div>
-          </div>
-        `).join("")}
-      </div>
-    </section>`;
-  }
 
   function renderPerformance(){
     const ar=state.lang==="ar",model=engine.analyze(state),anchor=document.querySelector(".weekly-health-review")||document.querySelector(".health-subnav")||document.querySelector(".module-head");if(!anchor)return;
-    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=REP_SAFE_DOM.sanitize(`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${thisWeekExecutivePanel(model,ar)}${window.REP_RECOVERY_MAP?.renderRecoveryMap(state)||""}${goalPanel(model,ar)}${muscleHeatmapPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`);anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
+    const container=document.createElement("section");container.className="performance-analytics";container.setAttribute("aria-label",tr(ar,"Performance analytics","تحليلات الأداء"));container.innerHTML=REP_SAFE_DOM.sanitize(`<div class="section-title performance-title"><h2>${tr(ar,"Performance Intelligence","ذكاء الأداء")}</h2><span>${tr(ar,"Deterministic · confidence-scored · local-first","حسابات واضحة · ثقة معلنة · محلي أولاً")}</span></div>${thisWeekExecutivePanel(model,ar)}${window.REP_RECOVERY_MAP?.renderRecoveryMap(state)||""}${goalPanel(model,ar)}${inboxPanel(model,ar)}${strengthPanel(model,ar)}${nutritionPanel(model,ar)}${experimentsPanel(model,ar)}${qualityPanel(model,ar)}${askPanel(ar)}`);anchor.insertAdjacentElement("afterend",container);bindPerformance(ar);
   }
 
   function bindPerformance(ar){

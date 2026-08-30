@@ -269,77 +269,12 @@
     };
   }
 
-  function muscleVolumeHeatmap(state, nowKey = dateKey()){
-    const history = safeArray(state?.history);
-    const end = nowKey;
-    const volumeByMuscle = {
-      Chest: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Chest" },
-      Back: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Back" },
-      Quads: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Quads" },
-      Hamstrings: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Hamstrings" },
-      Glutes: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Glutes" },
-      Shoulders: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Shoulders" },
-      Arms: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Arms" },
-      Core: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Core" }
-    };
-
-    for(const workout of history){
-      if(!inWindow(workout.date, end, 7)) continue;
-      if(Array.isArray(workout.entries)){
-        for(const entry of workout.entries){
-          const w = Number(entry.weight) || 0, r = Number(entry.reps) || 0;
-          const muscles = MUSCLES[entry.exercise] || (entry.exercise?.includes("Press") ? ["Chest"] : entry.exercise?.includes("Row") || entry.exercise?.includes("Pull") ? ["Back"] : entry.exercise?.includes("Squat") || entry.exercise?.includes("Leg") ? ["Quads"] : ["Core"]);
-          for(const m of muscles){
-            if(volumeByMuscle[m]){
-              volumeByMuscle[m].sets += 1;
-              volumeByMuscle[m].volumeKg += w * r;
-            }
-          }
-        }
-      } else {
-        const loads = workout.loads || {};
-        for(const [exercise, rawSets] of Object.entries(loads)){
-          const muscles = MUSCLES[exercise] || (exercise.includes("Press") ? ["Chest"] : exercise.includes("Row") || exercise.includes("Pull") ? ["Back"] : exercise.includes("Squat") ? ["Quads"] : ["Core"]);
-          const sets = Array.isArray(rawSets) ? rawSets : (Array.isArray(rawSets?.sets) ? rawSets.sets : []);
-          for(const s of sets){
-            const w = Number(s?.weight) || 0, r = Number(s?.reps) || 0;
-            for(const m of muscles){
-              if(volumeByMuscle[m]){
-                volumeByMuscle[m].sets += 1;
-                volumeByMuscle[m].volumeKg += w * r;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    for(const [, data] of Object.entries(volumeByMuscle)){
-      data.volumeKg = round(data.volumeKg, 0);
-      if(data.sets < 6){
-        data.status = "recovered";
-        data.statusLabel = "Recovered / Primed";
-        data.color = "#4ade80";
-      } else if(data.sets <= 16){
-        data.status = "optimal";
-        data.statusLabel = "Optimal Stimulus";
-        data.color = "#2dd4bf";
-      } else {
-        data.status = "fatigued";
-        data.statusLabel = "High Volume";
-        data.color = "#f87171";
-      }
-    }
-
-    return volumeByMuscle;
-  }
-
   function analyze(state,options={}){
     const nowKey=dateKey(options.now)||dateKey();
     const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),deps={strengthData,nutritionData};
     const quality=dataQuality(state,nowKey,deps);
-    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality}),muscleVolume:muscleVolumeHeatmap(state,nowKey)};
+    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality})};
   }
 
-  return {GOAL_TYPES,MUSCLES,EXERCISE_SUBSTITUTIONS,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze,progressionAdvice,muscleVolumeHeatmap};
+  return {GOAL_TYPES,MUSCLES,EXERCISE_SUBSTITUTIONS,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze,progressionAdvice};
 });
