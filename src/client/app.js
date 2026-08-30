@@ -383,6 +383,8 @@ const state = {
   previewMode: false,
   timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
+window.state=state;
+window.sessions=sessions;
 const syncKeyStorage="rep-notion-pairing-key-v1";
 const repAuth=window.REP_AUTH;
 const app = document.querySelector("#app");
@@ -928,11 +930,7 @@ function renderHome() {
       <div class="section-title"><h2>${u.weekly}</h2><span>${state.lang==="ar"?"الصباح + منتصفه":"AM + mid-morning"}</span></div>
       <div class="week-row">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="day ${day.startsWith(d)?"is-today":""}"><strong>${d}</strong><span>${["Sun","Tue","Thu"].includes(d)?"G":d==="Mon"?"FB":d==="Wed"?"PDL":d==="Fri"?"R":"S"}</span></div>`).join("")}</div>
     </section>`);
-  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => {
-    const id = button.dataset.session;
-    const continuing = REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
-    continuing ? startSession(id) : showSessionPreview(id);
-  }));
+  document.querySelectorAll("[data-session]").forEach(button => button.addEventListener("click", () => showSessionPreview(button.dataset.session)));
   document.querySelector("[data-create-new-routine]")?.addEventListener("click", () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal());
   document.querySelectorAll("[data-edit-custom]").forEach(btn => {
     btn.onclick = () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal(btn.dataset.editCustom);
@@ -966,6 +964,7 @@ function sessionCard(id, s, resume) {
 // or expanding rows here has zero effect on what counts as an active session.
 function showSessionPreview(id,openIndices=new Set()){
   const s=sessions[id],ar=state.lang==="ar",ls=sessionText(id,s),u=U();
+  const continuing=REP_TRAINING_SESSION.isResumableWorkout(state,sessions,id);
   REP_TRAINING_SESSION.previewWorkout(state,id);document.body.classList.remove("workout-mode");persist();updatePrimaryTabs();
   const rows=s.exercises.map((base,i)=>{
     const item=currentItem(base);
@@ -980,7 +979,7 @@ function showSessionPreview(id,openIndices=new Set()){
   app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="preview-container">${moduleHeader(ls.name,ar?"استعرض الخطة وتقنية كل حركة قبل البدء.":"Preview the plan and each move's technique before you start.",ls.description)}
     <section class="preview-meta"><span>${ls.meta}</span><span>${s.exercises.length} ${u.steps}</span></section>
     <section class="preview-list">${rows}</section>
-    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${ar?"← ابدأ التمرين":"Start workout →"}</button></nav></section>`);
+    <nav class="bottom-nav preview-actions"><button class="nav-button" data-cancel-preview type="button">${ar?"رجوع →":"← Back"}</button><button class="nav-button primary" data-start-session type="button">${continuing?(ar?"← تابع التمرين":"Resume workout →"):(ar?"← ابدأ التمرين":"Start workout →")}</button></nav></section>`);
   document.querySelector("[data-start-session]").onclick=()=>startSession(id);
   document.querySelector("[data-cancel-preview]").onclick=renderHome;
   document.querySelectorAll("[data-motion-action]").forEach(b=>b.addEventListener("click",()=>motionAction(b.dataset.motionAction)));
@@ -1260,6 +1259,7 @@ function renderExercise() {
   const session = sessions[state.session];
   if (!session) return renderHome();
   if (state.index >= session.exercises.length) { updateMediaSession("idle"); return renderComplete(); }
+  const prevProgressWidth=document.querySelector(".workout-progress i")?.style.width||null;
   const base = session.exercises[state.index], item=currentItem(base),u=U(),ls=sessionText(state.session,session);
   primeUpcomingCinematicMedia(session,state.index);
   const key = `${state.session}-${state.index}`;
@@ -1309,6 +1309,13 @@ function renderExercise() {
       <section class="set-checklist-panel"><div class="set-checklist-head"><small>${ar?"تقدم التمرين":"SET PROGRESS"}</small><strong>${done.length}/${item.sets} ${ar?"مكتملة":"complete"}</strong></div><div class="set-tracker" aria-label="${ar?"قائمة المجموعات":"Set checklist"}">${Array.from({length:item.sets},(_,i)=>`<button class="set-button ${done.includes(i)?"is-done":""}" data-set="${i}" aria-pressed="${done.includes(i)}">${done.includes(i)?`✓ ${u.done}`:item.sets===1?u.markDone:`${u.set} ${i+1}`}</button>`).join("")}</div></section>
       <details class="cue-details"><summary>${u.technique}</summary><div class="cue-body"><p><strong>${u.setup}:</strong> ${esc(item.setup)}</p><p><strong>${u.move}:</strong> ${esc(item.execution)}</p><p><strong>${u.cue}:</strong> ${esc(item.cues)}</p><p><strong>${u.avoid}:</strong> ${esc(item.avoid)}</p></div></details>
     </article></section>`);
+  const progressBar=document.querySelector(".workout-progress i");
+  if(progressBar&&prevProgressWidth&&prevProgressWidth!==progressBar.style.width){
+    const targetWidth=progressBar.style.width;
+    progressBar.style.width=prevProgressWidth;
+    void progressBar.offsetWidth;
+    requestAnimationFrame(()=>{progressBar.style.width=targetWidth;});
+  }
   observeCinematicMedia(document.querySelector(".exercise-hero-stage"),item);
   document.querySelectorAll("[data-prev]").forEach(b => b.addEventListener("click", prev));
   document.querySelector("[data-next]").addEventListener("click", ()=>{if(nextSetIndex!==undefined&&!done.includes(nextSetIndex))toggleSet(nextSetIndex);else next();});
@@ -1369,23 +1376,7 @@ function renderExercise() {
     if(navigator.vibrate)navigator.vibrate(12);
   });
   document.querySelectorAll("[data-cardio]").forEach(input=>input.addEventListener("input",()=>{state.cardioDraft[input.dataset.cardio]=input.value;persistDebounced();document.querySelector(".cardio-panel .progression-callout").textContent=cardioAdvice();}));
-  const swipe = document.querySelector("[data-swipe]");
-  let touchStartX = 0, touchStartY = 0;
-  swipe?.addEventListener("touchstart", e => {
-    touchStartX = e.changedTouches[0].clientX;
-    touchStartY = e.changedTouches[0].clientY;
-  }, {passive:true});
-  swipe?.addEventListener("touchend", e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
-      if(state.lang === "ar"){
-        dx > 0 ? next() : prev();
-      } else {
-        dx < 0 ? next() : prev();
-      }
-    }
-  }, {passive:true});
+  bindWorkoutSwipe(document.querySelector("[data-swipe]"));
   updateMediaSession("exercise", {exercise: item.name, set: (done.length || 0)});
 }
 function motionAction(action){
@@ -1553,6 +1544,10 @@ function toggleSet(setIndex) {
   }
   if (!already && item.rest) startTimer(item.rest, setIndex);
   renderExercise();
+  if(!already){
+    const btn=document.querySelector(`[data-set="${setIndex}"]`);
+    if(btn){btn.classList.add("is-just-checked");setTimeout(()=>btn.classList.remove("is-just-checked"),400);}
+  }
   if(!already&&!item.rest&&allSetsDone){
     const completedSession=state.session,completedIndex=state.index;
     setTimeout(()=>{
@@ -1566,6 +1561,55 @@ function next(){
   const res=REP_TRAINING_SESSION.advanceExercise(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
   if(res.completed&&res.record)queueWorkout(res.record);
   exerciseTransitioning=!res.completed;persist();resetWorkoutScroll();renderExercise();
+}
+// Real-time drag tracking for swipe-to-navigate between exercises: the card
+// follows the finger 1:1 (with resistance past the first exercise), then
+// either completes the exit and calls next()/prev(), or springs back to
+// place if the drag didn't cross the threshold. touchend used a simple
+// distance check before this with no visual feedback during the gesture.
+function bindWorkoutSwipe(swipe){
+  if(!swipe)return;
+  let startX=0,startY=0,gesture=null;
+  const rtl=state.lang==="ar",threshold=55;
+  const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  swipe.addEventListener("touchstart",e=>{
+    startX=e.changedTouches[0].clientX;startY=e.changedTouches[0].clientY;gesture="pending";
+    swipe.style.transition="none";
+  },{passive:true});
+  swipe.addEventListener("touchmove",e=>{
+    if(gesture==="vertical")return;
+    const dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(gesture==="pending"){
+      if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+      if(Math.abs(dy)>Math.abs(dx)*1.2){gesture="vertical";return;}
+      gesture="horizontal";
+    }
+    e.preventDefault();
+    const draggingBack=rtl?dx<0:dx>0,canGoBack=state.index>0;
+    swipe.style.transform=`translateX(${draggingBack&&!canGoBack?dx*0.25:dx}px)`;
+  },{passive:false});
+  swipe.addEventListener("touchend",e=>{
+    if(gesture!=="horizontal"){gesture=null;return;}
+    gesture=null;
+    const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;
+    const passed=Math.abs(dx)>threshold&&Math.abs(dx)>Math.abs(dy)*1.4;
+    const goingNext=rtl?dx>0:dx<0,canGoBack=state.index>0;
+    if(passed&&(goingNext||canGoBack)){
+      if(reduceMotion){goingNext?next():prev();return;}
+      const exitX=dx<0?-swipe.getBoundingClientRect().width:swipe.getBoundingClientRect().width;
+      swipe.style.transition=`transform .18s var(--ease-out)`;
+      swipe.style.transform=`translateX(${exitX}px)`;
+      setTimeout(()=>{goingNext?next():prev();},180);
+    }else{
+      swipe.style.transition=reduceMotion?"none":`transform .22s var(--ease-spring)`;
+      swipe.style.transform="translateX(0)";
+    }
+  },{passive:true});
+  swipe.addEventListener("touchcancel",()=>{
+    gesture=null;
+    swipe.style.transition=reduceMotion?"none":"transform .18s ease";
+    swipe.style.transform="translateX(0)";
+  },{passive:true});
 }
 function stopExerciseClock(){if(state.exerciseTimer?.interval)clearInterval(state.exerciseTimer.interval);state.exerciseTimer=null;document.querySelector(".timed-mode")?.remove();window.speechSynthesis?.cancel();}
 function startSessionClock(){stopSessionClock();state.sessionClock=setInterval(updateSessionClock,1000);updateSessionClock();}
@@ -2523,7 +2567,8 @@ function startTimer(seconds, setIndex) {
   state.timer = { remaining: seconds, total: seconds, paused: false, set: setIndex, targetEndTime: now + seconds * 1000 };
   document.body.classList.add("rest-mode-active");
   timerDock.classList.remove("is-hidden"); timerDock.removeAttribute("inert");
-  timerDock.querySelector(".timer-copy strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  timerDock.querySelector(".timer-copy small").textContent = U().recovery; timerDock.querySelector(".timer-copy strong").textContent = U().restTitle; document.querySelector("#timerSkip").textContent = U().skip; document.querySelector("#timerPause").textContent = U().pause;
+  document.querySelector("#timerAdd").setAttribute("aria-label", U().add15Seconds);
   renderRestPreview();
   updateMediaSession("rest", { set: setIndex, time: formatClock(seconds) });
   updateTimer();
@@ -2606,7 +2651,7 @@ function showToast(message){
   document.querySelector(".toast")?.remove();
   const t=document.createElement("div");t.className="toast";t.textContent=message;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2600);
+  setTimeout(()=>{t.classList.add("is-leaving");setTimeout(()=>t.remove(),180);},2600);
 }
 document.querySelector("#wakeButton").addEventListener("click",toggleWakeLock);
 if(!("wakeLock" in navigator)){
@@ -2660,8 +2705,14 @@ function renderQuickLog(){
   const fab=container.querySelector("#quickLogFab"),menu=container.querySelector("#quickLogMenu");
   fab.addEventListener("click",()=>{
     const opening=menu.hidden;
-    if(opening)menu.querySelector('[data-quick-action="workout"] span').textContent=continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout");
-    menu.hidden=!opening;fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
+    if(opening){
+      menu.querySelector('[data-quick-action="workout"] span').textContent=continuingSession()?(ar?"متابعة التمرين":"Resume workout"):(ar?"ابدأ التمرين":"Start workout");
+      menu.hidden=false;
+      requestAnimationFrame(()=>menu.classList.add("is-open"));
+    }else{
+      closeQuickLog();
+    }
+    fab.setAttribute("aria-expanded",String(opening));fab.classList.toggle("is-open",opening);
   });
   menu.querySelectorAll("[data-quick-action]").forEach(button=>button.addEventListener("click",()=>{closeQuickLog();runQuickAction(button.dataset.quickAction);}));
   updateQuickLogVisibility();
@@ -2669,7 +2720,8 @@ function renderQuickLog(){
 function closeQuickLog(){
   const fab=document.querySelector("#quickLogFab"),menu=document.querySelector("#quickLogMenu");
   if(!fab||!menu||menu.hidden)return;
-  menu.hidden=true;fab.setAttribute("aria-expanded","false");fab.classList.remove("is-open");
+  menu.classList.remove("is-open");fab.setAttribute("aria-expanded","false");fab.classList.remove("is-open");
+  setTimeout(()=>{menu.hidden=true;},180);
 }
 document.addEventListener("click",e=>{if(!e.target.closest("#quickLog"))closeQuickLog();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeQuickLog();});

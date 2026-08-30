@@ -314,17 +314,17 @@
     const themeMode=state.preferences?.themeMode||"default",themeAccent=state.preferences?.themeAccent||"acid",soundPack=state.preferences?.soundPack||"digital";
     return `${pwaInstallCard(ar)}<section class="settings-card"><small>${ar?"تفضيلاتك":"YOUR PREFERENCES"}</small><h2>${ar?"اجعل التطبيق مألوفاً":"Make the app feel familiar"}</h2>
       <div class="segmented-setting"><span>${ar?"اللغة":"Language"}</span><div><button data-language="en" class="${state.lang==="en"?"is-active":""}">English</button><button data-language="ar" class="${state.lang==="ar"?"is-active":""}">العربية</button></div></div>
-      <div class="segmented-setting"><span>${ar?"وضع الشاشة":"Theme Mode"}</span><div><button data-theme-mode="default" class="${themeMode==="default"?"is-active":""}">${ar?"داكن فحم":"Charcoal"}</button><button data-theme-mode="oled" class="${themeMode==="oled"?"is-active":""}">🖤 OLED Black</button></div></div>
+      <div class="segmented-setting"><span>${ar?"وضع الشاشة":"Theme Mode"}</span><div><button data-theme-mode="default" class="${themeMode==="default"?"is-active":""}">${ar?"داكن فحم":"Charcoal"}</button><button data-theme-mode="oled" class="${themeMode==="oled"?"is-active":""}">🖤 ${ar?"أسود OLED":"OLED Black"}</button></div></div>
       <div class="segmented-setting"><span>${ar?"نغمة المؤقت":"Sound Pack"}</span><div>
         <button data-sound-pack="digital" class="${soundPack==="digital"?"is-active":""}">${ar?"رقمي":"Digital"}</button>
         <button data-sound-pack="click" class="${soundPack==="click"?"is-active":""}">${ar?"نقرات":"Clicks"}</button>
         <button data-sound-pack="bell" class="${soundPack==="bell"?"is-active":""}">${ar?"جرس":"Gong"}</button>
       </div></div>
       <div class="segmented-setting"><span>${ar?"لون التمييز":"Accent"}</span><div>
-        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}"><span style="color:#c9ff3d;">●</span> Lime</button>
-        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}"><span style="color:#38bdf8;">●</span> Cyan</button>
-        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}"><span style="color:#fb923c;">●</span> Flame</button>
-        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}"><span style="color:#c084fc;">●</span> Violet</button>
+        <button data-theme-accent="acid" class="${themeAccent==="acid"?"is-active":""}"><span style="color:#c9ff3d;">●</span> ${ar?"ليموني":"Lime"}</button>
+        <button data-theme-accent="cyan" class="${themeAccent==="cyan"?"is-active":""}"><span style="color:#38bdf8;">●</span> ${ar?"سماوي":"Cyan"}</button>
+        <button data-theme-accent="flame" class="${themeAccent==="flame"?"is-active":""}"><span style="color:#fb923c;">●</span> ${ar?"ناري":"Flame"}</button>
+        <button data-theme-accent="violet" class="${themeAccent==="violet"?"is-active":""}"><span style="color:#c084fc;">●</span> ${ar?"بنفسجي":"Violet"}</button>
       </div></div>
       ${[["weightUnit",ar?"الوزن":"Weight",["kg","lb"]],["waterUnit",ar?"المياه":"Water",["ml","oz"]]].map(([key,label,values])=>`<div class="segmented-setting"><span>${label}</span><div>${values.map(value=>`<button data-unit="${key}" data-value="${value}" class="${state.preferences[key]===value?"is-active":""}">${value==="oz"?"fl oz":value}</button>`).join("")}</div></div>`).join("")}
       <button class="quiet-setting" data-install-settings>${ar?"تثبيت Health OS على الجهاز":"Install Health OS on this device"}</button>

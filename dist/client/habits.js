@@ -122,7 +122,12 @@
         if(window.vibrateGym)window.vibrateGym("pr");
       }
     }
+    const justChecked=Boolean(value.checked[id]);
     persist();scheduleSync(date,id);renderOverview();
+    if(justChecked){
+      const card=document.querySelector(`[data-habit-card="${id}"]`);
+      if(card){card.classList.add("is-just-checked");setTimeout(()=>card.classList.remove("is-just-checked"),550);}
+    }
   }
   function label(habit,ar){return ar?habit.ar:habit.en;}
   function detail(habit,ar){return ar?habit.detailAr:habit.detailEn;}
