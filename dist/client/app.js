@@ -1555,6 +1555,10 @@ function toggleSet(setIndex) {
   }
   if (!already && item.rest) startTimer(item.rest, setIndex);
   renderExercise();
+  if(!already){
+    const btn=document.querySelector(`[data-set="${setIndex}"]`);
+    if(btn){btn.classList.add("is-just-checked");setTimeout(()=>btn.classList.remove("is-just-checked"),400);}
+  }
   if(!already&&!item.rest&&allSetsDone){
     const completedSession=state.session,completedIndex=state.index;
     setTimeout(()=>{
