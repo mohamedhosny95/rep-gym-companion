@@ -193,11 +193,61 @@ const cinematicMedia = {
   "Easy Cooldown + Stretch":"assets/cinematic/treadmill-cooldown.webp"
 };
 
+const cinematicMediaFront = {
+  "Brisk Marching in Place":"assets/cinematic/home-march-front.webp",
+  "Cat-Cow":"assets/cinematic/home-cat-cow-front.webp",
+  "Hip Flexor Stretch":"assets/cinematic/home-hip-flexor-front.webp",
+  "Glute Bridges":"assets/cinematic/home-glute-bridge-front.webp",
+  "Bird-Dog":"assets/cinematic/home-bird-dog-front.webp",
+  "Plank":"assets/cinematic/home-plank-front.webp",
+  "Stomach Vacuum":"assets/cinematic/home-breathing-front.webp",
+  "Pelvic Floor (Kegel)":"assets/cinematic/home-breathing-front.webp",
+  "Hand Grip":"assets/cinematic/home-hand-grip-front.webp",
+  "Stationary Bike":"assets/cinematic/stationary-bike-front.webp",
+  "Leg Press":"assets/cinematic/leg-press-front.webp",
+  "Back Extension":"assets/cinematic/back-extension-front.webp",
+  "Chest Press":"assets/cinematic/chest-press-front.webp",
+  "Seated Cable Row":"assets/cinematic/seated-cable-row-front.webp",
+  "Lat Pulldown":"assets/cinematic/lat-pulldown-front.webp",
+  "Cooldown Stretches":"assets/cinematic/cooldown-stretches-front.webp",
+  "Football Warm-up Jog":"assets/cinematic/football-jog-front.webp",
+  "Football Dynamic Stretches":"assets/cinematic/football-dynamic-front.webp",
+  "Lateral Shuffles & Carioca":"assets/cinematic/football-agility-front.webp",
+  "Football Build-up Strides":"assets/cinematic/football-stride-front.webp",
+  "Football Match":"assets/cinematic/football-agility-front.webp",
+  "Football Cooldown Jog":"assets/cinematic/football-jog-front.webp",
+  "Football Static Stretches":"assets/cinematic/football-dynamic-front.webp",
+  "Padel Warm-up Jog":"assets/cinematic/padel-jog-front.webp",
+  "Padel Dynamic Stretches":"assets/cinematic/padel-dynamic-front.webp",
+  "Padel Shoulder Prep":"assets/cinematic/padel-shoulder-prep-front.webp",
+  "Padel Sport-Specific Warm-up":"assets/cinematic/padel-shadow-swing-front.webp",
+  "Padel Match":"assets/cinematic/padel-shadow-swing-front.webp",
+  "Padel Cooldown Walk":"assets/cinematic/padel-jog-front.webp",
+  "Padel Static Stretches":"assets/cinematic/padel-dynamic-front.webp",
+  "Easy Jog or Brisk Walk":"assets/cinematic/outdoor-easy-jog-front.webp",
+  "Full-Body Dynamic Stretch":"assets/cinematic/outdoor-dynamic-stretch-front.webp",
+  "Movement-Specific Drills":"assets/cinematic/outdoor-movement-drill-front.webp",
+  "Log Your Activity":"assets/cinematic/outdoor-movement-drill-front.webp",
+  "Walk & Breathe Down":"assets/cinematic/outdoor-easy-jog-front.webp",
+  "Full-Body Static Stretch":"assets/cinematic/outdoor-static-stretch-front.webp",
+  "Hydrate & Refuel":"assets/cinematic/outdoor-hydrate-front.webp",
+  "Easy Warm-up Walk":"assets/cinematic/treadmill-warmup-front.webp",
+  "Incline Treadmill Walk":"assets/cinematic/treadmill-incline-front.webp",
+  "Easy Cooldown + Stretch":"assets/cinematic/treadmill-cooldown-front.webp"
+};
+
 const cinematicMotionMedia = {
   inclinedbpress:"assets/cinematic/chest-press.webp",
   latpulldown:"assets/cinematic/lat-pulldown.webp",
   backextension:"assets/cinematic/back-extension.webp",
   legpress:"assets/cinematic/leg-press.webp"
+};
+
+const cinematicMotionMediaFront = {
+  inclinedbpress:"assets/cinematic/chest-press-front.webp",
+  latpulldown:"assets/cinematic/lat-pulldown-front.webp",
+  backextension:"assets/cinematic/back-extension-front.webp",
+  legpress:"assets/cinematic/leg-press-front.webp"
 };
 
 const cinematicMotionFrames = {
@@ -214,6 +264,22 @@ const cinematicMotionFrames = {
   "Padel Shoulder Prep":["assets/cinematic/padel-shoulder-prep-start.webp","assets/cinematic/padel-shoulder-prep.webp","assets/cinematic/padel-shoulder-prep-end.webp"],
   "Padel Sport-Specific Warm-up":["assets/cinematic/padel-shadow-swing-backswing.webp","assets/cinematic/padel-shadow-swing.webp","assets/cinematic/padel-shadow-swing-followthrough.webp"],
   "Incline Treadmill Walk":["assets/cinematic/treadmill-incline.webp","assets/cinematic/treadmill-incline-mid.webp","assets/cinematic/treadmill-incline-opposite.webp"]
+};
+
+const cinematicMotionFramesFront = {
+  "Brisk Marching in Place":["assets/cinematic/home-march-neutral-front.webp","assets/cinematic/home-march-front.webp","assets/cinematic/home-march-opposite-front.webp"],
+  "Plank":["assets/cinematic/home-plank-inhale-front.webp","assets/cinematic/home-plank-front.webp","assets/cinematic/home-plank-exhale-front.webp"],
+  "Chest Press":["assets/cinematic/chest-press-start-front.webp","assets/cinematic/chest-press-front.webp","assets/cinematic/chest-press-finish-front.webp"],
+  "Leg Press":["assets/cinematic/leg-press-start-front.webp","assets/cinematic/leg-press-front.webp","assets/cinematic/leg-press-finish-front.webp"],
+  "Seated Cable Row":["assets/cinematic/seated-cable-row-start-front.webp","assets/cinematic/seated-cable-row-front.webp","assets/cinematic/seated-cable-row-finish-front.webp"],
+  "Back Extension":["assets/cinematic/back-extension-lowered-front.webp","assets/cinematic/back-extension-front.webp","assets/cinematic/back-extension-neutral-front.webp"],
+  "Lat Pulldown":["assets/cinematic/lat-pulldown-start-front.webp","assets/cinematic/lat-pulldown-mid-front.webp","assets/cinematic/lat-pulldown-front.webp"],
+  "Football Dynamic Stretches":["assets/cinematic/football-dynamic-front.webp","assets/cinematic/football-dynamic-transition-front.webp","assets/cinematic/football-dynamic-opposite-front.webp"],
+  "Lateral Shuffles & Carioca":["assets/cinematic/football-agility-start-front.webp","assets/cinematic/football-agility-front.webp","assets/cinematic/football-agility-opposite-front.webp"],
+  "Football Build-up Strides":["assets/cinematic/football-stride-push-front.webp","assets/cinematic/football-stride-front.webp","assets/cinematic/football-stride-switch-front.webp"],
+  "Padel Shoulder Prep":["assets/cinematic/padel-shoulder-prep-start-front.webp","assets/cinematic/padel-shoulder-prep-front.webp","assets/cinematic/padel-shoulder-prep-end-front.webp"],
+  "Padel Sport-Specific Warm-up":["assets/cinematic/padel-shadow-swing-backswing-front.webp","assets/cinematic/padel-shadow-swing-front.webp","assets/cinematic/padel-shadow-swing-followthrough-front.webp"],
+  "Incline Treadmill Walk":["assets/cinematic/treadmill-incline-front.webp","assets/cinematic/treadmill-incline-mid-front.webp","assets/cinematic/treadmill-incline-opposite-front.webp"]
 };
 
 function categoryLabel(category){return category;}
@@ -238,10 +304,15 @@ function motionPhaseRail(){
   return `<span class="media-phase-rail" aria-hidden="true"><i></i>${phaseLabels.map(label=>`<b>${label}</b>`).join("")}</span>`;
 }
 
-function cinematicAssetFor(item){return cinematicMedia[item?.baseName||item?.name]||cinematicMotionMedia[item?.motion]||null;}
-function cinematicFramesFor(item){
-  const asset=cinematicAssetFor(item);
-  return cinematicMotionFrames[item?.baseName||item?.name]||(asset?[asset]:[]);
+function cinematicAssetFor(item,view=state.viewMode){
+  const key=item?.baseName||item?.name;
+  if(view==="front")return cinematicMediaFront[key]||cinematicMotionMediaFront[item?.motion]||null;
+  return cinematicMedia[key]||cinematicMotionMedia[item?.motion]||null;
+}
+function cinematicFramesFor(item,view=state.viewMode){
+  const asset=cinematicAssetFor(item,view);
+  const framesMap=view==="front"?cinematicMotionFramesFront:cinematicMotionFrames;
+  return framesMap[item?.baseName||item?.name]||(asset?[asset]:[]);
 }
 function targetMusclesFor(item){
   const custom=exerciseMuscleTargets[item?.baseName||item?.name];
@@ -283,7 +354,7 @@ function observeCinematicMedia(root,item){
 
 function exerciseVisual(item,{preview=false}={}){
   const frames=cinematicFramesFor(item);
-  if(!frames.length||state.viewMode==="front")return anatomyVisual(item.motion);
+  if(!frames.length)return anatomyVisual(item.motion);
   const asset=cinematicAssetFor(item)||frames[0];
   const guide=motionGuide[item.motion]||motionGuide.march;
   const mediaKey=asset.split("/").pop().replace(/\.webp$/,""),scene=mediaKey.split("-")[0];
@@ -917,7 +988,7 @@ function renderHome() {
 }
 function programCategoryFor(id){return id==="gym"?"gym":id==="morning"?"home":["football","padel","general"].includes(id)?"sport":id==="cardio"?"cardio":"all";}
 function sessionCard(id, s, resume) {
-  const u=U(),ls=sessionText(id,s),media=cinematicAssetFor(s.exercises[0]);
+  const u=U(),ls=sessionText(id,s),media=cinematicAssetFor(s.exercises[0],"side");
   return `<button class="session-card program-session-card ${resume?"resume-card":""} ${media?"has-session-media":""}" data-session="${id}" data-program-category="${programCategoryFor(id)}" style="--card-accent:${s.accent}">
     ${media?`<span class="session-card-media" aria-hidden="true"><img src="${media}" alt="" loading="lazy" decoding="async" fetchpriority="low"></span>`:""}
     <span class="session-card-heading"><small>${resume?`${u.resume} · ${state.index+1}/${s.exercises.length}`:s.short}</small><h2>${ls.name}</h2></span>
