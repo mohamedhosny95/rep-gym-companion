@@ -33,7 +33,7 @@
     ];
   }
 
-  function getExerciseActions(state){
+  function getExerciseActions(){
     if(typeof sessions === "undefined") return [];
     const seen = new Map();
     for(const [sessionId, session] of Object.entries(sessions)){
@@ -53,7 +53,7 @@
   function openPalette(){
     if(document.querySelector(".command-palette-overlay")) return;
     const actions = getActions(window.state || {});
-    const exerciseActions = getExerciseActions(window.state || {});
+    const exerciseActions = getExerciseActions();
     let selectedIdx = 0;
 
     const overlay = document.createElement("div");

@@ -46,7 +46,7 @@
       const voice = getBestVoice();
       if(voice) utter.voice = voice;
       window.speechSynthesis.speak(utter);
-    } catch(e){}
+    } catch{}
   }
 
   // Web Audio Synth Chimes
@@ -64,7 +64,7 @@
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + duration);
-    } catch(e){}
+    } catch{}
   }
 
   function announceSetComplete(setIndex, weight, reps, rpe, advice){

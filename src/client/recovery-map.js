@@ -74,7 +74,7 @@
       </div>
       
       <div class="recovery-map-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px;">
-        ${Object.entries(data).map(([key, m]) => {
+        ${Object.entries(data).map(([, m]) => {
           const col = getStatusColor(m.score);
           const statusText = m.score >= 85 ? ( "Fresh") : (m.score >= 60 ? ( "Recovering") : ( "Fatigued"));
           return `<div class="muscle-recovery-item" style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0c100d;display:flex;flex-direction:column;gap:3px;">

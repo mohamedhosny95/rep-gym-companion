@@ -367,8 +367,8 @@
           if(reg?.showNotification) await reg.showNotification("⚡ Health OS: Today's Readiness 88%",{body:"High readiness today. Today's plan: Chest & Back.",icon:"./icon-192.png",badge:"./icon-192.png"});
           else new Notification("⚡ Health OS: Today's Readiness 88%",{body:"High readiness today."});
           showToast("Test notification sent successfully!");
-        }catch(err){
-          try{new Notification("⚡ Health OS: Test Notification",{body:"Notifications are working perfectly!"});showToast("Test notification sent successfully!");}catch(e){showToast(String(err.message||err));}
+        }catch{
+          try{new Notification("⚡ Health OS: Test Notification",{body:"Notifications are working perfectly!"});showToast("Test notification sent successfully!");}catch(e){showToast(String(e.message||e));}
         }
       }else{showToast("Notifications are not supported in this browser.");}
     });
