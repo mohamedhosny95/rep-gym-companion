@@ -283,7 +283,7 @@ function observeCinematicMedia(root,item){
 
 function exerciseVisual(item,{preview=false}={}){
   const frames=cinematicFramesFor(item);
-  if(!frames.length)return anatomyVisual(item.motion);
+  if(!frames.length||state.viewMode==="front")return anatomyVisual(item.motion);
   const asset=cinematicAssetFor(item)||frames[0];
   const guide=motionGuide[item.motion]||motionGuide.march;
   const mediaKey=asset.split("/").pop().replace(/\.webp$/,""),scene=mediaKey.split("-")[0];
@@ -303,7 +303,7 @@ function anatomyVisual(motion) {
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=UI_STRINGS, guide=motionGuide[motion]||motionGuide.march;
   const phaseRail=motionPhaseRail();
-  if(motion in motionAtlasRows){
+  if(motion in motionAtlasRows && state.viewMode!=="front"){
     const row=motionAtlasRows[motion], y=(row/6*100).toFixed(3);
     return `<div class="anatomy-motion sprite-motion motion-${motion} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--row:${y}%;--loop-speed:${3.6/state.speed}s">
       <span class="media-ambient" aria-hidden="true"><i class="sprite-frame"></i></span><i class="sprite-frame media-focus-frame" aria-hidden="true"></i><span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
