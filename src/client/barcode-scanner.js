@@ -23,7 +23,7 @@
         const formats = await window.BarcodeDetector.getSupportedFormats();
         detector = new window.BarcodeDetector({ formats: formats.filter(f => ["ean_13","ean_8","upc_a","upc_e","qr_code","code_128"].includes(f)) });
         return detector;
-      } catch(e){}
+      } catch{}
     }
     return null;
   }
@@ -65,7 +65,7 @@
           };
         }
       }
-    } catch(err){}
+    } catch{}
 
     // Fallback item
     return {
@@ -156,12 +156,12 @@
                   return;
                 }
               }
-            } catch(e){}
+            } catch{}
             scanAnimationId = requestAnimationFrame(scanFrame);
           }
           scanFrame();
         }
-      } catch(err){
+      } catch{
         if(hint) hint.textContent =  "Camera unavailable. Use manual input below.";
       }
     }

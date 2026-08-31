@@ -57,7 +57,7 @@
 
     // Notify listeners
     state.listeners.forEach(fn => {
-      try { fn({ bpm, zone: zoneInfo, peak: state.peakBpm, min: state.minBpm }); } catch(e){}
+      try { fn({ bpm, zone: zoneInfo, peak: state.peakBpm, min: state.minBpm }); } catch{}
     });
 
     // Update any live DOM badges

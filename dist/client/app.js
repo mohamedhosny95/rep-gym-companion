@@ -298,7 +298,7 @@ function exerciseVisual(item,{preview=false}={}){
 }
 
 function anatomyVisual(motion) {
-  const [atlas,size,a,b,musclesEn,flip,musclesAr] = anatomy[motion] || anatomy.march;
+  const [atlas,size,a,b,musclesEn,flip] = anatomy[motion] || anatomy.march;
   const muscles = musclesEn;
   const ratios = { gym:"1 / 1", mobility:"3 / 5", core:"8 / 9", cardio:"1 / 1" };
   const u=UI_STRINGS, guide=motionGuide[motion]||motionGuide.march;
@@ -792,7 +792,6 @@ function setPrimaryTab(tab){
   else renderHome();
   focusViewHeading();
 }
-function renderCareHub(){renderHygiene();}
 // The one screen you land on every time you open the app - a single Recovery/
 // Sleep/Strain glance plus today's plan, instead of the Training tab's full
 // session picker. Deliberately thin: it reuses the same components Vitals and
@@ -867,7 +866,6 @@ function renderOverview(){
 function renderHome() {
   stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view = "home";state.activeTab="train";persistDebounced();updatePrimaryTabs();
   const day = currentDay(),u=U();
-  const resume = REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
   const streak=computeStreak();
   app.innerHTML = REP_SAFE_DOM.sanitize(`
     <section class="hero">
@@ -1803,7 +1801,8 @@ function foodProfile(){
     ...base,
     ...(customTargets||{}),
     label: base.label,
-    cycleType: type
+    cycleType: type,
+    carbCycleBadge
   };
 }
 function autoMealType(){const h=new Date().getHours();return h>=18?"Dinner":h>=15?"Snack":h>=11?"Lunch":"Breakfast";}
@@ -1821,7 +1820,7 @@ function saveMealTemplate(entryId){
   const entry=state.foodEntries.find(e=>e.id===entryId);if(!entry)return;
   const name=String(entry.food_name||entry.rawNote||"Meal").slice(0,80);
   if(state.mealTemplates.some(t=>t.food_name===entry.food_name&&Math.round(t.calories)===Math.round(entry.calories)))return;
-  const {id,date,mealType,logMethod,...macros}=entry;
+  const {id:_id,date:_date,mealType:_mealType,logMethod:_logMethod,...macros}=entry;
   state.mealTemplates.unshift({...macros,id:`tmpl-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,food_name:name});
   state.mealTemplates=state.mealTemplates.slice(0,40);persist();renderNutrition();
 }
@@ -2062,7 +2061,7 @@ function sleepSummaryCard(){
     <span class="sleep-goto-link">${"Open Vitals to log →"}</span></article>`;
 }
 function vitalsScreenshotCard(){
-  const connected=Boolean(localStorage.getItem(syncKeyStorage)),d=state.vitalsDraft;
+  const d=state.vitalsDraft;
   if(!d)return "";
   return `<section class="vitals-import-card is-review"><div class="supplement-head"><div><small>${"REVIEW EXTRACTED VALUES"}</small><strong>${"From Apple Health screenshot"}</strong></div></div>
     <div class="vitals-review-grid">
