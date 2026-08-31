@@ -1088,7 +1088,7 @@ function habitProperties(payload) {
     "Streak": { number: Math.max(0, Math.min(370, Number(payload.streak) || 0)) },
     "Source": { select: { name: "Rep Gym Companion" } },
     "Updated At": { date: { start: safeText(payload.updatedAt, 40) || (/* @__PURE__ */ new Date()).toISOString() } },
-    "Notes": { rich_text: richText([safeText(payload.nameAr, 100), safeText(payload.notes, 500)].filter(Boolean).join(" \xB7 ")) }
+    "Notes": { rich_text: richText(safeText(payload.notes, 500)) }
   };
 }
 function foodProperties(payload) {

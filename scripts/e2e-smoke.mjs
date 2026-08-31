@@ -367,14 +367,6 @@ try {
   await page.click('[data-settings-tab="coach"]');
   assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");
 
-  // language toggle lives in General settings instead of the crowded top bar
-  await page.click('[data-settings-tab="general"]');
-  await page.click('[data-language="ar"]');
-  await page.waitForTimeout(300);
-  assertTrue((await page.evaluate(() => document.documentElement.dir)) === "rtl", "Language toggle flips to RTL");
-  await page.click('[data-language="en"]');
-  await page.waitForTimeout(200);
-
   const serviceWorkerReady=await page.evaluate(()=>Promise.race([navigator.serviceWorker.ready.then(()=>true),new Promise(resolve=>setTimeout(()=>resolve(false),5000))]));
   if(serviceWorkerReady){
     await context.setOffline(true);

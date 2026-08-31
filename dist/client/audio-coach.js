@@ -24,16 +24,10 @@
   }
   initVoices();
 
-  function getBestVoice(lang){
+  function getBestVoice(){
     if(!("speechSynthesis" in window)) return null;
     const voices = window.speechSynthesis.getVoices();
     if(!voices.length) return null;
-    const isAr = lang === "ar" || lang?.startsWith("ar");
-    if(isAr){
-      return voices.find(v => v.lang.startsWith("ar-") || v.lang === "ar") ||
-             voices.find(v => v.name.toLowerCase().includes("arabic") || v.name.toLowerCase().includes("tarik") || v.name.toLowerCase().includes("maged")) ||
-             null;
-    }
     return voices.find(v => v.lang === "en-US" && (v.name.includes("Natural") || v.name.includes("Siri") || v.name.includes("Samantha") || v.name.includes("Google"))) ||
            voices.find(v => v.lang.startsWith("en-") && !v.name.includes("Bad")) ||
            voices.find(v => v.lang.startsWith("en")) ||
@@ -44,13 +38,12 @@
     if(!coachState.enabled || !("speechSynthesis" in window) || !text) return;
     try {
       window.speechSynthesis.cancel(); // Stop prior queue for real-time responsiveness
-      const lang = options.lang || window.state?.lang || "en";
       const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = lang === "ar" ? "ar-EG" : "en-US";
+      utter.lang = "en-US";
       utter.volume = options.volume ?? coachState.volume;
       utter.rate = options.rate ?? coachState.rate;
       utter.pitch = options.pitch ?? coachState.pitch;
-      const voice = getBestVoice(lang);
+      const voice = getBestVoice();
       if(voice) utter.voice = voice;
       window.speechSynthesis.speak(utter);
     } catch(e){}
@@ -75,52 +68,43 @@
   }
 
   function announceSetComplete(setIndex, weight, reps, rpe, advice){
-    const ar = window.state?.lang === "ar";
     playTone(587, "sine", 0.1);
     setTimeout(() => playTone(880, "sine", 0.2), 100);
 
-    const wText = weight ? (ar ? `${weight} كيلو` : `${weight} kg`) : "";
-    const rText = reps ? (ar ? `${reps} تكرار` : `${reps} reps`) : "";
+    const wText = weight ? ( `${weight} kg`) : "";
+    const rText = reps ? ( `${reps} reps`) : "";
     const setNum = setIndex + 1;
 
-    let msg = "";
-    if(ar){
-      msg = `المجموعة ${setNum}. ${wText} ${rText}.`;
-      if(advice) msg += ` ${advice}`;
-    } else {
-      msg = `Set ${setNum} complete. ${wText ? `${wText} for ` : ""}${rText}.`;
-      if(advice) msg += ` ${advice}`;
-    }
-    speak(msg, { lang: ar ? "ar" : "en" });
+    let msg = `Set ${setNum} complete. ${wText ? `${wText} for ` : ""}${rText}.`;
+    if(advice) msg += ` ${advice}`;
+    speak(msg);
   }
 
   function announceRestCountdown(remainingSeconds){
-    const ar = window.state?.lang === "ar";
     if(remainingSeconds === 30){
       playTone(440, "sine", 0.15);
-      speak(ar ? "30 ثانية راحة متبقية" : "30 seconds rest remaining", { lang: ar ? "ar" : "en" });
+      speak( "30 seconds rest remaining");
     } else if(remainingSeconds === 10){
       playTone(660, "triangle", 0.2);
-      speak(ar ? "10 ثوانٍ، استعد للمجموعة القادمة" : "10 seconds, get ready", { lang: ar ? "ar" : "en" });
+      speak( "10 seconds, get ready");
     } else if(remainingSeconds === 3){
       playTone(880, "sine", 0.1);
-      speak(ar ? "ثلاثة" : "Three", { lang: ar ? "ar" : "en" });
+      speak( "Three");
     } else if(remainingSeconds === 2){
       playTone(880, "sine", 0.1);
-      speak(ar ? "اثنان" : "Two", { lang: ar ? "ar" : "en" });
+      speak( "Two");
     } else if(remainingSeconds === 1){
       playTone(880, "sine", 0.1);
-      speak(ar ? "واحد" : "One", { lang: ar ? "ar" : "en" });
+      speak( "One");
     } else if(remainingSeconds === 0){
       playTone(1174, "sine", 0.35);
-      speak(ar ? "ابدأ المجموعة!" : "Next set, go!", { lang: ar ? "ar" : "en" });
+      speak( "Next set, go!");
     }
   }
 
   function announceExercise(exerciseName, prescription){
-    const ar = window.state?.lang === "ar";
-    const msg = ar ? `التمرين التالي: ${exerciseName}. ${prescription || ""}` : `Next exercise: ${exerciseName}. ${prescription || ""}`;
-    speak(msg, { lang: ar ? "ar" : "en" });
+    const msg =  `Next exercise: ${exerciseName}. ${prescription || ""}`;
+    speak(msg);
   }
 
   window.REP_AUDIO_COACH = {

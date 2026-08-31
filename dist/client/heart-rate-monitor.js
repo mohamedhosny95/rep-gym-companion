@@ -70,7 +70,7 @@
 
   async function connectBluetooth(){
     if(!navigator.bluetooth){
-      throw Error(window.state?.lang === "ar" ? "تقنية Web Bluetooth غير مدعومة في هذا المتصفح. يمكنك تفعيل وضع المحاكاة." : "Web Bluetooth is not supported in this browser. You can use Simulation mode.");
+      throw Error( "Web Bluetooth is not supported in this browser. You can use Simulation mode.");
     }
     try {
       const device = await navigator.bluetooth.requestDevice({
@@ -106,7 +106,7 @@
     stopSimulation();
     state.connected = true;
     state.simulated = true;
-    state.deviceName = window.state?.lang === "ar" ? "محاكي نبضات القلب" : "Simulated HR Monitor";
+    state.deviceName =  "Simulated HR Monitor";
     let cur = baseBpm;
     updateBpm(cur);
     state.intervalId = setInterval(() => {
@@ -136,7 +136,7 @@
   function onDisconnected(){
     disconnect();
     if(window.showToast){
-      window.showToast(window.state?.lang === "ar" ? "انقطع اتصال حساس نبضات القلب." : "Heart rate monitor disconnected.");
+      window.showToast( "Heart rate monitor disconnected.");
     }
   }
 
@@ -145,9 +145,9 @@
     return () => state.listeners.delete(fn);
   }
 
-  function renderHrBadge(ar){
+  function renderHrBadge(){
     if(!state.connected || !state.currentBpm){
-      return `<button class="hr-connect-btn" data-open-hr-modal type="button" aria-label="${ar?"ربط حساس النبض":"Connect Heart Rate"}"><span class="hr-icon">💓</span><span>${ar?"ربط النبض":"Connect HR"}</span></button>`;
+      return `<button class="hr-connect-btn" data-open-hr-modal type="button" aria-label="${"Connect Heart Rate"}"><span class="hr-icon">💓</span><span>${"Connect HR"}</span></button>`;
     }
     const zone = getZone(state.currentBpm, state.maxHr);
     return `<button class="hr-live-badge" data-open-hr-modal data-live-hr-badge type="button" style="border-color:${zone.color};color:${zone.color};" aria-label="Heart Rate ${state.currentBpm} BPM">
@@ -159,7 +159,6 @@
 
   function openHrModal(){
     if(document.querySelector(".hr-modal-overlay")) return;
-    const ar = window.state?.lang === "ar";
     const overlay = document.createElement("div");
     overlay.className = "timed-mode hr-modal-overlay";
     const maxHr = computeMaxHr();
@@ -168,18 +167,18 @@
     overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="workout-preflight-panel" style="max-width:440px;margin:auto;">
         <button class="dialog-close" data-hr-close aria-label="Close">×</button>
-        <span class="set-log-kicker" style="color:#f43f5e;">💓 ${ar?"مراقبة النبض ومناطق التدريب":"LIVE HEART RATE & RECOVERY ZONES"}</span>
-        <h2 style="margin:4px 0 14px;">${ar?"حساس نبضات القلب":"Heart Rate Monitor"}</h2>
+        <span class="set-log-kicker" style="color:#f43f5e;">💓 ${"LIVE HEART RATE & RECOVERY ZONES"}</span>
+        <h2 style="margin:4px 0 14px;">${"Heart Rate Monitor"}</h2>
         
         <div class="hr-status-card" style="text-align:center;padding:18px;border-radius:18px;background:linear-gradient(145deg,rgba(244,63,94,.08),var(--panel-2));border:1px solid rgba(244,63,94,.2);margin-bottom:14px;">
           <div style="font-size:36px;font-weight:900;color:${zone.color};">
             <span data-modal-hr-bpm>${state.currentBpm || "—"}</span> <small style="font-size:16px;color:var(--muted);">BPM</small>
           </div>
           <div style="margin-top:4px;font-size:12px;font-weight:800;color:${zone.color};" data-modal-hr-zone>
-            ${state.connected ? zone.name : (ar ? "غير متصل" : "Not connected")}
+            ${state.connected ? zone.name : ( "Not connected")}
           </div>
           <small style="display:block;margin-top:4px;color:var(--muted);font-size:11px;">
-            ${state.connected ? `${ar?"الجهاز المتصل: ":"Device: "} ${esc(state.deviceName)}` : (ar ? "يدعم Polar, Garmin, Apple Watch BLE, Whoop" : "Supports Polar, Garmin, Apple Watch BLE, Whoop")}
+            ${state.connected ? `${"Device: "} ${esc(state.deviceName)}` : ( "Supports Polar, Garmin, Apple Watch BLE, Whoop")}
           </small>
         </div>
 
@@ -204,14 +203,14 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           ${!state.connected ? `
             <button class="settings-primary" data-hr-ble-connect style="background:#f43f5e;color:#fff;">
-              🔍 ${ar?"بحث عبر Bluetooth":"Pair Bluetooth HR"}
+              🔍 ${"Pair Bluetooth HR"}
             </button>
             <button class="settings-primary" data-hr-sim-connect style="background:var(--panel-2);color:var(--text);border:1px solid var(--line);">
-              ⚡ ${ar?"محاكاة تجريبية":"Simulate HR"}
+              ⚡ ${"Simulate HR"}
             </button>
           ` : `
             <button class="settings-primary" data-hr-disconnect style="grid-column:1/-1;background:var(--panel-2);color:#f43f5e;border:1px solid rgba(244,63,94,.3);">
-              ✕ ${ar?"قطع الاتصال":"Disconnect Sensor"}
+              ✕ ${"Disconnect Sensor"}
             </button>
           `}
         </div>
@@ -251,7 +250,7 @@
       unsubscribe();
       overlay.remove();
       if(window.renderExercise) window.renderExercise();
-      if(window.showToast) window.showToast(ar?"تم تفعيل وضع محاكاة نبضات القلب.":"Heart rate simulation started.");
+      if(window.showToast) window.showToast("Heart rate simulation started.");
     });
 
     overlay.querySelector("[data-hr-disconnect]")?.addEventListener("click", () => {

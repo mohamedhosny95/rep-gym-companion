@@ -86,27 +86,26 @@
 
   function openScannerModal(onScanned){
     if(document.querySelector(".barcode-modal-overlay")) return;
-    const ar = window.state?.lang === "ar";
     const overlay = document.createElement("div");
     overlay.className = "timed-mode barcode-modal-overlay";
     overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="workout-preflight-panel barcode-scanner-panel" style="max-width:440px;margin:auto;padding:16px;">
         <button class="dialog-close" data-barcode-close aria-label="Close">×</button>
-        <span class="set-log-kicker" style="color:var(--acid);">📷 ${ar?"ماسح الباركود الذكي":"SMART BARCODE SCANNER"}</span>
-        <h2 style="margin:4px 0 12px;">${ar?"مسح باركود المنتج":"Scan Product Barcode"}</h2>
+        <span class="set-log-kicker" style="color:var(--acid);">📷 ${"SMART BARCODE SCANNER"}</span>
+        <h2 style="margin:4px 0 12px;">${"Scan Product Barcode"}</h2>
         
         <div class="barcode-viewfinder" style="position:relative;width:100%;height:240px;background:#000;border-radius:16px;overflow:hidden;margin-bottom:12px;">
           <video data-scanner-video autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
           <div class="scanner-laser"></div>
           <div class="scanner-corners"></div>
           <div class="scanner-hint" data-scanner-hint style="position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#fff;font-size:11px;font-weight:800;text-shadow:0 2px 4px rgba(0,0,0,.8);">
-            ${ar?"وجّه الكاميرا نحو الباركود":"Point camera at product barcode"}
+            ${"Point camera at product barcode"}
           </div>
         </div>
 
         <form data-manual-barcode-form style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px;">
-          <input data-manual-barcode-input type="text" inputmode="numeric" placeholder="${ar?"أو اكتب رقم الباركود":"Or type barcode number"}" style="height:44px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:#131715;color:var(--text);font:inherit;font-size:14px;">
-          <button type="submit" class="settings-primary" style="height:44px;padding:0 16px;background:var(--acid);color:var(--acid-ink);">${ar?"بحث":"Lookup"}</button>
+          <input data-manual-barcode-input type="text" inputmode="numeric" placeholder="${"Or type barcode number"}" style="height:44px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:#131715;color:var(--text);font:inherit;font-size:14px;">
+          <button type="submit" class="settings-primary" style="height:44px;padding:0 16px;background:var(--acid);color:var(--acid-ink);">${"Lookup"}</button>
         </form>
 
         <div style="display:flex;gap:6px;">
@@ -163,14 +162,14 @@
           scanFrame();
         }
       } catch(err){
-        if(hint) hint.textContent = ar ? "تعذر فتح الكاميرا. استخدم الإدخال اليدوي." : "Camera unavailable. Use manual input below.";
+        if(hint) hint.textContent =  "Camera unavailable. Use manual input below.";
       }
     }
     startCamera();
 
     async function handleFound(code){
       cleanup();
-      if(window.showToast) window.showToast(ar ? `تم العثور على باركود ${code}. جارٍ جلب البيانات…` : `Barcode ${code} found. Fetching nutrition…`);
+      if(window.showToast) window.showToast( `Barcode ${code} found. Fetching nutrition…`);
       const item = await lookupBarcode(code);
       if(onScanned){
         onScanned(item);
@@ -180,7 +179,7 @@
           mealType: window.state.foodMealType || "Snack",
           logMethod: "Barcode"
         };
-        window.state.foodStatus = ar ? "تم جلب بيانات المنتج بالباركود. راجع ثم احفظ." : "Product nutrition loaded via barcode. Confirm portions.";
+        window.state.foodStatus =  "Product nutrition loaded via barcode. Confirm portions.";
         if(window.persist) window.persist();
         if(window.renderNutrition) window.renderNutrition();
       }
