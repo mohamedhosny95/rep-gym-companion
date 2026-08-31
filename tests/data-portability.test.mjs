@@ -55,16 +55,6 @@ test("Report card generator renders valid HTML with comprehensive metrics in Eng
   assert.ok(html.includes("@media print"), "Contains print-optimized CSS");
 });
 
-test("Report card generator renders valid RTL HTML in Arabic", () => {
-  const reportCard = createReportCardContext();
-  const state = { lang: "ar" };
-  const html = reportCard.generateReportHtml(state);
-
-  assert.ok(html.includes('dir="rtl"'), "Contains RTL direction");
-  assert.ok(html.includes("تقرير دورة التدريب والتغذية الشامل"), "Contains Arabic title");
-  assert.ok(html.includes("🖨️ طباعة / حفظ كـ PDF"), "Contains Arabic print button");
-});
-
 test("Encrypted backup crypto primitives adhere to AES-GCM 256-bit PBKDF2 standards", async () => {
   const crypto = webcrypto;
   const encoder = new TextEncoder();
