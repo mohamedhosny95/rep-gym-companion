@@ -139,6 +139,26 @@ const anatomy = {
   stretch:     ["cardio", "300% 200%", "100% 0%", "100% 100%", "Lats · Obliques", null]
 };
 
+// The illustrated atlas cells were drawn with generous headroom around the
+// figure (fine for the full-cell Side sprite, but visibly padded next to the
+// edge-to-edge cinematic photos on Front). Only these 7 motions can still
+// reach the illustrated atlas on Front view - every named exercise now has
+// real front-view cinematic media, so this only fires for substitution/swap
+// exercises (e.g. Back Extension -> Hip Thrust Machine) that inherit the
+// base exercise's motion. Values are a tighter background-size/position crop
+// of the same atlas cell, hand-tuned per motion so the zoom doesn't clip
+// limbs at the frame edge (pulldown and birddog especially - both already
+// reach close to their cell's edges in the source art).
+const anatomyFrontCrop = {
+  legpress:    ["440% 330%", "66.176% 4.565%", "98.529% 4.565%"],
+  hinge:       ["540% 405%", "3.977% 49.115%", "34.659% 49.115%"],
+  chestpress:  ["472% 354%", "65.86% 49.071%", "97.581% 49.071%"],
+  row:         ["472% 354%", "2.419% 94.134%", "34.14% 94.134%"],
+  pulldown:    ["424% 318%", "66.358% 94.734%", "99.074% 94.734%"],
+  floor:       ["625% 250%", "73.81% 8.333%", "73.81% 91.667%"],
+  birddog:     ["540% 216%", "99.091% 1.586%", "99.091% 94.69%"]
+};
+
 const motionGuide = {
   march:["Lift · Switch",180], catcow:["Inhale: cow · Exhale: cat",0], kneel:["Ease forward · Hold",45],
   floor:["Lift 1s · Hold 2s · Lower 2s",45], birddog:["Extend · Hold · Return",60], plank:["Brace · Breathe normally",45],
@@ -383,9 +403,11 @@ function anatomyVisual(motion) {
     </div>`;
   }
   const atlasFile=`assets/${atlas}-anatomy${state.viewMode==="front"?"-front":""}-atlas.webp`;
-  return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${size};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
-    <span class="media-ambient" aria-hidden="true"><i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${b}"></i></span>
-    <i class="anatomy-frame frame-a media-focus-frame" style="background-image:url('${atlasFile}');background-position:${a}"></i><i class="anatomy-frame frame-b media-focus-frame" style="background-image:url('${atlasFile}');background-position:${b}"></i>
+  const crop=state.viewMode==="front"?anatomyFrontCrop[motion]:null;
+  const [cellSize,cellA,cellB]=crop||[size,a,b];
+  return `<div class="anatomy-motion motion-${motion} ${flip?"flip-b":""} ${state.paused?"is-paused":""} ${state.muscles?"":"muscles-off"}" style="--atlas-size:${cellSize};--cell-ratio:${ratios[atlas]};--loop-speed:${4/state.speed}s">
+    <span class="media-ambient" aria-hidden="true"><i class="anatomy-frame frame-a" style="background-image:url('${atlasFile}');background-position:${cellA}"></i><i class="anatomy-frame frame-b" style="background-image:url('${atlasFile}');background-position:${cellB}"></i></span>
+    <i class="anatomy-frame frame-a media-focus-frame" style="background-image:url('${atlasFile}');background-position:${cellA}"></i><i class="anatomy-frame frame-b media-focus-frame" style="background-image:url('${atlasFile}');background-position:${cellB}"></i>
     <span class="motion-path" aria-hidden="true"><i></i></span><span class="range-warning" aria-hidden="true"></span>
     <span class="muscle-callout"><b>${u.active}</b>${muscles}</span><span class="phase-pill"><i></i> ${u.startFinish}</span>
     <span class="guide-callout">${guide[0]}</span>${phaseRail}
