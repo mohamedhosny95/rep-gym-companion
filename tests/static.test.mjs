@@ -55,10 +55,10 @@ test("durable state is split into IndexedDB and optional assets load on demand",
   assert.match(enhancements,/loadOptionalScript\("qrcode\.js","qrcode"\)/);assert.match(enhancements,/REP_BUILD_VERSION/);
 });
 
-test("daily habits are bilingual, durable, streak-aware, and included in direct sync",async()=>{
+test("daily habits are durable, streak-aware, and included in direct sync",async()=>{
   const [habits,sync,app,sw,worker]=await Promise.all([read("dist/client/habits.js"),read("dist/client/sync.js"),read("dist/client/app.js"),read("dist/client/sw.js"),read("dist/server/index.js")]);
-  for(const marker of ["Sleep","قيام الليل","صلاة الفجر","Sadqa","صدقة","ورد القرآن","حفظ القرآن","Workout","أذكار الصباح والمساء","Reading","Water"])assert.match(habits,new RegExp(marker));
-  assert.doesNotMatch(habits,/Fasting|صيام|en:"Charity"|30 minutes|30 دقيقة/);assert.match(habits,/Read pages of the Quran/);
+  for(const marker of ["Sleep","Night prayer","Fajr prayer","Sadqa","Quran wird","Quran memorization","Workout","Morning & evening adhkar","Reading","Water"])assert.match(habits,new RegExp(marker));
+  assert.doesNotMatch(habits,/Fasting|en:"Charity"|30 minutes/);assert.match(habits,/Read pages of the Quran/);
   assert.match(habits,/state\.daily\.habits/);assert.match(habits,/payloadForDate/);assert.match(habits,/Habit tracker:/);assert.match(habits,/function streak/);assert.match(habits,/Last 7 days/);
   assert.match(habits,/state\.habitOrder/);assert.match(habits,/data-habit-reorder/);assert.match(habits,/data-habit-move/);assert.match(habits,/dragstart/);assert.match(habits,/Open Habit Log/);assert.match(habits,/queueHealth\("habit"/);
   assert.match(sync,/state\.daily\?\.habits/);assert.match(sync,/REP_HABITS\?\.payloadForDate/);assert.match(sync,/payloadForHabit/);assert.match(app,/state\.daily\?\.habits/);assert.match(sw,/\.\/habits\.js/);
@@ -69,6 +69,34 @@ test("startup and social assets stay within their performance budgets",async()=>
   const social=await stat(join(root,"dist","client","rep-social-preview.png")),html=await read("dist/client/index.html"),sw=await read("dist/client/sw.js");
   assert.ok(social.size<300_000,`social preview is ${social.size} bytes`);
   assert.doesNotMatch(html,/src="app\.js/);assert.doesNotMatch(html,/src="enhancements\.js/);assert.doesNotMatch(sw,/qrcode\.js/);
+});
+
+test("priority cinematic motions use complete, mobile-sized three-frame cycles",async()=>{
+  const app=await read("dist/client/app.js"),css=await read("dist/client/styles.css"),block=app.match(/const cinematicMotionFrames = \{([\s\S]+?)\n\};/)?.[1]||"";
+  const assets=[...block.matchAll(/"(assets\/cinematic\/[^\"]+\.webp)"/g)].map(match=>match[1]);
+  assert.equal(assets.length,39,"thirteen priority exercises each declare three frames");
+  for(const asset of assets){
+    const file=await stat(join(root,"dist","client",asset));
+    assert.ok(file.size<180_000,`${asset} is ${file.size} bytes`);
+  }
+  assert.match(css,/cinematicFrameOne/);assert.match(css,/cinematicFrameTwo/);assert.match(css,/cinematicFrameThree/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?cinematic-motion>\.cinematic-frame:not\(:first-of-type\)\{opacity:0\}/);
+});
+
+test("active workout media stays bounded and exposes decode telemetry",async()=>{
+  const app=await read("dist/client/app.js"),telemetry=await read("dist/client/telemetry.js");
+  assert.match(app,/function primeUpcomingCinematicMedia/);assert.match(app,/data-rep-media-preload/);assert.match(app,/session\?\.exercises\?\.\[index\+1\]/);
+  assert.match(app,/function observeCinematicMedia/);assert.match(app,/img\.decode/);assert.match(app,/recordMedia/);
+  assert.match(telemetry,/mediaLoadMs:1200/);assert.match(telemetry,/mediaDecodeMs:120/);assert.match(telemetry,/recordMedia/);assert.match(telemetry,/maxDecodeMs/);
+});
+
+test("program discovery filters the real workout sessions without replacing their handlers",async()=>{
+  const app=await read("dist/client/app.js"),enhancements=await read("dist/client/enhancements.js"),css=await read("dist/client/styles.css");
+  assert.match(app,/data-program-category/);assert.match(app,/data-session="\$\{id\}"/);assert.match(app,/session-card-media/);
+  for(const filter of ["all","gym","home","sport","cardio"])assert.match(enhancements,new RegExp(`\\[\\"${filter}\\"`));
+  assert.match(enhancements,/data-program-filter="\$\{id\}"/);
+  assert.match(enhancements,/card\.hidden=filter!=="all"/);assert.match(enhancements,/sessionGrid\?\.querySelectorAll\("\[data-session\]"\)/);
+  assert.match(css,/\.program-discovery/);assert.match(css,/\.program-session-card\.has-session-media/);
 });
 
 test("browser pairing keeps only a non-secret marker and synchronizes tabs",async()=>{

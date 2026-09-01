@@ -116,6 +116,8 @@ try {
   await page.waitForSelector("text=Move well.", { timeout: 10000 });
   assertTrue(true, "Training tab loads");
   assertTrue(await page.locator('.today-training-action').count() === 1, "Training opens on the focused Today view");
+  assertTrue(await page.locator('[data-start-cardio-fallback][data-session-id="cardio"]:visible').count() === 1, "Today exposes cardio when there is no football or padel");
+  assertTrue(await page.locator('[data-start-cardio-fallback]').evaluate(el=>el.getBoundingClientRect().height >= 44), "Cardio fallback keeps a 44px touch target");
   await assertAccessibleView(page,"Training Today");
   assertTrue(await page.locator('.workout-guard').count() === 0, "Training preflight stays out of the daily page until it is needed");
   await page.click('[data-start-today]');
@@ -124,6 +126,28 @@ try {
   await page.click('[data-close-preflight]');
   await page.click('[data-training-view="program"]');
   await page.waitForTimeout(200);
+  assertTrue(await page.locator('.program-discovery').count() === 1, "Program opens the contextual workout library");
+  assertTrue(await page.locator('.program-session-card.has-session-media').count() === 6, "Every real workout plan has contextual discovery media");
+  assertTrue(await page.locator('.program-session-card.is-recommended').count() === 1, "Program marks today's real scheduled plan");
+  await page.click('[data-program-filter="sport"]');
+  assertTrue(await page.locator('.program-session-card[data-program-category="sport"]:visible').count() === 3, "Sport filter keeps football, padel, and outdoor plans visible");
+  assertTrue(await page.locator('[data-log-activity]:visible').count() === 0, "Filtered discovery removes unrelated actions");
+  await page.click('[data-program-filter="all"]');
+
+  await page.click('[data-session="football"]');
+  await page.waitForTimeout(150);
+  const footballMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
+  assertTrue(footballMedia.length===7&&footballMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/football-'))), "Every football movement uses football-pitch media");
+  assertTrue(footballMedia.some(row=>row.name.includes('Lateral Shuffles')&&row.sources.length===3), "Football agility uses a three-frame male movement cycle");
+  await page.click('[data-cancel-preview]');
+  await page.waitForTimeout(150);
+  await page.click('[data-session="padel"]');
+  await page.waitForTimeout(150);
+  const padelMedia=await page.locator('.preview-row').evaluateAll(rows=>rows.map(row=>({name:row.querySelector('strong')?.textContent||'',sources:[...row.querySelectorAll('.cinematic-motion img')].map(image=>image.getAttribute('src'))})));
+  assertTrue(padelMedia.length===7&&padelMedia.every(row=>row.sources.length>0&&row.sources.every(src=>src?.includes('assets/cinematic/padel-'))), "Every padel movement uses male padel-court media");
+  assertTrue(padelMedia.some(row=>row.name.includes('Shoulder Prep')&&row.sources.length===3), "Padel shoulder prep uses a three-frame male movement cycle");
+  await page.click('[data-cancel-preview]');
+  await page.waitForTimeout(150);
 
   // Regression guard: tapping a session must show a preview, not jump straight in.
   await page.click('[data-session="gym"]');
@@ -134,6 +158,36 @@ try {
   await page.click("[data-start-session]");
   await page.waitForTimeout(300);
   assertTrue(await page.evaluate(() => document.body.classList.contains("workout-mode")), "Start workout enters the player");
+  assertTrue((await page.evaluate(() => window.scrollY)) <= 1, "Active workout opens at the progress header instead of preserving preview scroll");
+  for (const [selector,label] of [
+    [".exercise-hero-stage","cinematic exercise animation"],
+    [".exercise-hero-stage .cinematic-motion","photorealistic exercise media"],
+    [".exercise-hero-stage .media-phase-rail","guided motion phase rail"],
+    [".hero-muscle-label","muscle visualization label"],
+    [".current-set-card","current set focus"],
+    [".workout-primary-action","primary set action"],
+    [".motion-controls","animation controls"]
+  ]) assertTrue(await page.locator(selector).count() === 1, `Active workout exposes its ${label}`);
+  assertTrue((await page.locator(".exercise-hero-stage .cinematic-motion img").first().getAttribute("src")).includes("assets/cinematic/"), "Active workout uses the exercise-specific cinematic asset");
+  assertTrue((await page.locator('link[data-rep-media-preload="next"]').getAttribute("href")).includes("leg-press"), "Active workout preloads only the real next exercise");
+  const initialMediaTelemetry=await page.evaluate(()=>window.REP_TELEMETRY.snapshot().media);
+  assertTrue(initialMediaTelemetry.loads>=1&&initialMediaTelemetry.failures===0, "Cinematic image load and decode telemetry records without failures");
+  assertTrue(!(await page.locator(".topbar").isVisible()), "Generic app utilities stay out of the focused workout header");
+  for (const width of [375,390,430]) {
+    await page.setViewportSize({width,height:844});
+    assertTrue(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `Active workout has no horizontal overflow at ${width}px`);
+  }
+  await page.setViewportSize({width:390,height:900});
+  await page.click('[data-motion-action="speed"]');
+  assertTrue(await page.locator(".workout-choice-grid [data-choice]").count() === 5, "Speed control opens restrained playback choices");
+  await page.click("[data-choice-close]");
+  await page.click("[data-exercise-timer]");
+  assertTrue(await page.locator(".timed-ring").count() === 1, "Timed exercise opens a prominent progress ring");
+  await page.click("[data-timed-pause]");
+  assertTrue(await page.locator(".workout-timed-mode.is-paused").count() === 1, "Timed exercise can pause without completing the set");
+  await page.click("[data-timed-add]");
+  assertTrue((await page.locator("[data-timed-total]").textContent()).includes("5:15"), "Timed exercise extension updates the real total");
+  await page.click("[data-timed-close]");
 
   // Regression guard: the rest-timer dock must not block Next/Previous.
   while (await page.locator(".set-button:not(.is-done)").count() > 0) {
@@ -145,6 +199,27 @@ try {
   let nextClickable = true;
   try { await nextBtn.click({ timeout: 3000 }); } catch { nextClickable = false; }
   assertTrue(nextClickable, "Next exercise button is reachable while the rest timer is active");
+  await page.waitForTimeout(250);
+  assertTrue(await page.locator(".live-set-entry").count() === 1, "Strength exercise exposes quick entry backed by the set log");
+  assertTrue(await page.locator(".exercise-hero-stage .cinematic-motion img").count() === 3, "Leg press uses a three-frame male movement cycle");
+  await page.fill('[data-live-log][data-log="reps"]',"8");
+  const activeSetIndex=await page.locator('[data-live-log][data-log="reps"]').getAttribute("data-log-set");
+  const detailedRepValues=await page.locator(`.set-card-row [data-log="reps"][data-log-set="${activeSetIndex}"]`).evaluateAll(inputs=>inputs.map(input=>input.value));
+  assertTrue(detailedRepValues.length===1&&detailedRepValues[0]==="8", "Quick reps stay synchronized with the matching detailed set row");
+  await page.click('[data-live-reps-step="1"]');
+  assertTrue(await page.locator('[data-live-log][data-log="reps"]').inputValue() === "9", "Manual rep control updates the current logged set");
+
+  while (await page.locator(".set-button:not(.is-done)").count() > 0) {
+    await page.locator(".set-button:not(.is-done)").first().click().catch(() => {});
+    await page.waitForTimeout(40);
+  }
+  await page.waitForTimeout(120);
+  assertTrue(await page.locator("#timerNextPreview:not(.is-hidden)").count() === 1, "Final rest opens a dedicated next-exercise preview");
+  assertTrue((await page.locator("#timerPreviewName").textContent()).includes("Back Extension"), "Rest preview is connected to the real next exercise");
+  assertTrue(await page.locator("#timerPreviewVisual :is(.media-focus-frame,.cinematic-motion img)").count() > 0, "Rest preview reuses the next exercise media");
+  await page.click("#timerNextNow");
+  await page.waitForTimeout(200);
+  assertTrue((await page.locator(".workout-identity h1").textContent()).includes("Back Extension"), "Start now advances directly from rest to the previewed exercise");
 
   // finish the rest of the session
   for (let i = 0; i < 10; i++) {
@@ -162,6 +237,8 @@ try {
   }
   await page.waitForSelector(".complete", { timeout: 8000 }).catch(() => {});
   assertTrue(await page.locator(".complete").count() > 0, "Session completes and shows the completion screen");
+  assertTrue(await page.locator(".complete-stat-grid > div").count() >= 3, "Completion handoff summarizes real session metrics");
+  assertTrue(await page.locator("[data-history-after]").count() === 1, "Completion handoff links directly to session history");
   await page.click("[data-home]").catch(() => {});
   await page.waitForTimeout(300);
 
@@ -169,6 +246,10 @@ try {
   await page.waitForTimeout(300);
   const historyText = await page.locator(".history-list").evaluate(el => el.textContent).catch(() => "");
   assertTrue(historyText.includes("Gym"), "Completed session appears in History");
+  assertTrue(await page.locator(".activity-overview .history-summary > div").count() === 4, "Activity overview summarizes only real history totals");
+  assertTrue(await page.locator(".personal-best-grid .pb-card").count() === 0, "Activity does not invent a personal best without a logged load");
+  assertTrue(await page.locator(".history-utilities:not([open])").count() === 1, "Activity keeps data and connection utilities progressively disclosed");
+  assertTrue(await page.locator(".history-utilities [data-export]").count() === 1, "Activity refinement preserves backup export access");
   await page.click("#homeButton");
   await page.waitForTimeout(200);
 
@@ -183,6 +264,34 @@ try {
   await page.click("[data-save-activity]");
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".activity-panel").count() === 0, "Activity panel closes after save");
+
+  // Complete every remaining priority session through the real player. This
+  // covers the home/plank, football-pitch, padel-court, and treadmill paths;
+  // the gym session was completed above.
+  for(const [sessionId,label,requiredExercise] of [
+    ["morning","Morning activation","Plank"],
+    ["football","Football","Football Build-up Strides"],
+    ["padel","Padel","Padel Sport-Specific Warm-up"],
+    ["cardio","Treadmill cardio","Incline Treadmill Walk"]
+  ]){
+    await page.click('[data-app-tab="train"]');
+    if(!(await page.locator(".program-discovery").count()))await page.click('[data-training-view="program"]');
+    await page.click(`[data-session="${sessionId}"]`);await page.click("[data-start-session]");
+    const visited=[];
+    for(let exercise=0;exercise<20;exercise++){
+      if(await page.locator(".complete").count())break;
+      visited.push((await page.locator(".workout-identity h1").textContent().catch(()=>""))||"");
+      while(await page.locator(".set-button:not(.is-done)").count()){
+        await page.locator(".set-button:not(.is-done)").first().click().catch(()=>{});await page.waitForTimeout(25);
+      }
+      const next=page.locator("[data-next]");if(!(await next.count()))break;
+      await next.click().catch(()=>{});await page.waitForTimeout(80);
+    }
+    await page.waitForSelector(".complete",{timeout:5000}).catch(()=>{});
+    assertTrue(await page.locator(".complete").count()===1,`${label} completes through the real workout player`);
+    assertTrue(visited.some(name=>name.includes(requiredExercise)),`${label} reaches ${requiredExercise} with real session state`);
+    await page.click("[data-home]");await page.waitForTimeout(120);
+  }
 
   // recovery + sleep (sleep tracker lives on the Vitals tab)
   await page.click('[data-app-tab="health"]');
@@ -232,6 +341,7 @@ try {
   await page.waitForTimeout(200);
   await page.click('[data-health-view="insights"]');
   await page.waitForTimeout(300);
+  assertTrue(await page.locator(".progress-overview .progress-feature").count() === 1, "Progress leads with a real seven-day training summary");
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
   assertTrue(await page.locator(".weekly-health-review").count() === 1, "Weekly Health Review renders");
   assertTrue(await page.locator(".performance-analytics").count() === 1, "Performance Intelligence renders as one integrated insight layer");
@@ -256,14 +366,6 @@ try {
   await page.waitForTimeout(200);
   await page.click('[data-settings-tab="coach"]');
   assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");
-
-  // language toggle lives in General settings instead of the crowded top bar
-  await page.click('[data-settings-tab="general"]');
-  await page.click('[data-language="ar"]');
-  await page.waitForTimeout(300);
-  assertTrue((await page.evaluate(() => document.documentElement.dir)) === "rtl", "Language toggle flips to RTL");
-  await page.click('[data-language="en"]');
-  await page.waitForTimeout(200);
 
   const serviceWorkerReady=await page.evaluate(()=>Promise.race([navigator.serviceWorker.ready.then(()=>true),new Promise(resolve=>setTimeout(()=>resolve(false),5000))]));
   if(serviceWorkerReady){
