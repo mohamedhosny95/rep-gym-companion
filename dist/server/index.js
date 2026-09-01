@@ -741,9 +741,11 @@ function normalizeVitalsImport(value = {}) {
 async function storeVitalsImport(env, vitals) {
   const key = `${VITALS_IMPORT_PREFIX}${vitals.date}`, now = (/* @__PURE__ */ new Date()).toISOString(), existing = await env.PUSH_KV.get(key, "json");
   const priorRuns = Array.isArray(existing?.import_runs) ? existing.import_runs : existing?.imported_at ? [existing.imported_at] : [];
+  const previousRunMs = priorRuns.reduce((latest, value) => Math.max(latest, Date.parse(value) || 0), 0);
+  const importedAt = new Date(Math.max(Date.parse(now), previousRunMs + 1)).toISOString();
   const merged = { ...existing || {} };
   for (const [field, value] of Object.entries(vitals)) if (value !== null && value !== void 0 && value !== "") merged[field] = value;
-  const record = { ...merged, date: vitals.date, imported_at: now, import_runs: [.../* @__PURE__ */ new Set([...priorRuns, now])].sort().slice(-24) };
+  const record = { ...merged, date: vitals.date, imported_at: importedAt, import_runs: [.../* @__PURE__ */ new Set([...priorRuns, importedAt])].sort().slice(-24) };
   await env.PUSH_KV.put(key, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 180 });
   return record;
 }

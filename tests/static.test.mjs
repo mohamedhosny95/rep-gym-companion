@@ -71,6 +71,13 @@ test("startup and social assets stay within their performance budgets",async()=>
   assert.doesNotMatch(html,/src="app\.js/);assert.doesNotMatch(html,/src="enhancements\.js/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
+test("timer chimes and the audio coach share one browser audio context",async()=>{
+  const app=await read("dist/client/app.js"),coach=await read("dist/client/audio-coach.js");
+  assert.match(app,/window\._repAudioCtx=new \(window\.AudioContext\|\|window\.webkitAudioContext\)\(\)/);
+  assert.match(app,/audioCtx=window\._repAudioCtx/);
+  assert.match(coach,/window\._repAudioCtx \|\| \(window\._repAudioCtx = new/);
+});
+
 test("priority cinematic motions use complete, mobile-sized three-frame cycles",async()=>{
   const app=await read("dist/client/app.js"),css=await read("dist/client/styles.css"),block=app.match(/const cinematicMotionFrames = \{([\s\S]+?)\n\};/)?.[1]||"";
   const assets=[...block.matchAll(/"(assets\/cinematic\/[^\"]+\.webp)"/g)].map(match=>match[1]);

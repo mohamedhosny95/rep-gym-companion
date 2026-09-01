@@ -1559,7 +1559,8 @@ function saveLog(base,item){
 }
 let audioCtx=null;
 function ensureAudioContext(){
-  if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch{return null;}}
+  if(!window._repAudioCtx){try{window._repAudioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch{return null;}}
+  audioCtx=window._repAudioCtx;
   if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});
   return audioCtx;
 }
