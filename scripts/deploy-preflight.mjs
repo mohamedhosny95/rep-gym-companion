@@ -91,7 +91,7 @@ passed = check("Worker runtime execution", () => {
 console.log("\n================================================");
 if (passed) {
   console.log("🎉 LOCAL DEPLOYMENT PREFLIGHT PASSED");
-  console.log("Remote secrets, staging contract evidence, and human production approval remain mandatory.");
+  console.log("Remote production secrets, physical-device evidence, and human production approval remain mandatory.");
   process.exit(0);
 } else {
   console.error("❌ DEPLOYMENT PREFLIGHT FAILED: RESOLVE ISSUES BEFORE DEPLOY");

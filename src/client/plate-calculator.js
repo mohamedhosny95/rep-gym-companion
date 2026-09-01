@@ -12,10 +12,10 @@
   ];
 
   const BARS = [
-    { id: "olympic", kg: 20, en: "Olympic Bar (20 kg)", ar: "بار أولمبي (20 كجم)" },
-    { id: "womens",  kg: 15, en: "Women's Bar (15 kg)", ar: "بار سيدات (15 كجم)" },
-    { id: "ez",      kg: 10, en: "EZ Curl Bar (10 kg)", ar: "بار متعرج EZ (10 كجم)" },
-    { id: "smith",   kg: 0,  en: "Smith Machine / Sled (0 kg)", ar: "جهاز سميث / مزلقة (0 كجم)" }
+    { id: "olympic", kg: 20, en: "Olympic Bar (20 kg)" },
+    { id: "womens",  kg: 15, en: "Women's Bar (15 kg)" },
+    { id: "ez",      kg: 10, en: "EZ Curl Bar (10 kg)" },
+    { id: "smith",   kg: 0,  en: "Smith Machine / Sled (0 kg)" }
   ];
 
   function calculatePlates(targetKg, barKg = 20, availablePlates = [20, 10, 5, 2.5, 1.25]) {
@@ -91,7 +91,6 @@
   }
 
   function openPlateCalculator(options = {}) {
-    const ar = typeof state !== "undefined" && state.lang === "ar";
     let currentWeight = Number(options.initialWeight) || 60;
     let selectedBarId = options.barId || "olympic";
 
@@ -99,7 +98,7 @@
     modal.className = "rep-modal-backdrop plate-calc-backdrop";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-label", ar ? "حاسبة أوزان البار" : "Barbell Plate Calculator");
+    modal.setAttribute("aria-label",  "Barbell Plate Calculator");
 
     function renderModalContent() {
       const barDef = BARS.find(b => b.id === selectedBarId) || BARS[0];
@@ -121,10 +120,10 @@
         <div class="rep-modal-sheet plate-calc-sheet">
           <div class="sheet-header">
             <div>
-              <small style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">${ar ? "حاسبة الأوزان والبار" : "BARBELL PLATE CALCULATOR"}</small>
-              <h2 style="font-size:18px;margin:2px 0 0;">${currentWeight} kg <span style="font-size:13px;font-weight:700;color:var(--muted);">${ar ? `(لكل جانب ${result.perSide} كجم)` : `(${result.perSide} kg/side)`}</span></h2>
+              <small style="color:var(--acid);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">${ "BARBELL PLATE CALCULATOR"}</small>
+              <h2 style="font-size:18px;margin:2px 0 0;">${currentWeight} kg <span style="font-size:13px;font-weight:700;color:var(--muted);">${ `(${result.perSide} kg/side)`}</span></h2>
             </div>
-            <button class="sheet-close" type="button" aria-label="${ar ? 'إغلاق' : 'Close'}">✕</button>
+            <button class="sheet-close" type="button" aria-label="${ 'Close'}">✕</button>
           </div>
 
           <div class="plate-visualizer-wrap">
@@ -132,10 +131,10 @@
           </div>
 
           <div class="plate-summary-row">
-            ${summaryList || `<span style="color:var(--muted);font-size:12px;">${ar ? "البار فقط بدون أوزان" : "Bar only (no plates needed)"}</span>`}
+            ${summaryList || `<span style="color:var(--muted);font-size:12px;">${ "Bar only (no plates needed)"}</span>`}
           </div>
 
-          ${result.remainder > 0 ? `<p class="plate-remainder-note" style="color:var(--orange);font-size:11px;margin:4px 0 10px;">⚠️ ${ar ? `متبقي ${result.remainder} كجم لا يمكن تركيبه بأوزان 1.25 كجم.` : `Remaining ${result.remainder} kg cannot be matched with 1.25kg plates.`}</p>` : ''}
+          ${result.remainder > 0 ? `<p class="plate-remainder-note" style="color:var(--orange);font-size:11px;margin:4px 0 10px;">⚠️ ${ `Remaining ${result.remainder} kg cannot be matched with 1.25kg plates.`}</p>` : ''}
 
           <div class="plate-stepper-grid">
             <button type="button" data-adj="-10">-10</button>
@@ -147,17 +146,17 @@
           </div>
 
           <div class="plate-bar-selector">
-            <label style="display:block;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;">${ar ? "نوع البار" : "Bar Type"}</label>
+            <label style="display:block;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;">${ "Bar Type"}</label>
             <div class="bar-pill-grid">
               ${BARS.map(b => `
-                <button type="button" data-bar="${b.id}" class="${selectedBarId === b.id ? 'is-active' : ''}">${ar ? b.ar : b.en}</button>
+                <button type="button" data-bar="${b.id}" class="${selectedBarId === b.id ? 'is-active' : ''}">${ b.en}</button>
               `).join("")}
             </div>
           </div>
 
           <div class="sheet-actions">
-            ${options.onApply ? `<button type="button" class="btn-apply" style="flex:1;height:48px;border:0;border-radius:12px;background:var(--acid);color:var(--acid-ink);font-size:13px;font-weight:900;cursor:pointer;">${ar ? `تطبيق الوزن (${currentWeight} كجم)` : `Apply (${currentWeight} kg)`}</button>` : ''}
-            <button type="button" class="btn-done" style="flex:1;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:13px;font-weight:900;cursor:pointer;">${ar ? "تم" : "Done"}</button>
+            ${options.onApply ? `<button type="button" class="btn-apply" style="flex:1;height:48px;border:0;border-radius:12px;background:var(--acid);color:var(--acid-ink);font-size:13px;font-weight:900;cursor:pointer;">${ `Apply (${currentWeight} kg)`}</button>` : ''}
+            <button type="button" class="btn-done" style="flex:1;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:13px;font-weight:900;cursor:pointer;">${ "Done"}</button>
           </div>
         </div>
       `);

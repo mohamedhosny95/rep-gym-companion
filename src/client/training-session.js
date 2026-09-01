@@ -91,8 +91,7 @@
     return sessionType === "gym" ? "Hold" : "Recovery";
   }
 
-  function progressionAdvice({ logs = {}, history = [], id, lang = "en", recoveryGate = null }){
-    const isAr = lang === "ar";
+  function progressionAdvice({ logs = {}, history = [], id, recoveryGate = null }){
     const recent = (history || [])
       .filter(h => h.session === "gym" && h.loads?.[id])
       .slice(0, 3)
@@ -101,7 +100,7 @@
     const current = setsFromLog(logs[id]);
     const sample = current.some(s => s.reps) ? current : (recent[0] || []);
     if(!sample.length){
-      return isAr ? "سجّل التكرارات وRPE للحصول على اقتراح تلقائي." : "Log reps and RPE to unlock an automatic recommendation.";
+      return "Log reps and RPE to unlock an automatic recommendation.";
     }
     const valid = sample.filter(s => Number(s.reps) > 0);
     const avgRpe = valid.reduce((n, s) => n + (Number(s.rpe) || 7), 0) / (valid.length || 1);
@@ -109,30 +108,29 @@
     const allTop = valid.length >= 2 && valid.every(s => Number(s.reps) >= 12 && (Number(s.rpe) || 7) <= 7.5);
     const twoWins = allTop && recent.slice(0, 2).length === 2 && recent.slice(0, 2).every(a => a.length >= 2 && a.every(s => Number(s.reps) >= 12 && (Number(s.rpe) || 7) <= 7.5));
     if(recoveryGate?.hold){
-      return isAr ? `${recoveryGate.flags} علامات استشفاء حمراء: ثبّت الحمل وخذ يوماً خفيفاً إضافياً.` : `${recoveryGate.flags} recovery red flags: hold the load and take an extra light day.`;
+      return `${recoveryGate.flags} recovery red flags: hold the load and take an extra light day.`;
     }
     if(avgRpe >= 9 || minReps < 8){
-      return isAr ? "خفّض 5% أو ثبّت الوزن حتى تعود التقنية والتكرارات." : "Reduce about 5% or hold until form and reps recover.";
+      return "Reduce about 5% or hold until form and reps recover.";
     }
     if(allTop){
       const jump = ["Leg Press", "Back Extension", "Hip Thrust Machine"].includes(id) ? 5 : 2.5;
-      return isAr ? `${twoWins ? "تقدّم مؤكد:" : "جاهز للتقدم:"} زد ${jump} كجم في الحصة القادمة.` : `${twoWins ? "Progression confirmed:" : "Ready to progress:"} add ${jump} kg next session.`;
+      return `${twoWins ? "Progression confirmed:" : "Ready to progress:"} add ${jump} kg next session.`;
     }
-    return isAr ? "ثبّت الوزن؛ ارفع جودة التكرارات أو أكمل 12 تكراراً عند RPE ≤ 7.5." : "Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
+    return "Hold the load; improve rep quality or reach 12 reps at RPE ≤ 7.5.";
   }
 
-  function cardioAdvice(history = [], lang = "en"){
-    const isAr = lang === "ar";
+  function cardioAdvice(history = []){
     const recent = (history || []).filter(h => h.session === "cardio" && h.cardio).slice(0, 6);
     const easy = recent.filter(h => Number(h.cardio.minutes) >= 25 && Number(h.cardio.rpe) <= 6);
     if(easy.length < 3){
-      return isAr ? `ثبّت الإعدادات: ${easy.length}/3 حصص كاملة وسهلة.` : `Hold settings: ${easy.length}/3 full, easy sessions.`;
+      return `Hold settings: ${easy.length}/3 full, easy sessions.`;
     }
     const span = (new Date(easy[0].date).getTime() - new Date(easy[easy.length - 1].date).getTime()) / 86400000;
     if(span < 21){
-      return isAr ? "الأداء جيد، لكن أكمل 3 أسابيع قبل زيادة الميل أو السرعة." : "Performance is good; complete three weeks before raising incline or pace.";
+      return "Performance is good; complete three weeks before raising incline or pace.";
     }
-    return isAr ? "جاهز: زد الميل أو السرعة قليلاً، وليس المدة." : "Ready: raise incline or pace slightly, not duration.";
+    return "Ready: raise incline or pace slightly, not duration.";
   }
 
   function isCardioProgressionReady(history = []){

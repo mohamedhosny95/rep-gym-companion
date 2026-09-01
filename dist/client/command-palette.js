@@ -3,41 +3,38 @@
 
 (function(){
   function getActions(state){
-    const ar = state.lang === "ar";
     return [
       // Navigation
-      { id: "nav-today", title: ar ? "الرئيسية · اليوم" : "Home · Today", category: ar ? "تنقل" : "Navigation", icon: "🏠", action: () => window.setPrimaryTab?.("home") },
-      { id: "nav-training", title: ar ? "التدريب · التمارين" : "Training · Workouts", category: ar ? "تنقل" : "Navigation", icon: "🏋️", action: () => window.setPrimaryTab?.("train") },
-      { id: "nav-food", title: ar ? "التغذية · متتبع الوجبات" : "Nutrition · Food Tracker", category: ar ? "تنقل" : "Navigation", icon: "🥗", action: () => window.setPrimaryTab?.("food") },
-      { id: "nav-vitals", title: ar ? "العلامات الحيوية والنوم" : "Vitals · Recovery & Sleep", category: ar ? "تنقل" : "Navigation", icon: "❤️", action: () => window.setPrimaryTab?.("health") },
-      { id: "nav-insights", title: ar ? "التحليلات والذكاء التدريبي" : "Insights · Strength & Habits", category: ar ? "تنقل" : "Navigation", icon: "📈", action: () => window.setPrimaryTab?.("insights") },
-      { id: "nav-settings", title: ar ? "الإعدادات والأمان" : "Settings & Security", category: ar ? "تنقل" : "Navigation", icon: "⚙️", action: () => window.renderRepSettings?.() },
+      { id: "nav-today", title:  "Home · Today", category:  "Navigation", icon: "🏠", action: () => window.setPrimaryTab?.("home") },
+      { id: "nav-training", title:  "Training · Workouts", category:  "Navigation", icon: "🏋️", action: () => window.setPrimaryTab?.("train") },
+      { id: "nav-food", title:  "Nutrition · Food Tracker", category:  "Navigation", icon: "🥗", action: () => window.setPrimaryTab?.("food") },
+      { id: "nav-vitals", title:  "Vitals · Recovery & Sleep", category:  "Navigation", icon: "❤️", action: () => window.setPrimaryTab?.("health") },
+      { id: "nav-insights", title:  "Insights · Strength & Habits", category:  "Navigation", icon: "📈", action: () => window.setPrimaryTab?.("insights") },
+      { id: "nav-settings", title:  "Settings & Security", category:  "Navigation", icon: "⚙️", action: () => window.renderRepSettings?.() },
 
       // Quick Tools
-      { id: "tool-plate", title: ar ? "حاسبة أوزان الباربل (Plate Math)" : "Barbell Plate Math Calculator", category: ar ? "أدوات" : "Tools", icon: "🏋️", action: () => window.showPlateCalculator?.(60) },
-      { id: "tool-hr", title: ar ? "ربط حساس نبضات القلب (Bluetooth HR)" : "Connect Bluetooth Heart Rate Monitor", category: ar ? "أدوات" : "Tools", icon: "💓", action: () => window.REP_HEART_RATE?.openHrModal?.() },
-      { id: "tool-barcode", title: ar ? "مسح باركود المنتج (Food Lens)" : "Scan Product Barcode (Food Lens)", category: ar ? "أدوات" : "Tools", icon: "📷", action: () => window.REP_BARCODE_SCANNER?.openScannerModal?.() },
-      { id: "tool-builder", title: ar ? "محرر التمارين والروتين المخصص" : "Custom Routine Builder & Splits", category: ar ? "أدوات" : "Tools", icon: "🛠️", action: () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal?.() },
-      { id: "tool-heatmap", title: ar ? "خريطة توازن وبناء العضلات (Volume Heatmap)" : "Hypertrophy Volume Heatmap", category: ar ? "أدوات" : "Tools", icon: "🔥", action: () => { window.setPrimaryTab?.("insights"); } },
-      { id: "tool-pdf", title: ar ? "تصدير بطاقة الدورة التدريبية (PDF)" : "Export Mesocycle Report (PDF)", category: ar ? "أدوات" : "Tools", icon: "📄", action: () => window.REP_REPORT_CARD?.openPrintableReport(state) },
-      { id: "tool-sync", title: ar ? "مزامنة كل شيء الآن" : "Sync Everything Now", category: ar ? "أدوات" : "Tools", icon: "🔄", action: () => window.REP_SYNC_RUNTIME?.syncEverything?.() },
-      { id: "tool-import", title: ar ? "استيراد بيانات (Strong / Hevy / Apple Health)" : "Import Data (Strong / Hevy / Apple Health)", category: ar ? "أدوات" : "Tools", icon: "📥", action: () => { window.renderRepSettings?.("general"); document.querySelector(".data-migration-card")?.scrollIntoView({ behavior: "smooth" }); } },
-      { id: "tool-preview", title: ar ? "تبديل وضع المعاينة التجريبي (بدون حفظ)" : "Toggle Preview / Sandbox Mode (No Saving)", category: ar ? "أدوات" : "Tools", icon: "🔬", action: () => window.togglePreviewMode?.() },
-      { id: "tool-lang", title: ar ? "Switch to English" : "التبديل إلى العربية", category: ar ? "تفضيلات" : "Preferences", icon: "🌐", action: () => document.querySelector("#langButton")?.click() },
+      { id: "tool-plate", title:  "Barbell Plate Math Calculator", category:  "Tools", icon: "🏋️", action: () => window.showPlateCalculator?.(60) },
+      { id: "tool-hr", title:  "Connect Bluetooth Heart Rate Monitor", category:  "Tools", icon: "💓", action: () => window.REP_HEART_RATE?.openHrModal?.() },
+      { id: "tool-barcode", title:  "Scan Product Barcode (Food Lens)", category:  "Tools", icon: "📷", action: () => window.REP_BARCODE_SCANNER?.openScannerModal?.() },
+      { id: "tool-builder", title:  "Custom Routine Builder & Splits", category:  "Tools", icon: "🛠️", action: () => window.REP_CUSTOM_WORKOUTS?.openRoutineBuilderModal?.() },
+      { id: "tool-heatmap", title:  "Hypertrophy Volume Heatmap", category:  "Tools", icon: "🔥", action: () => { window.setPrimaryTab?.("insights"); } },
+      { id: "tool-pdf", title:  "Export Mesocycle Report (PDF)", category:  "Tools", icon: "📄", action: () => window.REP_REPORT_CARD?.openPrintableReport(state) },
+      { id: "tool-sync", title:  "Sync Everything Now", category:  "Tools", icon: "🔄", action: () => window.REP_SYNC_RUNTIME?.syncEverything?.() },
+      { id: "tool-import", title:  "Import Data (Strong / Hevy / Apple Health)", category:  "Tools", icon: "📥", action: () => { window.renderRepSettings?.("general"); document.querySelector(".data-migration-card")?.scrollIntoView({ behavior: "smooth" }); } },
+      { id: "tool-preview", title:  "Toggle Preview / Sandbox Mode (No Saving)", category:  "Tools", icon: "🔬", action: () => window.togglePreviewMode?.() },
 
       // Workouts
-      { id: "wo-gym", title: ar ? "بدء حصة الجيم (Full Body Push / Pull)" : "Start Gym Workout (Full Body Push/Pull)", category: ar ? "تمارين" : "Workouts", icon: "⚡", action: () => window.showSessionPreview?.("gym") },
-      { id: "wo-football", title: ar ? "إحماء وتهدئة كرة القدم" : "Football Warm-up & Cooldown", category: ar ? "تمارين" : "Workouts", icon: "⚽", action: () => window.showSessionPreview?.("football") },
-      { id: "wo-padel", title: ar ? "إحماء وتهدئة البادل" : "Padel Warm-up & Cooldown", category: ar ? "تمارين" : "Workouts", icon: "🎾", action: () => window.showSessionPreview?.("padel") },
-      { id: "wo-general", title: ar ? "إحماء وتهدئة لأي نشاط" : "Any Activity Warm-up & Cooldown", category: ar ? "تمارين" : "Workouts", icon: "🌊", action: () => window.showSessionPreview?.("general") },
-      { id: "wo-cardio", title: ar ? "بدء حصة الكارديو الاحتياطية (Incline Walk)" : "Start Fallback Cardio (Incline Walk)", category: ar ? "تمارين" : "Workouts", icon: "🏃", action: () => window.showSessionPreview?.("cardio") },
-      { id: "wo-bad", title: ar ? "حصة يوم الإرهاق (Bad Day Active Recovery)" : "Low-Energy Recovery Session", category: ar ? "تمارين" : "Workouts", icon: "🌿", action: () => window.showSessionPreview?.("bad") }
+      { id: "wo-gym", title:  "Start Gym Workout (Full Body Push/Pull)", category:  "Workouts", icon: "⚡", action: () => window.showSessionPreview?.("gym") },
+      { id: "wo-football", title:  "Football Warm-up & Cooldown", category:  "Workouts", icon: "⚽", action: () => window.showSessionPreview?.("football") },
+      { id: "wo-padel", title:  "Padel Warm-up & Cooldown", category:  "Workouts", icon: "🎾", action: () => window.showSessionPreview?.("padel") },
+      { id: "wo-general", title:  "Any Activity Warm-up & Cooldown", category:  "Workouts", icon: "🌊", action: () => window.showSessionPreview?.("general") },
+      { id: "wo-cardio", title:  "Start Fallback Cardio (Incline Walk)", category:  "Workouts", icon: "🏃", action: () => window.showSessionPreview?.("cardio") },
+      { id: "wo-bad", title:  "Low-Energy Recovery Session", category:  "Workouts", icon: "🌿", action: () => window.showSessionPreview?.("bad") }
     ];
   }
 
-  function getExerciseActions(state){
+  function getExerciseActions(){
     if(typeof sessions === "undefined") return [];
-    const ar = state.lang === "ar";
     const seen = new Map();
     for(const [sessionId, session] of Object.entries(sessions)){
       for(const exercise of session.exercises || []){
@@ -47,7 +44,7 @@
     return [...seen].map(([name, sessionId]) => ({
       id: `exercise-${sessionId}-${name}`,
       title: name,
-      category: ar ? "تمرين" : "Exercise",
+      category:  "Exercise",
       icon: "🏋️",
       action: () => window.showSessionPreview?.(sessionId)
     }));
@@ -55,25 +52,24 @@
 
   function openPalette(){
     if(document.querySelector(".command-palette-overlay")) return;
-    const ar = window.state?.lang === "ar";
     const actions = getActions(window.state || {});
-    const exerciseActions = getExerciseActions(window.state || {});
+    const exerciseActions = getExerciseActions();
     let selectedIdx = 0;
 
     const overlay = document.createElement("div");
     overlay.className = "command-palette-overlay";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-label", ar ? "لوحة الأوامر السريعة" : "Command Palette");
+    overlay.setAttribute("aria-label",  "Command Palette");
 
     overlay.innerHTML = REP_SAFE_DOM.sanitize(`
       <div class="command-palette-modal">
         <div class="palette-input-wrap">
           <span class="palette-search-icon">🔍</span>
-          <input type="text" class="palette-input" aria-label="${ar ? "بحث" : "Search"}" placeholder="${ar ? "ابحث عن تمرين، أداة، أو إعداد… (Esc للإغلاق)" : "Search exercises, tools, or settings… (Esc to exit)"}" autofocus>
+          <input type="text" class="palette-input" aria-label="${ "Search"}" placeholder="${ "Search exercises, tools, or settings… (Esc to exit)"}" autofocus>
           <kbd class="palette-esc-kbd">ESC</kbd>
         </div>
-        <div class="palette-results-list" role="listbox" aria-label="${ar ? "النتائج" : "Results"}"></div>
+        <div class="palette-results-list" role="listbox" aria-label="${ "Results"}"></div>
       </div>
     `);
 
@@ -89,7 +85,7 @@
         : actions;
 
       if(!filtered.length){
-        list.innerHTML = REP_SAFE_DOM.sanitize(`<div class="palette-empty">${ar ? "لا توجد نتائج مطابقة." : "No matching actions found."}</div>`);
+        list.innerHTML = REP_SAFE_DOM.sanitize(`<div class="palette-empty">${ "No matching actions found."}</div>`);
         return;
       }
 
@@ -124,8 +120,12 @@
     }
 
     function closePalette(){
-      overlay.remove();
+      if(overlay.classList.contains("is-closing")) return;
       document.removeEventListener("keydown", handleKeydown);
+      overlay.classList.add("is-closing");
+      const done=()=>overlay.remove();
+      overlay.addEventListener("animationend", done, { once: true });
+      setTimeout(done, 200);
     }
 
     function handleKeydown(e){

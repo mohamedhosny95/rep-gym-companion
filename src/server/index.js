@@ -690,7 +690,7 @@ function habitProperties(payload){
   return {
     "Entry":{title:richText(`${safeText(payload.date,10)} · ${safeText(payload.id,80)}`)},"Date":{date:{start:safeText(payload.date,10)}},"Habit":{select:{name}},"Habit ID":{rich_text:richText(payload.id)},
     "Completed":{checkbox:Boolean(payload.completed)},"Streak":{number:Math.max(0,Math.min(370,Number(payload.streak)||0))},"Source":{select:{name:"Rep Gym Companion"}},
-    "Updated At":{date:{start:safeText(payload.updatedAt,40)||new Date().toISOString()}},"Notes":{rich_text:richText([safeText(payload.nameAr,100),safeText(payload.notes,500)].filter(Boolean).join(" · "))}
+    "Updated At":{date:{start:safeText(payload.updatedAt,40)||new Date().toISOString()}},"Notes":{rich_text:richText(safeText(payload.notes,500))}
   };
 }
 

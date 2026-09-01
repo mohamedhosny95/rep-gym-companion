@@ -60,7 +60,7 @@
   function markFailure(entry,error){
     const item=entry.item,message=String(error.message||error).slice(0,180),permanent=Boolean(error.auth||error.permanent);
     state.syncQueue=outbox.failed(state.syncQueue,item.id,message,{permanent});record(item,permanent?"permanently_failed":"retryable_failed",{error:message,updatedAt:new Date().toISOString()});markFood(item,permanent?"failed":"pending",message);
-    if(error.auth){repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";state.pairMessage=state.lang==="ar"?"تم إلغاء اقتران هذا الجهاز. تبقى السجلات معلّقة.":"This device was unpaired. Pending records remain on this device.";}
+    if(error.auth){repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";state.pairMessage="This device was unpaired. Pending records remain on this device.";}
   }
   async function processOutbox({all=false,force=false}={}){
     if(processing||!navigator.onLine||!repAuth.isPaired()){scheduleRetry();return;}
@@ -78,19 +78,19 @@
   }
   async function syncRecord(item){enqueue(item);await processOutbox();}
   async function syncEverything(){
-    if(processing)return;if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage=state.lang==="ar"?"اقرن هذا الجهاز مرة واحدة أولاً.":"Pair this device once first.";updateSyncPanel();return;}
+    if(processing)return;if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage="Pair this device once first.";updateSyncPanel();return;}
     if(typeof fetchPendingVitals==="function") fetchPendingVitals(false).catch(()=>{});
     for(const item of collectEverything())enqueue(item,{force:true});
-    if(!navigator.onLine){state.syncState="pending";state.syncMessage=state.lang==="ar"?"لا يوجد اتصال. السجلات محفوظة وستُعاد المحاولة تلقائياً.":"You are offline. Records are safely pending and will retry automatically.";persist();updateSyncPanel();return;}
+    if(!navigator.onLine){state.syncState="pending";state.syncMessage="You are offline. Records are safely pending and will retry automatically.";persist();updateSyncPanel();return;}
     await processOutbox({all:true,force:true});
   }
   async function retryFailed(id){
     state.syncQueue=(state.syncQueue||[]).map(entry=>(!id||entry.id===id)&&["retryable_failed","permanently_failed"].includes(entry.status)?{...entry,status:"pending",nextAttemptAt:null,lastError:"",updatedAt:new Date().toISOString()}:entry);persist();await processOutbox({all:true});
   }
   async function pullFromNotion(){
-    if(!navigator.onLine){state.syncMessage=state.lang==="ar"?"أنت غير متصل بالإنترنت.":"You are offline.";persist();updateSyncPanel();return;}
-    if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage=state.lang==="ar"?"اقرن هذا الجهاز أولاً.":"Pair this device first.";updateSyncPanel();return;}
-    state.syncState="syncing";state.syncMessage=state.lang==="ar"?"جارٍ سحب التحديثات من Notion…":"Pulling updates from Notion…";updateSyncPanel();
+    if(!navigator.onLine){state.syncMessage="You are offline.";persist();updateSyncPanel();return;}
+    if(!repAuth.isPaired()){state.syncState="auth";state.pairMessage="Pair this device first.";updateSyncPanel();return;}
+    state.syncState="syncing";state.syncMessage="Pulling updates from Notion…";updateSyncPanel();
     try{
       const response=await repAuth.fetch("/api/notion-pull",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({since:state.lastPulledAt||null})});
       const data=await response.json().catch(()=>({}));
@@ -122,7 +122,7 @@
       }
       state.lastPulledAt=data.syncedAt||new Date().toISOString();
       state.syncState="synced";
-      state.syncMessage=state.lang==="ar"?`تم تحديث ${updatedCount} سجل من Notion.`:`Updated ${updatedCount} record${updatedCount===1?"":"s"} from Notion.`;
+      state.syncMessage=`Updated ${updatedCount} record${updatedCount===1?"":"s"} from Notion.`;
       persist();
       if(typeof renderNutrition==="function"&&(state.view==="food"||state.activeTab==="food"))renderNutrition();
       if(typeof renderOverview==="function"&&(state.view==="home-overview"||state.activeTab==="home"))renderOverview();
