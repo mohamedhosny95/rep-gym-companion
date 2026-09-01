@@ -4,14 +4,14 @@
   const APP_SCHEMA=18,features=window.REP_FEATURES,health=window.REP_HEALTH_ENGINE,syncCenter=window.REP_SYNC_CENTER,performance=window.REP_PERFORMANCE_INSIGHTS;
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DEFAULT_SCHEDULE={
-    Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"football"},Tuesday:{morning:true,focus:"gym"},
-    Wednesday:{morning:true,focus:"padel"},Thursday:{morning:true,focus:"gym"},Friday:{morning:false,focus:"rest"},Saturday:{morning:false,focus:"activespa"}
+    Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"padel"},Tuesday:{morning:true,focus:"gym"},
+    Wednesday:{morning:true,focus:"football"},Thursday:{morning:true,focus:"gym"},Friday:{morning:false,focus:"rest"},Saturday:{morning:false,focus:"activespa"}
   };
   const SCHEDULE_FOCUS_OPTIONS=["gym","football","padel","cardio","recovery","spa","rest","activespa"];
   const DEFAULT_TARGETS={
-    gym:{label:"Gym Day",calories:2162,protein:176,carbs:248,fat:70,fiber:30,water:3500},
-    active:{label:"Active Day",calories:1990,protein:173,carbs:202,fat:70,fiber:30,water:3200},
-    flex:{label:"Flex Day",calories:2480,protein:150,carbs:0,fat:70,fiber:30,water:3000,calorieCeiling:true,proteinFloor:true}
+    gym:{label:"Gym Day",calories:2380,protein:190,carbs:278,fat:70,fiber:30,water:4200},
+    active:{label:"Active Day",calories:2042,protein:178,carbs:206,fat:66,fiber:30,water:3600},
+    flex:{label:"Flex Day",calories:2480,protein:150,carbs:0,fat:70,fiber:30,water:3200,calorieCeiling:true,proteinFloor:true}
   };
   const clone=value=>JSON.parse(JSON.stringify(value));
   const safeText=(value,max=1800)=>String(value??"").trim().slice(0,max);
@@ -30,7 +30,7 @@
   state.healthView=["care","insights","vitals"].includes(rawSaved.healthView)?rawSaved.healthView:"vitals";
   state.connectionCapabilities=rawSaved.connectionCapabilities&&typeof rawSaved.connectionCapabilities==="object"?rawSaved.connectionCapabilities:null;
   state.lastSyncedAt=rawSaved.lastSyncedAt||null;
-  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"04:15",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
+  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"04:45",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
   state.healthMetrics=rawSaved.healthMetrics&&typeof rawSaved.healthMetrics==="object"?rawSaved.healthMetrics:{};
   state.healthSummarySignatures=rawSaved.healthSummarySignatures&&typeof rawSaved.healthSummarySignatures==="object"?rawSaved.healthSummarySignatures:{};
   state.analyticsGoal=performance?.normalizeGoal(rawSaved.analyticsGoal)||{type:"strength",exercise:"Chest Press",target:0,updatedAt:null};
@@ -391,7 +391,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(`Latest: ${new Date(dates[0]).toLocaleString()}`):("A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=REP_SAFE_DOM.sanitize(dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(undefined)}</button>`).join(""));history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"fb5aeb12f0ee"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"72273a9a238b"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!repAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await repAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair Health OS",url});else await navigator.clipboard.writeText(url);showToast("Pairing link copied.");}catch{showToast("Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt("Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"Rep Gym Companion",schema:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload()},payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`health-os-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast("Encrypted backup downloaded.");}catch(error){showToast(String(error.message||error));}}

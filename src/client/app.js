@@ -20,7 +20,7 @@ const ICONS={
 const sessions = {
   morning: {
     name: "Morning Activation", short: "AM", meta: "Sun–Thu · Home · 10–15 min", icon: "sun", accent: "#c9ff3d",
-    description: "Light mobility and activation. RPE 3 throughout — arrive fresher, never fatigued.",
+    description: "Light mobility and activation. RPE 3 throughout — training now happens in the evening, so this session stands on its own for consistency, mobility, and pelvic-health/vascular goals. No progression — it stays light indefinitely.",
     exercises: [
       ex("Brisk Marching in Place", "3 min", "RPE 3", 0, "warm-up", "march", "Stand tall, arms relaxed at your sides.", "March in place, lifting knees toward hip height and swinging the arms naturally.", "Torso upright. Land softly on the balls of your feet.", "Leaning backward or stomping heavily."),
       ex("Cat-Cow", "1 × 8", "RPE 3", 0, "mobility", "catcow", "Hands and knees; wrists under shoulders, knees under hips.", "Inhale into Cow; exhale and round into Cat. One full cycle per breath.", "Move slowly with your breath.", "Forcing range or moving from the neck only."),
@@ -34,7 +34,7 @@ const sessions = {
     ]
   },
   gym: {
-    name: "Gym Session", short: "GYM", meta: "Sun / Tue / Thu · 45–50 min", icon: "dumbbell", accent: "#ff8b3d",
+    name: "Gym Session", short: "GYM", meta: "Sun / Tue / Thu · 7:30 PM · 45–50 min", icon: "dumbbell", accent: "#ff8b3d",
     description: "Beginner full-body machines. RPE 7 means finish each set with 2–3 good reps in reserve.",
     exercises: [
       ex("Stationary Bike", "5 min", "Light resistance", 0, "warm-up", "bike", "Set the seat so your knee stays slightly bent at the bottom.", "Pedal easily for five minutes.", "Stay at conversational effort — this is preparation.", "Starting with high resistance or pace."),
@@ -47,8 +47,8 @@ const sessions = {
     ]
   },
   football: {
-    name: "Football Warm-up & Cooldown", short: "FB", meta: "Monday · Before / after your game", icon: "flame", accent: "#ff5f6d",
-    description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites.",
+    name: "Football Warm-up & Cooldown", short: "FB", meta: "Wednesday · 7:30 PM · Before / after your game", icon: "flame", accent: "#ff5f6d",
+    description: "Football already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Hamstrings and groin get priority; they're the most common football strain sites. Ends ~8:49 PM — tight against bedtime, so it's a shower and straight to wind-down, no foam roller or massage gun tonight.",
     exercises: [
       ex("Football Warm-up Jog", "3 min", "General", 0, "warm-up", "walk", "Open space to jog, or the pitch itself.", "Jog at an easy, conversational pace.", "Let the body warm gradually before anything dynamic.", "Sprinting cold or skipping straight to hard running."),
       ex("Football Dynamic Stretches", "10 / leg · 10 steps · 20m", "Leg swings · Walking lunges · High knees · Butt kicks", 0, "dynamic", "march", "Open space, roughly 20m.", "Leg swings front/back and side/side 10 each leg, walking lunges 10 steps, then high knees and butt kicks 20m each.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
@@ -60,8 +60,8 @@ const sessions = {
     ]
   },
   padel: {
-    name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Wednesday · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
-    description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point.",
+    name: "Padel Warm-up & Cooldown", short: "PDL", meta: "Monday · 6:00 PM · Before / after your game", icon: "heartbeat", accent: "#ffb84d",
+    description: "Padel already gives strong cardio stimulus, so there's no separate treadmill block today — just warm up before you play and cool down after. Shoulder and forearm work matter more here than the legs; repeated overhead swings and gripping are padel's real fatigue point. Leave work early to make the 6:00 PM start.",
     exercises: [
       ex("Padel Warm-up Jog", "2–3 min", "General", 0, "warm-up", "walk", "On court, or open space nearby.", "Jog easily or move around the court.", "Easy, conversational effort.", "Standing still, then jumping straight into hard rallies."),
       ex("Padel Dynamic Stretches", "Leg swings · Lunges · Arm circles", "Both directions", 0, "dynamic", "march", "Open space or the court.", "Leg swings, walking lunges with a torso twist, then arm circles in both directions.", "Controlled range, not maximal stretch.", "Static holds here — save those for the cooldown."),
@@ -623,8 +623,8 @@ function esc(value) { return String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;
 function currentDay() { return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]; }
 function todayPlan(day) {
   if (["Sunday","Tuesday","Thursday"].includes(day)) return "Activation + Gym";
-  if (day === "Monday") return "Activation + Football";
-  if (day === "Wednesday") return "Activation + Padel";
+  if (day === "Monday") return "Activation + Padel";
+  if (day === "Wednesday") return "Activation + Football";
   if (day === "Friday") return "Rest";
   return "Active recovery + Spa";
 }
@@ -1914,8 +1914,8 @@ function renderRecovery() {
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="recovery-head"><p class="eyebrow">Recovery system</p><h1>Adaptation happens here.</h1><p>Use the basics daily. Check in weekly. Pain is information, not a challenge.</p></section>${recoveryDecisionCard()}
     <section class="recovery-grid">
       ${sleepSummaryCard(false)}
-      <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:15 AM wake, aim for 9:15 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
-      <article class="recovery-card"><span class="card-kicker">Sun · Tue · Thu</span><h2>After lifting</h2><ul><li>Foam roll lower body + back in the evening, ~8 min.</li><li>Massage gun before sleep, targeted, ~6–8 min.</li><li>Skip routine icing; use ice only for actual joint pain.</li></ul></article>
+      <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> 7 hours minimum. For 4:45 AM wake, aim for 9:45 PM bedtime.</li><li><strong>Hydration:</strong> At wake-up and through the morning, especially in Cairo heat.</li><li><strong>Breakfast:</strong> Protein + carbs right after the AM session.</li></ul></article>
+      <article class="recovery-card"><span class="card-kicker">Sun · Mon · Tue · Thu</span><h2>After lifting or padel</h2><ul><li>Foam roll lower body + back in the evening, ~8 min.</li><li>Massage gun before sleep, targeted, ~6–8 min.</li><li>Skip routine icing; use ice only for actual joint pain.</li><li>Wednesday (football) skips both — training ends ~8:49 PM, only enough time for a shower before wind-down.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Friday</span><h2>Full rest</h2><ul><li>No gym, no morning circuit, no structured recovery work.</li><li>Skip planned stretching or mobility too — let it be a true day off.</li><li>Normal daily basics still apply: sleep, hydration, protein.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">2-minute check-in</span><h2>Weekly signals</h2><form class="checkin" id="checkin"><label>Soreness<select name="soreness">${ratingOptions(check.soreness)}</select></label><label>Energy<select name="energy">${ratingOptions(check.energy)}</select></label><label class="wide">Average sleep<input name="sleep" type="number" min="0" max="12" step="0.5" value="${recentSleepAvg(7)??check.sleep??7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${check.pain?"checked":""}> Any pain (not soreness)</span></label><label class="wide">Notes<input name="notes" maxlength="180" value="${esc(check.notes||"")}" placeholder="Optional context"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>Save & sync check-in</button></article>
       <article class="recovery-card wide"><span class="card-kicker">Guided recovery</span><h2>Start a timer</h2><div class="timer-presets"><button data-guide-timer="480" data-guide-label="Foam roll">Foam roll <b>8:00</b></button><button data-guide-timer="420" data-guide-label="Massage gun">Massage gun <b>7:00</b></button><button data-guide-timer="300" data-guide-label="Legs up the wall">Legs up wall <b>5:00</b></button><button data-guide-timer="600" data-guide-label="Gentle stretch">Gentle stretch <b>10:00</b></button></div></article>
@@ -2558,7 +2558,7 @@ function changeFoodWater(delta){setFoodWater((Number(state.water[isoDay()])||0)+
 function applyCustomWater(mode){const input=document.querySelector("[data-water-custom]"),amount=Number(input?.value);if(!input||!Number.isFinite(amount)||amount<=0||amount>20000){input?.setCustomValidity("Enter an amount from 1 to 20,000 ml.");input?.reportValidity();return;}input.setCustomValidity("");setFoodWater(mode==="set"?amount:(Number(state.water[isoDay()])||0)+amount);}
 function deleteFoodEntry(id){state.foodEntries=state.foodEntries.filter(entry=>entry.id!==id);queueNutritionSummary();persist();renderNutrition();}
 function renderHygiene(){
-  stopSessionClock();document.body.classList.remove("workout-mode");state.view="hygiene";state.activeTab="care";persistDebounced();updatePrimaryTabs();const g=REP_HEALTH_GUIDE.hygiene,b=dailyBucket("hygiene"),day=currentDay(),hair=g.hair[day],training=["Sunday","Monday","Tuesday","Wednesday","Thursday"].includes(day),sections=[...g.morning.map((x,i)=>["morning",i,x]),...g.evening.map((x,i)=>["evening",i,x]),...hair.map((x,i)=>["hair",i,x]),...(training?g.postWorkout.map((x,i)=>["post",i,x]):[]),...(training?g.afterWork.map((x,i)=>["after",i,x]):[])],done=sections.filter(([p,i])=>b.checked[`${p}-${i}`]).length,percent=Math.round(done/sections.length*100);
+  stopSessionClock();document.body.classList.remove("workout-mode");state.view="hygiene";state.activeTab="care";persistDebounced();updatePrimaryTabs();const g=REP_HEALTH_GUIDE.hygiene,b=dailyBucket("hygiene"),day=currentDay(),hair=g.hair[day],training=["Sunday","Monday","Tuesday","Wednesday","Thursday"].includes(day),afterWorkDay=["Sunday","Tuesday","Wednesday","Thursday"].includes(day),sections=[...g.morning.map((x,i)=>["morning",i,x]),...g.evening.map((x,i)=>["evening",i,x]),...hair.map((x,i)=>["hair",i,x]),...(training?g.postWorkout.map((x,i)=>["post",i,x]):[]),...(afterWorkDay?g.afterWork.map((x,i)=>["after",i,x]):[])],done=sections.filter(([p,i])=>b.checked[`${p}-${i}`]).length,percent=Math.round(done/sections.length*100);
   const complete=p=>{const group=sections.filter(x=>x[0]===p);return group.length>0&&group.every(([,i])=>b.checked[`${p}-${i}`]);};
   app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader("DAILY CARE","Scan. Do. Done.","Morning, evening, post-workout, and the correct hair routine for today.")}
   ${reminderStrip("care")}
@@ -2568,7 +2568,7 @@ function renderHygiene(){
   <section class="module-card"><div class="module-card-head"><div><small>${"EVERY DAY"}</small><h2>${"Morning"}</h2></div><span>${complete("morning")?"✓":""}</span></div>${checklist(g.morning,"morning",b)}</section>
   <section class="module-card"><div class="module-card-head"><div><small>${"MOST IMPORTANT"}</small><h2>${"Evening"}</h2></div><span>${complete("evening")?"✓":""}</span></div>${checklist(g.evening,"evening",b)}</section>
   ${training?`<section class="module-card accent-card"><div class="module-card-head"><div><small>30-MINUTE RULE</small><h2>${"Post-workout"}</h2></div><span>${complete("post")?"✓":""}</span></div>${checklist(g.postWorkout,"post",b)}</section>`:""}
-  ${training?`<section class="module-card"><div class="module-card-head"><div><small>~7:15 PM</small><h2>${"After work"}</h2></div><span>${complete("after")?"✓":""}</span></div>${checklist(g.afterWork,"after",b)}</section>`:""}
+  ${afterWorkDay?`<section class="module-card"><div class="module-card-head"><div><small>~7:15 PM</small><h2>${"After work"}</h2></div><span>${complete("after")?"✓":""}</span></div>${checklist(g.afterWork,"after",b)}</section>`:""}
   <section class="module-card"><div class="module-card-head"><div><small>${esc(day.toUpperCase())}</small><h2>${"Hair routine"}</h2></div><span>${complete("hair")?"✓":""}</span></div>${checklist(hair,"hair",b)}<details class="cue-details"><summary>${"Strict hair rules"}</summary><div class="cue-body"><ul>${g.strictHairRules.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div></details></section>
   <section class="module-card"><label class="notes-label">${"Today's notes"}<textarea data-daily-notes maxlength="300">${esc(b.notes||"")}</textarea></label><button class="module-save" data-save-daily>${"Save & sync today"}</button></section>`);
   bindDaily("hygiene",renderHygiene);document.querySelector("[data-save-daily]").onclick=()=>{queueHealth("hygiene",{date:isoDay(),morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:training?complete("post"):false,hairRoutineComplete:complete("hair"),spf:Boolean(b.checked["morning-0"]),floss:Boolean(b.checked["evening-1"]),beardOil:Boolean(b.checked["morning-3"]&&b.checked["evening-3"]),showerWithin30m:Boolean(b.checked["post-0"]),completion:percent,notes:b.notes||""});state.syncState="idle";renderHygiene();};

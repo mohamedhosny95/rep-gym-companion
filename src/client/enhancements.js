@@ -4,14 +4,14 @@
   const APP_SCHEMA=18,features=window.REP_FEATURES,health=window.REP_HEALTH_ENGINE,syncCenter=window.REP_SYNC_CENTER,performance=window.REP_PERFORMANCE_INSIGHTS;
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DEFAULT_SCHEDULE={
-    Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"football"},Tuesday:{morning:true,focus:"gym"},
-    Wednesday:{morning:true,focus:"padel"},Thursday:{morning:true,focus:"gym"},Friday:{morning:false,focus:"rest"},Saturday:{morning:false,focus:"activespa"}
+    Sunday:{morning:true,focus:"gym"},Monday:{morning:true,focus:"padel"},Tuesday:{morning:true,focus:"gym"},
+    Wednesday:{morning:true,focus:"football"},Thursday:{morning:true,focus:"gym"},Friday:{morning:false,focus:"rest"},Saturday:{morning:false,focus:"activespa"}
   };
   const SCHEDULE_FOCUS_OPTIONS=["gym","football","padel","cardio","recovery","spa","rest","activespa"];
   const DEFAULT_TARGETS={
-    gym:{label:"Gym Day",calories:2162,protein:176,carbs:248,fat:70,fiber:30,water:3500},
-    active:{label:"Active Day",calories:1990,protein:173,carbs:202,fat:70,fiber:30,water:3200},
-    flex:{label:"Flex Day",calories:2480,protein:150,carbs:0,fat:70,fiber:30,water:3000,calorieCeiling:true,proteinFloor:true}
+    gym:{label:"Gym Day",calories:2380,protein:190,carbs:278,fat:70,fiber:30,water:4200},
+    active:{label:"Active Day",calories:2042,protein:178,carbs:206,fat:66,fiber:30,water:3600},
+    flex:{label:"Flex Day",calories:2480,protein:150,carbs:0,fat:70,fiber:30,water:3200,calorieCeiling:true,proteinFloor:true}
   };
   const clone=value=>JSON.parse(JSON.stringify(value));
   const safeText=(value,max=1800)=>String(value??"").trim().slice(0,max);
@@ -30,7 +30,7 @@
   state.healthView=["care","insights","vitals"].includes(rawSaved.healthView)?rawSaved.healthView:"vitals";
   state.connectionCapabilities=rawSaved.connectionCapabilities&&typeof rawSaved.connectionCapabilities==="object"?rawSaved.connectionCapabilities:null;
   state.lastSyncedAt=rawSaved.lastSyncedAt||null;
-  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"04:15",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
+  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"04:45",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
   state.healthMetrics=rawSaved.healthMetrics&&typeof rawSaved.healthMetrics==="object"?rawSaved.healthMetrics:{};
   state.healthSummarySignatures=rawSaved.healthSummarySignatures&&typeof rawSaved.healthSummarySignatures==="object"?rawSaved.healthSummarySignatures:{};
   state.analyticsGoal=performance?.normalizeGoal(rawSaved.analyticsGoal)||{type:"strength",exercise:"Chest Press",target:0,updatedAt:null};
