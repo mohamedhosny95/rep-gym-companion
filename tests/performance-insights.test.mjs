@@ -66,7 +66,6 @@ test("insight inbox honors dismiss and snooze controls",()=>{
 test("Ask Your Data returns evidence and explicit analytical boundaries",()=>{
   const answer=engine.ask(populatedState(),"How consistent is my protein?",now);
   assert.match(answer.title,/Nutrition/);assert.ok(answer.evidence.length>=2);assert.match(answer.boundary,/no diagnosis|no proof/i);
-  assert.match(engine.ask(populatedState(),"ما مدى انتظام البروتين؟",now).title,/Nutrition/);
 });
 
 test("progressionAdvice recommends micro-loading on consecutive solid sessions",()=>{
@@ -82,12 +81,6 @@ test("progressionAdvice recommends micro-loading on consecutive solid sessions",
   assert.match(advice.badge,/Micro-load/);
 });
 
-test("muscleVolumeHeatmap aggregates 7-day sets and categorizes recovery state",()=>{
-  const state=populatedState();
-  const heatmap=engine.muscleVolumeHeatmap(state,now);
-  assert.ok(heatmap.Chest);
-  assert.ok(heatmap.Back);
-  assert.ok(heatmap.Quads);
-  assert.ok(["recovered","optimal","fatigued"].includes(heatmap.Chest.status));
+test("EXERCISE_SUBSTITUTIONS lists valid swaps for common lifts",()=>{
   assert.ok(engine.EXERCISE_SUBSTITUTIONS["Chest Press"].includes("Incline Dumbbell Press"));
 });

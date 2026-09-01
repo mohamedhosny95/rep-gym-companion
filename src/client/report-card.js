@@ -3,16 +3,15 @@
 
 (function(){
   function generateReportHtml(state){
-    const ar = state.lang === "ar";
     const insights = window.REP_PERFORMANCE_INSIGHTS?.aggregate(state) || {};
     const strengthData = insights.strength || {};
     const nutritionData = insights.nutrition || {};
     const heatmap = insights.muscleVolume || {};
     const experiments = insights.experiments || [];
-    const dateStr = new Date().toLocaleDateString(ar ? "ar-EG" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+    const dateStr = new Date().toLocaleDateString( "en-US", { year: "numeric", month: "long", day: "numeric" });
 
     return `<!DOCTYPE html>
-<html lang="${state.lang}" dir="${ar?"rtl":"ltr"}">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <title>Rep Mesocycle Report Card - ${dateStr}</title>
@@ -81,7 +80,6 @@
     .stat-row strong { font-weight: 700; color: var(--text); }
     table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-    [dir="rtl"] th, [dir="rtl"] td { text-align: right; }
     th { font-weight: 800; color: var(--muted); background: rgba(0,0,0,0.02); }
     .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
     .badge-optimal { background: #dcfce7; color: #166534; }
@@ -110,44 +108,44 @@
 </head>
 <body>
   <div class="print-actions">
-    <button class="print-btn" onclick="window.print()">${ar?"🖨️ طباعة / حفظ كـ PDF":"🖨️ Print / Save as PDF"}</button>
-    <button class="print-btn" style="background:#64748b;" onclick="window.close()">${ar?"إغلاق":"Close"}</button>
+    <button class="print-btn" onclick="window.print()">${"🖨️ Print / Save as PDF"}</button>
+    <button class="print-btn" style="background:#64748b;" onclick="window.close()">${"Close"}</button>
   </div>
   <header>
     <div>
       <h1>Rep Gym Companion</h1>
-      <p style="font-size:13px;color:var(--muted);">${ar?"تقرير دورة التدريب والتغذية الشامل (Mesocycle Summary)":"Comprehensive Mesocycle & Athlete Performance Card"}</p>
+      <p style="font-size:13px;color:var(--muted);">${"Comprehensive Mesocycle & Athlete Performance Card"}</p>
     </div>
     <span>${dateStr}</span>
   </header>
 
   <div class="report-grid">
     <section class="report-card">
-      <h2>${ar?"ملخص حمل التدريب (7 أيام)":"7-Day Training Load"}</h2>
-      <div class="stat-row"><span>${ar?"إجمالي الحجم التدريبي":"Total Volume"}</span><strong>${Math.round(strengthData.totalVolume||0).toLocaleString()} kg</strong></div>
-      <div class="stat-row"><span>${ar?"الحصص المسجلة":"Logged Sessions"}</span><strong>${strengthData.rows ? new Set(strengthData.rows.map(r=>r.sessionId)).size : 0}</strong></div>
-      <div class="stat-row"><span>${ar?"الأرقام القياسية الحديثة":"Recent PRs"}</span><strong>${strengthData.prs?.length || 0}</strong></div>
-      <div class="stat-row"><span>${ar?"إشارات الثبات":"Plateau Flags"}</span><strong>${strengthData.plateaus?.length || 0}</strong></div>
+      <h2>${"7-Day Training Load"}</h2>
+      <div class="stat-row"><span>${"Total Volume"}</span><strong>${Math.round(strengthData.totalVolume||0).toLocaleString()} kg</strong></div>
+      <div class="stat-row"><span>${"Logged Sessions"}</span><strong>${strengthData.rows ? new Set(strengthData.rows.map(r=>r.sessionId)).size : 0}</strong></div>
+      <div class="stat-row"><span>${"Recent PRs"}</span><strong>${strengthData.prs?.length || 0}</strong></div>
+      <div class="stat-row"><span>${"Plateau Flags"}</span><strong>${strengthData.plateaus?.length || 0}</strong></div>
     </section>
 
     <section class="report-card">
-      <h2>${ar?"التغذية والوزن":"Nutrition & Body Metrics"}</h2>
-      <div class="stat-row"><span>${ar?"التزام السعرات (7 أيام)":"Caloric Adherence"}</span><strong>${Math.round(nutritionData.adherence7?.calories||0)}%</strong></div>
-      <div class="stat-row"><span>${ar?"التزام البروتين (7 أيام)":"Protein Adherence"}</span><strong>${Math.round(nutritionData.adherence7?.protein||0)}%</strong></div>
-      <div class="stat-row"><span>${ar?"اتجاه الوزن الأسبوعي":"Weekly Weight Slope"}</span><strong>${nutritionData.weightSlopePerWeek ? `${nutritionData.weightSlopePerWeek} kg/wk` : "—"}</strong></div>
-      <div class="stat-row"><span>${ar?"السعرات المقدرة للصيانة":"Est. Maintenance"}</span><strong>${nutritionData.maintenance ? `${nutritionData.maintenance.low}–${nutritionData.maintenance.high} kcal` : "—"}</strong></div>
+      <h2>${"Nutrition & Body Metrics"}</h2>
+      <div class="stat-row"><span>${"Caloric Adherence"}</span><strong>${Math.round(nutritionData.adherence7?.calories||0)}%</strong></div>
+      <div class="stat-row"><span>${"Protein Adherence"}</span><strong>${Math.round(nutritionData.adherence7?.protein||0)}%</strong></div>
+      <div class="stat-row"><span>${"Weekly Weight Slope"}</span><strong>${nutritionData.weightSlopePerWeek ? `${nutritionData.weightSlopePerWeek} kg/wk` : "—"}</strong></div>
+      <div class="stat-row"><span>${"Est. Maintenance"}</span><strong>${nutritionData.maintenance ? `${nutritionData.maintenance.low}–${nutritionData.maintenance.high} kcal` : "—"}</strong></div>
     </section>
 
     <section class="report-card full-width">
-      <h2>${ar?"تحليلات القوة وأقصى حمل تقديري (e1RM)":"Top Lift Progression & Estimated 1RM"}</h2>
+      <h2>${"Top Lift Progression & Estimated 1RM"}</h2>
       <table>
         <thead>
           <tr>
-            <th>${ar?"التمرين":"Exercise"}</th>
-            <th>${ar?"الحصص":"Sessions"}</th>
-            <th>${ar?"أفضل e1RM":"Best e1RM"}</th>
-            <th>${ar?"التغير خلال 28 يوماً":"28-Day Change"}</th>
-            <th>${ar?"التوصية":"Progression Advice"}</th>
+            <th>${"Exercise"}</th>
+            <th>${"Sessions"}</th>
+            <th>${"Best e1RM"}</th>
+            <th>${"28-Day Change"}</th>
+            <th>${"Progression Advice"}</th>
           </tr>
         </thead>
         <tbody>
@@ -157,22 +155,22 @@
               <td>${e.sessionCount}</td>
               <td><b>${e.currentE1rm} kg</b></td>
               <td>${e.change28d !== null ? `${e.change28d > 0 ? "+" : ""}${e.change28d}%` : "—"}</td>
-              <td>${e.plateau ? (ar?"ثبات · خفف الحمل":"Plateau · Deload") : (e.recommendation === "progress" ? (ar?"تقدم بأمان":"Micro-load Ready") : (ar?"ثبّت وبناء":"Hold & Build"))}</td>
+              <td>${e.plateau ? ("Plateau · Deload") : (e.recommendation === "progress" ? ("Micro-load Ready") : ("Hold & Build"))}</td>
             </tr>
-          `).join("") || `<tr><td colspan="5" style="text-align:center;">${ar?"لا توجد بيانات كافية":"No lift data available"}</td></tr>`}
+          `).join("") || `<tr><td colspan="5" style="text-align:center;">${"No lift data available"}</td></tr>`}
         </tbody>
       </table>
     </section>
 
     <section class="report-card full-width">
-      <h2>${ar?"حجم وتحفيز المجموعات العضلية (MEV/MRV)":"Weekly Muscle Stimulus & Volume Distribution"}</h2>
+      <h2>${"Weekly Muscle Stimulus & Volume Distribution"}</h2>
       <table>
         <thead>
           <tr>
-            <th>${ar?"المجموعة العضلية":"Muscle Group"}</th>
-            <th>${ar?"المجموعات الجادة":"Hard Sets"}</th>
-            <th>${ar?"حجم الرفع":"Volume Load"}</th>
-            <th>${ar?"حالة الاستشفاء والتحفيز":"Stimulus Status"}</th>
+            <th>${"Muscle Group"}</th>
+            <th>${"Hard Sets"}</th>
+            <th>${"Volume Load"}</th>
+            <th>${"Stimulus Status"}</th>
           </tr>
         </thead>
         <tbody>
@@ -183,21 +181,21 @@
               <td>${d.volumeKg.toLocaleString()} kg</td>
               <td><span class="badge badge-${d.status}">${d.statusLabel}</span></td>
             </tr>
-          `).join("") || `<tr><td colspan="4" style="text-align:center;">${ar?"لا توجد بيانات":"No volume data available"}</td></tr>`}
+          `).join("") || `<tr><td colspan="4" style="text-align:center;">${"No volume data available"}</td></tr>`}
         </tbody>
       </table>
     </section>
 
     ${experiments.length ? `
       <section class="report-card full-width">
-        <h2>${ar?"تجارب الارتباط الشخصية":"Personal Health & Training Associations"}</h2>
+        <h2>${"Personal Health & Training Associations"}</h2>
         <table>
           <thead>
             <tr>
-              <th>${ar?"الفرضية والملاحظة":"Observation"}</th>
-              <th>${ar?"المجموعة الأولى":"Group A"}</th>
-              <th>${ar?"المجموعة الثانية":"Group B"}</th>
-              <th>${ar?"الفارق":"Delta"}</th>
+              <th>${"Observation"}</th>
+              <th>${"Group A"}</th>
+              <th>${"Group B"}</th>
+              <th>${"Delta"}</th>
             </tr>
           </thead>
           <tbody>

@@ -1,17 +1,17 @@
 (function(){
   const HABITS=[
-    {id:"sleep",icon:"bed",en:"Sleep",ar:"النوم",detailEn:"7–8 hours of night sleep",detailAr:"7–8 ساعات من النوم الليلي"},
-    {id:"night-prayer",icon:"moon",en:"Night prayer",ar:"قيام الليل"},
-    {id:"fajr",icon:"dawn",en:"Fajr prayer",ar:"صلاة الفجر"},
-    {id:"sadqa",icon:"charity",en:"Sadqa",ar:"صدقة"},
-    {id:"quran-wird",icon:"heart",en:"Quran wird",ar:"ورد القرآن",detailEn:"Read pages of the Quran",detailAr:"قراءة صفحات من القرآن"},
-    {id:"quran",icon:"quran",en:"Quran memorization",ar:"حفظ القرآن"},
-    {id:"workout",icon:"workout",en:"Workout",ar:"تمرين"},
-    {id:"adhkar",icon:"list",en:"Morning & evening adhkar",ar:"أذكار الصباح والمساء"},
-    {id:"read",icon:"book",en:"Reading",ar:"قراءة"},
-    {id:"water",icon:"water",en:"Water",ar:"الماء",detailEn:"3 L",detailAr:"3 لتر"},
-    {id:"kahf",icon:"quran",en:"Surat Al-Kahf",ar:"سورة الكهف",days:["Friday"]},
-    {id:"dua-baba",icon:"heart",en:"Dua for Baba",ar:"دعاء لبابا"}
+    {id:"sleep",icon:"bed",en:"Sleep",detailEn:"7–8 hours of night sleep"},
+    {id:"night-prayer",icon:"moon",en:"Night prayer"},
+    {id:"fajr",icon:"dawn",en:"Fajr prayer"},
+    {id:"sadqa",icon:"charity",en:"Sadqa"},
+    {id:"quran-wird",icon:"heart",en:"Quran wird",detailEn:"Read pages of the Quran"},
+    {id:"quran",icon:"quran",en:"Quran memorization"},
+    {id:"workout",icon:"workout",en:"Workout"},
+    {id:"adhkar",icon:"list",en:"Morning & evening adhkar"},
+    {id:"read",icon:"book",en:"Reading"},
+    {id:"water",icon:"water",en:"Water",detailEn:"3 L"},
+    {id:"kahf",icon:"quran",en:"Surat Al-Kahf",days:["Friday"]},
+    {id:"dua-baba",icon:"heart",en:"Dua for Baba"}
   ];
   const ICONS={
     bed:'<svg viewBox="0 0 24 24"><path d="M3 5v15M3 15h18v5M6 15V9h5a3 3 0 0 1 3 3v3M14 11h4a3 3 0 0 1 3 3v1"/></svg>',
@@ -99,7 +99,7 @@
   function payloadForHabit(date,id){
     const habit=habitMap.get(id);if(!habit)return null;
     const isComplete=checked(date,id);
-    return {date,id,name:habit.en,nameAr:habit.ar,completed:isComplete,streak:isComplete?streak(id):0,updatedAt:bucket(date).updatedAt||new Date().toISOString(),notes:detail(habit,false)||""};
+    return {date,id,name:habit.en,completed:isComplete,streak:isComplete?streak(id):0,updatedAt:bucket(date).updatedAt||new Date().toISOString(),notes:detail(habit)||""};
   }
   function hasEntries(date){const value=bucket(date);return Object.keys(value.checked||{}).length>0;}
   function scheduleSync(date,id){
@@ -115,19 +115,24 @@
     if(value.checked[id]){
       if(window.vibrateGym)window.vibrateGym("habit");
       else if(navigator.vibrate)navigator.vibrate(30);
-      if(id==="sleep"&&!(state.sleepLogs||[]).some(row=>String(row.date).slice(0,10)===date)&&typeof showToast==="function")showToast(state.lang==="ar"?"تم. سجّل ساعات نومك الفعلية في الصحة ← الحيوية لحساب نتيجة الاستعداد.":"Marked done. Log your actual hours in Health → Vitals for a readiness score.");
+      if(id==="sleep"&&!(state.sleepLogs||[]).some(row=>String(row.date).slice(0,10)===date)&&typeof showToast==="function")showToast("Marked done. Log your actual hours in Health → Vitals for a readiness score.");
       const todays=habitsForDate(date);
       if(completed(date).length===todays.length){
         if(window.triggerConfetti)window.triggerConfetti();
         if(window.vibrateGym)window.vibrateGym("pr");
       }
     }
+    const justChecked=Boolean(value.checked[id]);
     persist();scheduleSync(date,id);renderOverview();
+    if(justChecked){
+      const card=document.querySelector(`[data-habit-card="${id}"]`);
+      if(card){card.classList.add("is-just-checked");setTimeout(()=>card.classList.remove("is-just-checked"),550);}
+    }
   }
-  function label(habit,ar){return ar?habit.ar:habit.en;}
-  function detail(habit,ar){return ar?habit.detailAr:habit.detailEn;}
+  function label(habit){return habit.en;}
+  function detail(habit){return habit.detailEn;}
   function render(){
-    const ar=state.lang==="ar",date=isoDay(),ordered=habitsForDate(date),done=completed(date),percent=ordered.length?Math.round(done.length/ordered.length*100):0,days=Array.from({length:7},(_,index)=>dateKey(index-6));
+    const date=isoDay(),ordered=habitsForDate(date),done=completed(date),percent=ordered.length?Math.round(done.length/ordered.length*100):0,days=Array.from({length:7},(_,index)=>dateKey(index-6));
     const filter=state.habitFilter||"all";
     const visibleHabits=ordered.filter(habit=>{
       const isDone=checked(date,habit.id);
@@ -136,15 +141,15 @@
       return true;
     });
     const section=document.createElement("section");section.className="habit-tracker";section.setAttribute("aria-labelledby","habitTrackerTitle");
-    section.innerHTML=REP_SAFE_DOM.sanitize(`<div class="habit-head"><div><small>${ar?"عاداتك اليومية":"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${ar?"ابنِ اليوم الذي تريده.":"Build the day you want."}</h2><p>${ar?"تُحفظ العلامات على هذا الجهاز وتُحدَّث مباشرةً في سجل العادات داخل Notion.":"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?(ar?"تم":"Done"):(ar?"إعادة الترتيب":"Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${ar?"فتح سجل العادات":"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${ar?"تقدم العادات اليوم":"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${ordered.length}</strong></div></div>
-      ${totalStreak()?`<div class="habit-streak-banner"><span>🔥</span><strong>${totalStreak()} ${ar?"أيام مكتملة متتالية":"fully completed days"}</strong></div>`:""}
+    section.innerHTML=REP_SAFE_DOM.sanitize(`<div class="habit-head"><div><small>${"DAILY HABITS"}</small><h2 id="habitTrackerTitle">${"Build the day you want."}</h2><p>${"Check-ins stay available offline and update the Habit Log in Notion directly."}</p><div class="habit-head-actions"><button type="button" data-habit-reorder aria-pressed="${reorderMode}">${reorderMode?("Done"):("Reorder")}</button><a href="${NOTION_HABITS_URL}" target="_blank" rel="noopener">${"Open Habit Log"}</a></div></div><div class="habit-progress" role="progressbar" aria-label="${"Today's habit progress"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">${miniRing(percent,"var(--acid)",54,6)}<strong>${done.length}/${ordered.length}</strong></div></div>
+      ${totalStreak()?`<div class="habit-streak-banner"><span>🔥</span><strong>${totalStreak()} ${"fully completed days"}</strong></div>`:""}
       <div class="habit-filter-bar" style="display:flex;gap:6px;margin:12px 0 10px;">
-        <button type="button" class="filter-tab ${filter==="all"?"is-active":""}" data-filter-habits="all" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="all"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="all"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${ar?"الكل":"All"} (${ordered.length})</button>
-        <button type="button" class="filter-tab ${filter==="pending"?"is-active":""}" data-filter-habits="pending" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="pending"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="pending"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${ar?"المتبقي":"Pending"} (${ordered.length - done.length})</button>
-        <button type="button" class="filter-tab ${filter==="done"?"is-active":""}" data-filter-habits="done" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="done"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="done"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${ar?"المكتمل":"Done"} (${done.length})</button>
+        <button type="button" class="filter-tab ${filter==="all"?"is-active":""}" data-filter-habits="all" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="all"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="all"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${"All"} (${ordered.length})</button>
+        <button type="button" class="filter-tab ${filter==="pending"?"is-active":""}" data-filter-habits="pending" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="pending"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="pending"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${"Pending"} (${ordered.length - done.length})</button>
+        <button type="button" class="filter-tab ${filter==="done"?"is-active":""}" data-filter-habits="done" style="flex:1;min-height:36px;border:1px solid var(--line);border-radius:10px;background:${filter==="done"?"rgba(201,255,61,.12)":"var(--panel)"};color:${filter==="done"?"var(--acid)":"var(--muted)"};font-size:11px;font-weight:850;cursor:pointer;">${"Done"} (${done.length})</button>
       </div>
-      <div class="habit-grid ${reorderMode?"is-reordering":""}">${visibleHabits.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit,ar),description=detail(habit,ar),action=isDone?(ar?"مكتمل":"completed"):(ar?"غير مكتمل":"not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${ar?"يوم متتالٍ":"day streak"}`:(ar?"ابدأ اليوم":"Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls"><span aria-hidden="true">↕</span><button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${ar?`نقل ${name} لأعلى`:`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===visibleHabits.length-1?"disabled":""} aria-label="${ar?`نقل ${name} لأسفل`:`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
-      <details class="habit-history"><summary><span>${ar?"آخر 7 أيام":"Last 7 days"}</span><strong>${ar?"عرض التقدم":"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,dayTotal=habitsForDate(day).length,p=dayTotal?Math.round(n/dayTotal*100):0,today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString(ar?"ar-EG":"en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${dayTotal}</strong></div>`;}).join("")}</div></details>`);
+      <div class="habit-grid ${reorderMode?"is-reordering":""}">${visibleHabits.map((habit,index)=>{const isDone=checked(date,habit.id),days=streak(habit.id),name=label(habit),description=detail(habit),action=isDone?("completed"):("not completed");return `<article class="habit-card ${isDone?"is-done":""}" data-habit-card="${habit.id}" draggable="${reorderMode}"><button type="button" class="habit-toggle" data-habit-id="${habit.id}" aria-label="${esc([name,description,action].filter(Boolean).join(" · "))}" aria-pressed="${isDone}"><span class="habit-icon" aria-hidden="true">${ICONS[habit.icon]}</span><span class="habit-copy"><strong>${esc(name)}</strong>${description?`<small>${esc(description)}</small>`:""}<em>${days?`${days} ${"day streak"}`:("Start today")}</em></span><span class="habit-check" aria-hidden="true">${isDone?"✓":""}</span></button>${reorderMode?`<div class="habit-order-controls"><span aria-hidden="true">↕</span><button type="button" data-habit-move="up" data-habit-order-id="${habit.id}" ${index===0?"disabled":""} aria-label="${`Move ${name} up`}">↑</button><button type="button" data-habit-move="down" data-habit-order-id="${habit.id}" ${index===visibleHabits.length-1?"disabled":""} aria-label="${`Move ${name} down`}">↓</button></div>`:""}</article>`;}).join("")}</div>
+      <details class="habit-history"><summary><span>${"Last 7 days"}</span><strong>${"View progress"}</strong></summary><div class="habit-week">${days.map(day=>{const n=completed(day).length,dayTotal=habitsForDate(day).length,p=dayTotal?Math.round(n/dayTotal*100):0,today=day===date;return `<div class="habit-day ${today?"is-today":""}"><span>${new Date(`${day}T12:00:00`).toLocaleDateString("en-US",{weekday:"short"})}</span><i><b style="height:${p}%"></b></i><strong>${n}/${dayTotal}</strong></div>`;}).join("")}</div></details>`);
     section.querySelectorAll("[data-filter-habits]").forEach(btn=>{btn.onclick=()=>{state.habitFilter=btn.dataset.filterHabits;persist();renderOverview();};});
     section.querySelectorAll("[data-habit-id]").forEach(button=>button.addEventListener("click",()=>toggle(button.dataset.habitId)));
     section.querySelector("[data-habit-reorder]")?.addEventListener("click",()=>{reorderMode=!reorderMode;renderOverview();});

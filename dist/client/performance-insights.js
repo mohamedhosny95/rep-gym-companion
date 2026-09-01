@@ -111,7 +111,7 @@
 
   function nutritionTargetsForDate(state,key){
     const schedule=state?.preferences?.schedule||{},targets=state?.preferences?.targets||{},day=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][atNoon(key).getDay()],focus=schedule[day]?.focus;
-    const profile=focus==="gym"?"gym":focus==="cardio"?"active":"flex";
+    const profile=focus==="gym"?"gym":["cardio","football","padel"].includes(focus)?"active":"flex";
     return targets[profile]||targets.gym||{calories:0,protein:0,water:0};
   }
 
@@ -187,18 +187,18 @@
 
   function ask(state,question,nowKey=dateKey()){
     const q=String(question||"").trim().toLowerCase(),strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),quality=dataQuality(state,nowKey,{strengthData,nutritionData}),goal=goalForecast(state,state?.analyticsGoal,nowKey,{strengthData,nutritionData});let title="Your data summary",summary="I can answer questions about strength, plateaus, training volume, protein, calories, body weight, goals, recovery, or data quality.",bullets=[],conf="low",evidence=[];
-    const named=strengthData.exercises.find(item=>q.includes(item.exercise.toLowerCase())||(q.includes("bench")&&item.exercise==="Chest Press")||(q.includes("squat")&&item.exercise==="Leg Press")||(q.includes("back")&&item.exercise==="Seated Cable Row")||(/ضغط (الصدر|صدر)/.test(q)&&item.exercise==="Chest Press")||(/ضغط (الرجل|الساق)/.test(q)&&item.exercise==="Leg Press")||(/سحب.*(علوي|لات)/.test(q)&&item.exercise==="Lat Pulldown")||(/سحب.*(جالس|كابل)/.test(q)&&item.exercise==="Seated Cable Row"));
-    if(named||/strong|e1rm|one rep|max|lift|progress|قوة|تقدم|أقصى حمل/.test(q)){
+    const named=strengthData.exercises.find(item=>q.includes(item.exercise.toLowerCase())||(q.includes("bench")&&item.exercise==="Chest Press")||(q.includes("squat")&&item.exercise==="Leg Press")||(q.includes("back")&&item.exercise==="Seated Cable Row"));
+    if(named||/strong|e1rm|one rep|max|lift|progress/.test(q)){
       const item=named||strengthData.exercises[0];title=item?`${item.exercise} strength`:"Strength needs more data";summary=item?`Your best estimated 1RM is ${item.currentE1rm} kg${item.change28d===null?"":`, ${item.change28d>=0?"up":"down"} ${Math.abs(item.change28d)}% across the available 28-day comparison`}.`:"Log weight and reps for at least three sessions to calculate lift-specific trends.";if(item){bullets=[item.plateau?"The recent pattern meets the app's plateau flag.":"No deterministic plateau flag is active.",`Recommended action: ${item.recommendation==="progress"?"use the smallest available increase if the warm-up is pain-free":item.recommendation==="reduce"?"repeat or reduce the load":"add a clean rep before adding load"}.`];conf=item.confidence;evidence=[`${item.sessionCount} sessions and ${item.setCount} weighted sets`,`${item.records[0].date} to ${item.records.at(-1).date}`,`Best recorded ${item.bestDate}`];}
-    }else if(/plateau|stall|stuck|ثبات|متوقف|توقف/.test(q)){
+    }else if(/plateau|stall|stuck/.test(q)){
       title="Plateau check";summary=strengthData.plateaus.length?`${strengthData.plateaus.map(item=>item.exercise).join(", ")} ${strengthData.plateaus.length===1?"is":"are"} currently flagged for no material e1RM improvement across recent sessions.`:"No exercise currently meets the deterministic plateau rule.";bullets=["The rule requires at least three sessions and at least 14 days of history.","A plateau flag is a training signal, not a medical conclusion."];conf=strengthData.confidence;evidence=[strengthData.dateRange,`${strengthData.sessions.length} exercise-session records`];
-    }else if(/protein|calorie|nutrition|food|maintenance|tdee|بروتين|سعرات|تغذية|طعام|صيانة/.test(q)){
+    }else if(/protein|calorie|nutrition|food|maintenance|tdee/.test(q)){
       title="Nutrition consistency";summary=`Over 7 days, food was logged on ${nutritionData.adherence7.loggedDays}/7 days. Protein adherence was ${nutritionData.adherence7.protein===null?"not available":`${nutritionData.adherence7.protein}%`} and calorie adherence was ${nutritionData.adherence7.calories===null?"not available":`${nutritionData.adherence7.calories}%`}.`;bullets=[nutritionData.maintenance?`Estimated maintenance range: ${nutritionData.maintenance.low}–${nutritionData.maintenance.high} kcal/day.`:"Maintenance calories need at least four weigh-ins and 14 logged food days with 50% coverage.","Nutrition values and maintenance are estimates, not medical prescriptions."];conf=nutritionData.confidence;evidence=[nutritionData.dateRange,`${nutritionData.days.length} logged days`,`${nutritionData.weights.length} weigh-ins`];
-    }else if(/weight|fat|gain|lose|goal|forecast|when|وزن|دهون|زيادة|خسارة|هدف|توقع|متى/.test(q)){
+    }else if(/weight|fat|gain|lose|goal|forecast|when/.test(q)){
       title="Goal and body-weight trend";summary=nutritionData.currentWeight===null?"No body-weight trend is available yet.":`Current recorded weight is ${nutritionData.currentWeight} kg and the robust trend is ${nutritionData.weightSlopePerWeek===null?"still calibrating":`${nutritionData.weightSlopePerWeek>0?"+":""}${nutritionData.weightSlopePerWeek} kg/week`}.`;bullets=[goal.status==="forecast"?`Current goal forecast: ${goal.dateRange[0]} to ${goal.dateRange[1]}.`:goal.status==="achieved"?"The saved goal target is currently achieved.":"A forecast needs a numeric target and a stable trend moving toward it.",goal.nextAction];conf=goal.confidence;evidence=[goal.evidence,nutritionData.dateRange];
-    }else if(/quality|confidence|source|missing|duplicate|fresh|جودة|ثقة|مصدر|ناقص|مفقود|مكرر|تكرار|حديث/.test(q)){
+    }else if(/quality|confidence|source|missing|duplicate|fresh/.test(q)){
       title="Data quality";summary=`Cross-domain data confidence is ${quality.overall}%. ${quality.duplicateCount?`${quality.duplicateCount} duplicate keys need attention.`:"No duplicate record keys were detected."}`;bullets=quality.domains.map(domain=>`${domain.label}: ${domain.score}% coverage score${domain.freshnessDays===null?"":` · ${domain.freshnessDays}d since latest record`}`);conf=quality.confidence;evidence=[...quality.healthSources.map(item=>`${item.source}: ${item.count} health days`),...quality.warnings];
-    }else if(/sleep|recovery|readiness|hrv|rest|نوم|استشفاء|جاهزية|راحة|تقلب/.test(q)){
+    }else if(/sleep|recovery|readiness|hrv|rest/.test(q)){
       const recent=Array.from({length:7},(_,index)=>dailyReadiness(state,shiftDay(nowKey,index-6))).filter(finite);title="Recovery pattern";summary=recent.length?`The local seven-day readiness estimate averages ${round(average(recent),0)}% across ${recent.length} logged days.`:"There are not enough sleep or recovery check-ins for a seven-day estimate.";bullets=["The main Health Coach remains the authoritative readiness calculation.","This answer is a wellness observation, not a diagnosis."];conf=confidence(recent.length,recent.length/7);evidence=[`${recent.length}/7 readiness days`,`${shiftDay(nowKey,-6)} to ${nowKey}`];
     }
     return {question:String(question||"").trim(),title,summary,bullets,confidence:conf,evidence:evidence.filter(Boolean),boundary:"Local association and trend analysis only; no diagnosis or proof of cause."};
@@ -269,77 +269,12 @@
     };
   }
 
-  function muscleVolumeHeatmap(state, nowKey = dateKey()){
-    const history = safeArray(state?.history);
-    const end = nowKey;
-    const volumeByMuscle = {
-      Chest: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Chest" },
-      Back: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Back" },
-      Quads: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Quads" },
-      Hamstrings: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Hamstrings" },
-      Glutes: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Glutes" },
-      Shoulders: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Shoulders" },
-      Arms: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Arms" },
-      Core: { sets: 0, volumeKg: 0, status: "recovered", color: "#4ade80", label: "Core" }
-    };
-
-    for(const workout of history){
-      if(!inWindow(workout.date, end, 7)) continue;
-      if(Array.isArray(workout.entries)){
-        for(const entry of workout.entries){
-          const w = Number(entry.weight) || 0, r = Number(entry.reps) || 0;
-          const muscles = MUSCLES[entry.exercise] || (entry.exercise?.includes("Press") ? ["Chest"] : entry.exercise?.includes("Row") || entry.exercise?.includes("Pull") ? ["Back"] : entry.exercise?.includes("Squat") || entry.exercise?.includes("Leg") ? ["Quads"] : ["Core"]);
-          for(const m of muscles){
-            if(volumeByMuscle[m]){
-              volumeByMuscle[m].sets += 1;
-              volumeByMuscle[m].volumeKg += w * r;
-            }
-          }
-        }
-      } else {
-        const loads = workout.loads || {};
-        for(const [exercise, rawSets] of Object.entries(loads)){
-          const muscles = MUSCLES[exercise] || (exercise.includes("Press") ? ["Chest"] : exercise.includes("Row") || exercise.includes("Pull") ? ["Back"] : exercise.includes("Squat") ? ["Quads"] : ["Core"]);
-          const sets = Array.isArray(rawSets) ? rawSets : (Array.isArray(rawSets?.sets) ? rawSets.sets : []);
-          for(const s of sets){
-            const w = Number(s?.weight) || 0, r = Number(s?.reps) || 0;
-            for(const m of muscles){
-              if(volumeByMuscle[m]){
-                volumeByMuscle[m].sets += 1;
-                volumeByMuscle[m].volumeKg += w * r;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    for(const [, data] of Object.entries(volumeByMuscle)){
-      data.volumeKg = round(data.volumeKg, 0);
-      if(data.sets < 6){
-        data.status = "recovered";
-        data.statusLabel = "Recovered / Primed";
-        data.color = "#4ade80";
-      } else if(data.sets <= 16){
-        data.status = "optimal";
-        data.statusLabel = "Optimal Stimulus";
-        data.color = "#2dd4bf";
-      } else {
-        data.status = "fatigued";
-        data.statusLabel = "High Volume";
-        data.color = "#f87171";
-      }
-    }
-
-    return volumeByMuscle;
-  }
-
   function analyze(state,options={}){
     const nowKey=dateKey(options.now)||dateKey();
     const strengthData=strength(state,nowKey),nutritionData=nutrition(state,nowKey),deps={strengthData,nutritionData};
     const quality=dataQuality(state,nowKey,deps);
-    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality}),muscleVolume:muscleVolumeHeatmap(state,nowKey)};
+    return {nowKey,strength:strengthData,nutrition:nutritionData,quality,experiments:experiments(state,nowKey,deps),goal:goalForecast(state,state?.analyticsGoal,nowKey,deps),inbox:inbox(state,state?.insightControls,nowKey,{...deps,quality})};
   }
 
-  return {GOAL_TYPES,MUSCLES,EXERCISE_SUBSTITUTIONS,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze,progressionAdvice,muscleVolumeHeatmap};
+  return {GOAL_TYPES,MUSCLES,EXERCISE_SUBSTITUTIONS,dateKey,shiftDay,e1rm,normalizeGoal,setRows,strength,nutrition,dataQuality,experiments,goalForecast,inbox,ask,analyze,progressionAdvice};
 });

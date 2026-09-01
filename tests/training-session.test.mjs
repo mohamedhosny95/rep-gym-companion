@@ -44,7 +44,6 @@ function createInitialState(overrides = {}) {
     swaps: {},
     history: [],
     cardioDraft: { minutes: 25, rpe: 6, incline: 5, pace: 4.5 },
-    lang: "en",
     ...overrides
   };
 }
@@ -328,7 +327,7 @@ test("resetWorkout resets exercise index and clears completed markers for the se
   assert.deepEqual(state.completed, {});
 });
 
-test("progression advice and codes calculate correctly in English and Arabic", () => {
+test("progression advice and codes calculate correctly", () => {
   const logs = {
     "Leg Press": {
       sets: [
@@ -349,24 +348,17 @@ test("progression advice and codes calculate correctly in English and Arabic", (
   const codeReduce = sessionModule.progressionCode("Chest Press", logs["Chest Press"].sets, "gym");
   assert.equal(codeReduce, "Reduce");
 
-  const adviceEn = sessionModule.progressionAdvice({ logs, history: [], id: "Leg Press", lang: "en" });
+  const adviceEn = sessionModule.progressionAdvice({ logs, history: [], id: "Leg Press" });
   assert.ok(adviceEn.includes("add 5 kg"));
 
-  const adviceAr = sessionModule.progressionAdvice({ logs, history: [], id: "Leg Press", lang: "ar" });
-  assert.ok(adviceAr.includes("زد 5 كجم"));
-
-  const adviceHoldEn = sessionModule.progressionAdvice({ logs: {}, history: [], id: "Row", lang: "en" });
+  const adviceHoldEn = sessionModule.progressionAdvice({ logs: {}, history: [], id: "Row" });
   assert.ok(adviceHoldEn.includes("Log reps and RPE"));
-
-  const adviceHoldAr = sessionModule.progressionAdvice({ logs: {}, history: [], id: "Row", lang: "ar" });
-  assert.ok(adviceHoldAr.includes("سجّل التكرارات"));
 });
 
 test("cardioAdvice evaluates progression readiness consistently", () => {
   const historyEmpty = [];
   assert.equal(sessionModule.isCardioProgressionReady(historyEmpty), false);
-  assert.ok(sessionModule.cardioAdvice(historyEmpty, "en").includes("Hold settings"));
-  assert.ok(sessionModule.cardioAdvice(historyEmpty, "ar").includes("ثبّت الإعدادات"));
+  assert.ok(sessionModule.cardioAdvice(historyEmpty).includes("Hold settings"));
 
   const d = (daysAgo) => new Date(Date.now() - daysAgo * 86400000).toISOString();
   const readyHistory = [
@@ -376,6 +368,5 @@ test("cardioAdvice evaluates progression readiness consistently", () => {
   ];
 
   assert.equal(sessionModule.isCardioProgressionReady(readyHistory), true);
-  assert.ok(sessionModule.cardioAdvice(readyHistory, "en").startsWith("Ready"));
-  assert.ok(sessionModule.cardioAdvice(readyHistory, "ar").startsWith("جاهز"));
+  assert.ok(sessionModule.cardioAdvice(readyHistory).startsWith("Ready"));
 });

@@ -85,13 +85,12 @@
 
   function openRoutineBuilderModal(existingId = null){
     if(document.querySelector(".routine-builder-modal")) return;
-    const ar = window.state?.lang === "ar";
     const routines = getCustomRoutines();
     const routine = existingId ? routines.find(r => r.id === existingId) : {
       id: `custom-${Date.now()}`,
-      title: ar ? "روتين تدريب مخصص" : "Custom Workout Split",
+      title:  "Custom Workout Split",
       emoji: "⚡",
-      description: ar ? "تمارين مخصصة للأهداف الشخصية" : "Custom targeted routine",
+      description:  "Custom targeted routine",
       exercises: [
         { name: "Incline Dumbbell Press", sets: 3, prescription: "3 × 10–12", intensity: "RPE 7–8", rest: 90, motion: "inclinedbpress", category: "Chest" },
         { name: "Lat Pulldown", sets: 3, prescription: "3 × 10–12", intensity: "RPE 7–8", rest: 90, motion: "latpulldown", category: "Back" }
@@ -107,12 +106,12 @@
       overlay.innerHTML = REP_SAFE_DOM.sanitize(`
         <div class="workout-preflight-panel" style="max-width:500px;margin:auto;max-height:90vh;overflow-y:auto;padding:16px;">
           <button class="dialog-close" data-builder-close aria-label="Close">×</button>
-          <span class="set-log-kicker" style="color:var(--acid);">🛠️ ${ar?"محرر التمارين والروتين":"ROUTINE BUILDER"}</span>
-          <h2 style="margin:4px 0 12px;">${existingId ? (ar?"تعديل الروتين":"Edit Routine") : (ar?"إنشاء روتين جديد":"New Custom Routine")}</h2>
+          <span class="set-log-kicker" style="color:var(--acid);">🛠️ ${"ROUTINE BUILDER"}</span>
+          <h2 style="margin:4px 0 12px;">${existingId ? ("Edit Routine") : ("New Custom Routine")}</h2>
           
           <div style="display:grid;grid-template-columns:50px 1fr;gap:8px;margin-bottom:12px;">
             <input data-routine-emoji type="text" value="${draft.emoji}" style="height:44px;text-align:center;font-size:20px;border:1px solid var(--line);border-radius:12px;background:#131715;color:var(--text);">
-            <input data-routine-title type="text" value="${esc(draft.title)}" placeholder="${ar?"اسم الروتين":"Routine Title"}" style="height:44px;padding:0 12px;font-size:14px;font-weight:900;border:1px solid var(--line);border-radius:12px;background:#131715;color:var(--text);">
+            <input data-routine-title type="text" value="${esc(draft.title)}" placeholder="${"Routine Title"}" style="height:44px;padding:0 12px;font-size:14px;font-weight:900;border:1px solid var(--line);border-radius:12px;background:#131715;color:var(--text);">
           </div>
 
           <div class="builder-exercise-list" style="display:grid;gap:8px;margin-bottom:14px;">
@@ -133,17 +132,17 @@
 
           <div style="margin-bottom:14px;">
             <select data-add-ex-select style="width:100%;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#131715;color:var(--text);font:inherit;font-size:13px;">
-              <option value="">${ar?"+ أضف تمريناً من المكتبة…":"+ Add exercise from library…"}</option>
+              <option value="">${"+ Add exercise from library…"}</option>
               ${MASTER_EXERCISES.map(m => `<option value="${m.name}">${m.name} (${m.category})</option>`).join("")}
             </select>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <button class="settings-primary" data-save-routine style="background:var(--acid);color:var(--acid-ink);">
-              ✓ ${ar?"حفظ الروتين":"Save Routine"}
+              ✓ ${"Save Routine"}
             </button>
             <button class="settings-primary" data-builder-cancel style="background:var(--panel-2);color:var(--text);border:1px solid var(--line);">
-              ${ar?"إلغاء":"Cancel"}
+              ${"Cancel"}
             </button>
           </div>
         </div>
@@ -211,7 +210,7 @@
         window.state.customRoutines = routines;
         if(window.persist) window.persist();
         overlay.remove();
-        if(window.showToast) window.showToast(ar ? "تم حفظ الروتين بنجاح." : "Custom routine saved.");
+        if(window.showToast) window.showToast( "Custom routine saved.");
         if(window.renderHome && window.state.view === "home") window.renderHome();
       };
     }
@@ -220,17 +219,17 @@
     document.body.appendChild(overlay);
   }
 
-  function renderRoutinesSection(ar){
+  function renderRoutinesSection(){
     const routines = getCustomRoutines();
     return `
       <section class="custom-routines-section" style="margin:16px 0;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div>
-            <span class="set-log-kicker">⚡ ${ar?"برامج وتدريبات مخصصة":"CUSTOM ROUTINES & SPLITS"}</span>
-            <h2 style="margin:2px 0 0;font-size:17px;font-weight:900;">${ar?"جداولك التدريبية":"Your Workout Programs"}</h2>
+            <span class="set-log-kicker">⚡ ${"CUSTOM ROUTINES & SPLITS"}</span>
+            <h2 style="margin:2px 0 0;font-size:17px;font-weight:900;">${"Your Workout Programs"}</h2>
           </div>
           <button class="settings-primary" data-create-new-routine style="padding:6px 12px;font-size:11px;background:rgba(201,255,61,.1);border:1px solid rgba(201,255,61,.3);color:var(--acid);">
-            + ${ar?"روتين جديد":"New Routine"}
+            + ${"New Routine"}
           </button>
         </div>
 
@@ -241,12 +240,12 @@
                 <span style="font-size:24px;">${r.emoji || "⚡"}</span>
                 <div>
                   <strong style="display:block;font-size:14px;font-weight:900;">${esc(r.title)}</strong>
-                  <small style="color:var(--muted);font-size:11px;">${r.exercises.length} ${ar?"تمارين":"exercises"} · ${esc(r.description || "")}</small>
+                  <small style="color:var(--muted);font-size:11px;">${r.exercises.length} ${"exercises"} · ${esc(r.description || "")}</small>
                 </div>
               </div>
               <div style="display:flex;gap:6px;">
                 <button class="settings-primary" data-launch-custom="${r.id}" style="padding:8px 14px;font-size:12px;font-weight:900;background:var(--acid);color:var(--acid-ink);">
-                  ${ar?"بدء":"Start"} ▶
+                  ${"Start"} ▶
                 </button>
                 <button class="quiet-setting" data-edit-custom="${r.id}" style="padding:8px 10px;font-size:12px;border:1px solid var(--line);border-radius:10px;">
                   ✏️

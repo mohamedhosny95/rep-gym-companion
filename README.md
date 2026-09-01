@@ -166,14 +166,14 @@ available without launching a browser:
 npm run verify
 ```
 
-The local release gate, including Worker bundling and a Wrangler dry run, is:
+The production release gate, including Worker bundling and a production Wrangler dry run, is:
 
 ```sh
-npm run verify:all
+npm run verify:production
 ```
 
 GitHub Actions configuration is intentionally unchanged while the account's
-monthly Actions quota is exhausted. Use the local and staging gates in
+monthly Actions quota is exhausted. Use the production gate in
 `docs/OPERATIONS.md` until the quota is available again.
 
 To run the optional real Notion contract check against a dedicated test copy of

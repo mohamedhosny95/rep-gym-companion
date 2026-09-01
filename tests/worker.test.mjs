@@ -195,7 +195,7 @@ test("habit check-ins create once and then update the same verified Notion row",
     throw new Error(`Unexpected fetch ${url}`);
   };
   try{
-    const save=completed=>call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":"habit-2026-08-12-quran-wird"},body:JSON.stringify({kind:"habit",payload:{date:"2026-08-12",id:"quran-wird",name:"Quran wird",nameAr:"ورد القرآن",completed,streak:completed?3:0,updatedAt:"2026-08-12T15:00:00.000Z",notes:"Read pages of the Quran"}})}).then(read);
+    const save=completed=>call(environment,"/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-sync-key":environment.REP_SYNC_KEY,"x-rep-idempotency-key":"habit-2026-08-12-quran-wird"},body:JSON.stringify({kind:"habit",payload:{date:"2026-08-12",id:"quran-wird",name:"Quran wird",completed,streak:completed?3:0,updatedAt:"2026-08-12T15:00:00.000Z",notes:"Read pages of the Quran"}})}).then(read);
     const created=await save(true);assert.equal(created.status,200);assert.equal(created.body.verified,true);assert.equal(created.body.kind,"habit");assert.equal(created.body.created,1);
     const updated=await save(false);assert.equal(updated.status,200);assert.equal(updated.body.verified,true);assert.equal(updated.body.updated,1);
     assert.equal(calls.filter(item=>item.url.endsWith("/pages")&&item.method==="POST").length,1);
