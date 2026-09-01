@@ -139,7 +139,7 @@ globalThis.REP_HEALTH_ENGINE=(()=>{
     return {averageReadiness,averageSleep,totalStrain,sessions,highLoadLowRecovery,daysLogged:scores.length,headline,action,experiments:experiments(state,profile).slice(0,2)};
   }
   function bedtime(state,date=dateKey(),profile={}){
-    const need=sleepNeed(state,shiftDay(date,1),profile),wake=String(profile.wakeTime||"04:15"),parts=wake.split(":").map(Number),wakeMinutes=(parts[0]||0)*60+(parts[1]||0),minutes=(wakeMinutes-Math.round(need.need*60)+1440)%1440;
+    const need=sleepNeed(state,shiftDay(date,1),profile),wake=String(profile.wakeTime||"04:45"),parts=wake.split(":").map(Number),wakeMinutes=(parts[0]||0)*60+(parts[1]||0),minutes=(wakeMinutes-Math.round(need.need*60)+1440)%1440;
     return {time:`${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`,wakeTime:wake,need:need.need,reason:`${need.baseline}h baseline + ${need.debt}h debt + ${need.demand}h training demand`};
   }
   return {baseline,strain,sleepNeed,readiness,trainingRecommendation,experiments,dataQuality,weeklyReview,bedtime,shiftDay,dateKey};

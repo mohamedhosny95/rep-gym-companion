@@ -1518,7 +1518,7 @@ async function sendSystemHealthAlert(env, record) {
 }
 async function monitorSystemHealth(env) {
   const previous = await env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json");
-  if (previous?.checkedAt && Date.now() - Date.parse(previous.checkedAt) < 4 * 60 * 1e3) return previous;
+  if (previous?.checkedAt && Date.now() - Date.parse(previous.checkedAt) < 6 * 60 * 1e3) return previous;
   const notion = await notionHealth(env), consecutiveFailures = notion.healthy ? 0 : (Number(previous?.consecutiveFailures) || 0) + 1;
   const issue = consecutiveFailures >= 2;
   const record = { checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, consecutiveFailures, issue };
