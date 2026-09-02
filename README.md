@@ -1,5 +1,12 @@
 # Health OS
 
+Version 70 turns readiness and workout history into actions:
+
+- Guided first-run setup captures the goal, experience, weekly availability, session length, equipment, units, and sleep timing, while keeping pairing and Apple Health optional.
+- Adaptive Today Plan converts readiness into a normal, reduced, recovery, or rest plan and applies the matching exercise selection, set count, and load policy with one tap.
+- Workout completion creates exact per-lift next-session weights and rep ranges. Accepted targets are prefilled automatically, including conservative 15% deload recommendations when repeated high fatigue and a plateau coincide.
+- Existing users migrate without an interruption; they can reopen guided setup from Settings → General.
+
 Version 69 adds a local-first Performance Intelligence layer:
 
 - Strength Intelligence calculates per-lift estimated 1RM trends, seven-day volume load, hard sets by muscle, recent PRs, and conservative plateau/progression signals from completed weighted sets.

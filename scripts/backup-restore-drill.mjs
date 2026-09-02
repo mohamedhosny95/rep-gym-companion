@@ -58,6 +58,10 @@ async function openApp(context) {
   const page = await context.newPage();
   await page.goto(`http://localhost:${port}`, { waitUntil: "load" });
   await page.waitForSelector('html[data-app-ready="true"]', { timeout: 10000 });
+  if (await page.locator("[data-onboarding-skip]").count()) {
+    await page.click("[data-onboarding-skip]");
+    await page.waitForSelector(".onboarding-backdrop", { state: "detached", timeout: 10000 });
+  }
   return page;
 }
 
