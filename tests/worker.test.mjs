@@ -123,12 +123,14 @@ test("vitals routes require pairing and push stays disabled without VAPID keys",
 
 test("push subscription payloads are validated and stored",async()=>{
   const publicKey=Buffer.concat([Buffer.from([4]),Buffer.alloc(64,7)]).toString("base64url"),auth=Buffer.alloc(16,9).toString("base64url");
-  const environment=env(),body={subscription:{endpoint:"https://push.example/subscription/1",keys:{p256dh:publicKey,auth}},time:"20:15",timezoneOffsetMinutes:-120,lang:"en"};
+  const environment=env(),body={subscription:{endpoint:"https://push.example/subscription/1",keys:{p256dh:publicKey,auth}},time:"20:15",reminders:[{id:"workout",time:"07:30",days:[0,2,4],enabled:true},{id:"weekly",time:"18:00",days:[6],enabled:true}],timezoneOffsetMinutes:-120,lang:"en"};
   const pairing=await read(await call(environment,"/api/pair-check",{method:"POST",headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}})),cookie=pairing.cookie.split(";",1)[0];
   const response=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example",cookie},body:JSON.stringify(body)}));
   const subscriptionKeys=[...environment.PUSH_KV.values.keys()].filter(key=>key.startsWith("sub:"));
   assert.equal(response.status,200); assert.equal(subscriptionKeys.length,1);
   assert.equal(subscriptionKeys[0].includes("push.example"),false); assert.ok(subscriptionKeys[0].length<100);
+  assert.equal(JSON.parse(environment.PUSH_KV.values.get(subscriptionKeys[0])).reminders.length,2);
+  const invalid=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json","origin":"https://rep.example",cookie},body:JSON.stringify({...body,reminders:[{id:"weekly",time:"25:00",days:[8],enabled:true}]})}));assert.equal(invalid.status,400);
   const unauthenticated=await read(await call(environment,"/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:"{}"})); assert.equal(unauthenticated.status,401);
 });
 
@@ -263,7 +265,7 @@ test("authenticated system health reports verified outbox synchronization",async
   globalThis.fetch=async(input,init={})=>{assert.equal(init.method,undefined);return new Response(JSON.stringify(foodSource()),{status:200,headers:{"content-type":"application/json"}});};
   try{
     const result=await read(await call(environment,"/api/system-health",{headers:{"x-rep-sync-key":environment.REP_SYNC_KEY}}));
-    assert.equal(result.status,200);assert.equal(result.body.version,"69");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.deepEqual(result.body.sync,{mode:"verified-outbox",queued:true});assert.equal(result.body.outbox,undefined);assert.equal(result.body.services.foodAi,true);
+    assert.equal(result.status,200);assert.equal(result.body.version,"71");assert.equal(result.body.notion.healthy,true);assert.equal(result.body.notion.schema.valid,true);assert.match(result.body.notion.destination.url,/6433f54c687e4813869aaadeaf3acaab/);assert.deepEqual(result.body.sync,{mode:"verified-outbox",queued:true});assert.equal(result.body.outbox,undefined);assert.equal(result.body.services.foodAi,true);
   }finally{globalThis.fetch=originalFetch;}
 });
 

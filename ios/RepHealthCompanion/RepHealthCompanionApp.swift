@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct RepHealthCompanionApp: App {
     @StateObject private var sync = HealthKitSyncCoordinator.shared
+    @StateObject private var workout = WorkoutLiveActivityController.shared
     @State private var pairingMessage: String?
 
     var body: some Scene {
@@ -32,6 +33,18 @@ struct RepHealthCompanionApp: App {
                         Button("Authorize Apple Health") { Task { try? await sync.requestAuthorization() } }
                         Button("Sync last 7 days") { Task { try? await sync.syncRecentDays() } }
                     }
+                    Section("Lock Screen Workout") {
+                        LabeledContent("Status", value: workout.isActive ? workout.state.status : "Not active")
+                        LabeledContent("Exercise", value: workout.state.exercise)
+                        LabeledContent("Set", value: "\(workout.state.currentSet) of \(workout.state.setCount)")
+                        Button(workout.isActive ? "Start 90-second rest" : "Start Gym Live Activity") {
+                            Task { if workout.isActive { await workout.beginRest() } else { await workout.start() } }
+                        }
+                        Button("Complete set") { Task { await workout.completeSet() } }.disabled(!workout.isActive)
+                        Button("End workout", role: .destructive) { Task { await workout.end() } }.disabled(!workout.isActive)
+                        Text("The Live Activity shows the current exercise, set, rest timer, and workout status. Interactive controls use App Intents on iOS 17 or later.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     Section {
                         Text("Rep uploads daily aggregates, sample counts, and coverage indicators. Raw heart-rate samples remain in Apple Health on this iPhone.")
                     }
@@ -39,7 +52,8 @@ struct RepHealthCompanionApp: App {
                 .navigationTitle("Rep Health")
                 .task { try? await sync.bootstrap() }
                 .onOpenURL { url in
-                    handlePairingUrl(url)
+                    if url.host == "workout" { Task { await workout.start() } }
+                    else { handlePairingUrl(url) }
                 }
             }
         }

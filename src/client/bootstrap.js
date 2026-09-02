@@ -34,6 +34,7 @@
     await load("habits.js");
     await load("health-ui.js");
     await load("performance-ui.js");
+    await load("product-suite-ui.js");
     document.querySelector("#commandPaletteButton")?.addEventListener("click",()=>window.REP_COMMAND_PALETTE?.open());
     document.documentElement.dataset.appReady="true";
     delete window.REP_HYDRATED_STATE;

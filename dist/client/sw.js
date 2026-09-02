@@ -1,7 +1,7 @@
-const BUILD_VERSION="4b2f90bd6805";
+const BUILD_VERSION="67909e808d0a";
 const CACHE = `rep-companion-${BUILD_VERSION}`;
 const versioned=path=>`${path}?v=${BUILD_VERSION}`;
-const CORE_ASSETS = ["./", "./index.html", ...["./styles.css","./vendor/dompurify.min.js","./safe-dom.js","./build-meta.js","./auth.js","./storage.js","./ui-state.js","./ui-shell.js","./health-data.js","./features.js","./health-engine.js","./health-coverage.js","./performance-insights.js","./adaptive-coach.js","./training-session.js","./offline-nutrition.js","./store.js","./importer.js","./report-card.js","./command-palette.js","./recovery-map.js","./plate-calculator.js","./heart-rate-monitor.js","./audio-coach.js","./barcode-scanner.js","./muscle-heatmap.js","./custom-workouts.js","./bootstrap.js","./app.js","./sync-outbox.js","./telemetry.js","./sync.js","./sync-center.js","./enhancements.js","./habits.js","./health-ui.js","./performance-ui.js"].map(versioned), "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CORE_ASSETS = ["./", "./index.html", ...["./styles.css","./vendor/dompurify.min.js","./safe-dom.js","./build-meta.js","./auth.js","./storage.js","./ui-state.js","./ui-shell.js","./health-data.js","./features.js","./health-engine.js","./health-coverage.js","./performance-insights.js","./product-suite.js","./adaptive-coach.js","./training-session.js","./offline-nutrition.js","./store.js","./importer.js","./report-card.js","./command-palette.js","./recovery-map.js","./plate-calculator.js","./heart-rate-monitor.js","./audio-coach.js","./barcode-scanner.js","./muscle-heatmap.js","./custom-workouts.js","./bootstrap.js","./app.js","./sync-outbox.js","./telemetry.js","./sync.js","./sync-center.js","./enhancements.js","./habits.js","./health-ui.js","./performance-ui.js","./product-suite-ui.js"].map(versioned), "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const ATLAS_ASSETS = ["./assets/gym-anatomy-atlas.webp", "./assets/mobility-anatomy-atlas.webp", "./assets/core-anatomy-atlas.webp", "./assets/cardio-anatomy-atlas.webp", "./assets/gym-anatomy-front-atlas.webp", "./assets/mobility-anatomy-front-atlas.webp", "./assets/core-anatomy-front-atlas.webp", "./assets/cardio-anatomy-front-atlas.webp", "./assets/priority-motion-atlas.webp"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => {
@@ -44,6 +44,8 @@ self.addEventListener("notificationclick", event => {
   const targetPath = action === "log-sleep" ? "./?quick=health&action=sleep"
     : action === "log-meal" ? "./?quick=food"
     : action === "open-habits" ? "./?quick=home"
+    : action === "resume-workout" || action === "open-workout" ? "./?quick=train&action=resume"
+    : action === "open-weekly" ? "./?quick=insights"
     : (event.notification.data?.url || "./");
   event.waitUntil((async () => {
     const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });

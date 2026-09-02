@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { PushScheduleInput } from "../contracts";
+import type { PushReminderId, PushReminderInput, PushScheduleInput } from "../contracts";
 import { sendWebPush, type StoredPushSubscription } from "../integrations/web-push";
 import { logEvent } from "../observability";
 
@@ -14,6 +14,7 @@ type DeviceRow = { device_id: string; label: string; created_at: string; last_se
 type PushRow = {
   endpoint: string; p256dh: string; auth: string; expiration_time: number | null;
   reminder_time: string; timezone_offset: number; timezone: string | null; lang: "ar" | "en";
+  reminders_json: string | null; next_reminder_id: PushReminderId | null; last_sent_key: string | null;
   last_sent_date: string | null; updated_at: string; last_status: number | null; last_error: string | null;
 };
 type ReceiptRow = { receipt_json: string; expires_at: number };
@@ -47,6 +48,17 @@ export function nextReminderAt(time: string, timezone: string | number, from = D
   return scheduled;
 }
 
+function localWeekday(timestamp:number,timezone:string|number):number{
+  if(typeof timezone==="number")return new Date(timestamp-timezone*60_000).getUTCDay();
+  const parts=zoneParts(timestamp,timezone);return new Date(Date.UTC(parts.year,parts.month-1,parts.day)).getUTCDay();
+}
+
+export function nextReminderEvent(reminders:PushReminderInput[],timezone:string|number,from=Date.now()):{id:PushReminderId;at:number}{
+  let winner:{id:PushReminderId;at:number}|null=null;
+  for(const reminder of reminders){let candidate=nextReminderAt(reminder.time,timezone,from);for(let attempt=0;attempt<8&&!reminder.days.includes(localWeekday(candidate,timezone));attempt++)candidate=nextReminderAt(reminder.time,timezone,candidate+1_000);if(reminder.days.includes(localWeekday(candidate,timezone))&&(!winner||candidate<winner.at))winner={id:reminder.id,at:candidate};}
+  if(!winner)throw new Error("At least one reminder day is required.");return winner;
+}
+
 export class DeviceCoordinator extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -70,6 +82,9 @@ export class DeviceCoordinator extends DurableObject<Env> {
       `);
       const columns=this.ctx.storage.sql.exec<{name:string}>("PRAGMA table_info(push_subscription)").toArray();
       if(!columns.some(column=>column.name==="timezone"))this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN timezone TEXT");
+      if(!columns.some(column=>column.name==="reminders_json"))this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN reminders_json TEXT");
+      if(!columns.some(column=>column.name==="next_reminder_id"))this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN next_reminder_id TEXT");
+      if(!columns.some(column=>column.name==="last_sent_key"))this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN last_sent_key TEXT");
     });
   }
 
@@ -104,18 +119,19 @@ export class DeviceCoordinator extends DurableObject<Env> {
   async setPush(input: PushScheduleInput): Promise<{ nextReminderAt: string }> {
     if (!(await this.validate())) throw new Error("Device is revoked.");
     const now = new Date().toISOString();
+    const reminders=input.reminders?.length?input.reminders:[{id:"workout" as const,time:input.time,days:[0,1,2,3,4,5,6],enabled:true as const}],zone=input.timezone||input.timezoneOffsetMinutes,next=nextReminderEvent(reminders,zone);
     this.ctx.storage.sql.exec(
-      `INSERT INTO push_subscription (singleton, endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL)
+      `INSERT INTO push_subscription (singleton, endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, reminders_json, next_reminder_id, last_sent_key, last_sent_date, updated_at, last_status, last_error)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, NULL)
        ON CONFLICT(singleton) DO UPDATE SET endpoint=excluded.endpoint, p256dh=excluded.p256dh, auth=excluded.auth,
        expiration_time=excluded.expiration_time, reminder_time=excluded.reminder_time, timezone_offset=excluded.timezone_offset,
-       timezone=excluded.timezone, lang=excluded.lang, updated_at=excluded.updated_at, last_error=NULL`,
+       timezone=excluded.timezone, lang=excluded.lang, reminders_json=excluded.reminders_json, next_reminder_id=excluded.next_reminder_id,
+       last_sent_key=NULL, updated_at=excluded.updated_at, last_error=NULL`,
       input.subscription.endpoint, input.subscription.keys.p256dh, input.subscription.keys.auth, input.subscription.expirationTime,
-      input.time, input.timezoneOffsetMinutes, input.timezone, input.lang, now
+      input.time, input.timezoneOffsetMinutes, input.timezone, input.lang, JSON.stringify(reminders), next.id, now
     );
-    const next = nextReminderAt(input.time, input.timezone||input.timezoneOffsetMinutes);
-    await this.ctx.storage.setAlarm(next);
-    return { nextReminderAt: new Date(next).toISOString() };
+    await this.ctx.storage.setAlarm(next.at);
+    return { nextReminderAt: new Date(next.at).toISOString() };
   }
 
   async clearPush(endpoint?: string): Promise<void> {
@@ -127,7 +143,7 @@ export class DeviceCoordinator extends DurableObject<Env> {
 
   private pushRow(): PushRow | null {
     return this.ctx.storage.sql.exec<PushRow>(
-      "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"
+      "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, reminders_json, next_reminder_id, last_sent_key, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"
     ).toArray()[0] ?? null;
   }
 
@@ -166,29 +182,11 @@ export class DeviceCoordinator extends DurableObject<Env> {
   async alarm(alarmInfo?: { retryCount?: number; isRetry?: boolean }): Promise<void> {
     const row = this.pushRow();
     if (!row || !(await this.validate())) { await this.ctx.storage.deleteAlarm(); return; }
-    const zone=row.timezone||row.timezone_offset,today = localDateAt(Date.now(), zone);
-    if (row.last_sent_date === today) { await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone)); return; }
-    const message = row.lang === "ar"
-      ? {
-          title: "Health OS",
-          body: "حان وقت تسجيل يومك — تمرين، طعام، أو نوم.",
-          data: { url: "/?quick=home" },
-          actions: [
-            { action: "open-habits", title: "العادات" },
-            { action: "log-meal", title: "وجبة" },
-            { action: "log-sleep", title: "نوم" }
-          ]
-        }
-      : {
-          title: "Health OS",
-          body: "Time to log your day — a workout, a meal, or your sleep.",
-          data: { url: "/?quick=home" },
-          actions: [
-            { action: "open-habits", title: "Habits" },
-            { action: "log-meal", title: "Meal" },
-            { action: "log-sleep", title: "Sleep" }
-          ]
-        };
+    const zone=row.timezone||row.timezone_offset,today=localDateAt(Date.now(),zone),fallback:PushReminderInput={id:"workout",time:row.reminder_time,days:[0,1,2,3,4,5,6],enabled:true};let reminders:PushReminderInput[]=[fallback];try{const parsed=JSON.parse(row.reminders_json||"");if(Array.isArray(parsed)&&parsed.length)reminders=parsed;}catch{/* legacy daily reminder */}
+    const reminder=reminders.find(item=>item.id===row.next_reminder_id)||fallback,sentKey=`${today}:${reminder.id}`;
+    if(row.last_sent_key===sentKey){const next=nextReminderEvent(reminders,zone,Date.now()+1_000);this.ctx.storage.sql.exec("UPDATE push_subscription SET next_reminder_id=? WHERE singleton=1",next.id);await this.ctx.storage.setAlarm(next.at);return;}
+    const copy={workout:{body:"Your training plan is ready when you are.",url:"/?quick=train",action:"open-workout",title:"Open workout"},bedtime:{body:"Start your wind-down and protect tomorrow's recovery.",url:"/?quick=health&action=sleep",action:"log-sleep",title:"Log sleep"},unfinished:{body:"An unfinished workout is saved exactly where you left it.",url:"/?quick=train&action=resume",action:"resume-workout",title:"Resume"},weekly:{body:"Your weekly progress report and next action are ready.",url:"/?quick=insights",action:"open-weekly",title:"Review"}}[reminder.id];
+    const message={title:"Health OS",body:copy.body,data:{url:copy.url},actions:[{action:copy.action,title:copy.title}]};
     try {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) { await this.clearPush(); return; }
@@ -196,7 +194,7 @@ export class DeviceCoordinator extends DurableObject<Env> {
       // Commit last_sent_date the instant the send succeeds, before anything else that
       // could throw. A native alarm retry re-enters this function and, because the guard
       // above already sees today's date, reschedules without resending the notification.
-      this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
+      this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_sent_key=?, last_status=?, last_error=NULL WHERE singleton=1",today,sentKey,response.status);
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -204,6 +202,6 @@ export class DeviceCoordinator extends DurableObject<Env> {
       if ((alarmInfo?.retryCount ?? 0) >= 5) { await this.ctx.storage.setAlarm(Date.now() + 30 * 60_000); return; }
       throw error;
     }
-    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
+    const next=nextReminderEvent(reminders,zone,Date.now()+1_000);this.ctx.storage.sql.exec("UPDATE push_subscription SET next_reminder_id=? WHERE singleton=1",next.id);await this.ctx.storage.setAlarm(next.at);
   }
 }

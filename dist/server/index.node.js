@@ -1,5 +1,6 @@
 // src/server/contracts.ts
 var SYNC_KINDS = ["food", "nutrition", "recovery", "sleep", "hygiene", "habit"];
+var PUSH_REMINDER_IDS = ["workout", "bedtime", "unfinished", "weekly"];
 function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -36,9 +37,20 @@ function validatePushSchedule(value) {
     return null;
   }
   if (!endpoint || endpoint.length > 1800 || !p256dh || p256dh.length > 300 || !auth || auth.length > 200) return null;
+  const remindersRaw = Array.isArray(value.reminders) ? value.reminders : [];
+  if (remindersRaw.length > 4) return null;
+  const reminders = [];
+  for (const item of remindersRaw) {
+    if (!isRecord(item) || !PUSH_REMINDER_IDS.includes(item.id) || item.enabled === false) return null;
+    const reminderTime = String(item.time ?? "").trim(), days = Array.isArray(item.days) ? [...new Set(item.days.map(Number))] : [];
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime) || !days.length || days.length > 7 || days.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) return null;
+    reminders.push({ id: item.id, time: reminderTime, days, enabled: true });
+  }
+  if (new Set(reminders.map((item) => item.id)).size !== reminders.length) return null;
   return {
     subscription: { endpoint, expirationTime: Number.isFinite(Number(value.subscription.expirationTime)) ? Number(value.subscription.expirationTime) : null, keys: { p256dh, auth } },
     time,
+    reminders: reminders.length ? reminders : [{ id: "workout", time, days: [0, 1, 2, 3, 4, 5, 6], enabled: true }],
     timezoneOffsetMinutes,
     timezone,
     lang: value.lang === "ar" ? "ar" : "en"
@@ -211,6 +223,21 @@ function nextReminderAt(time, timezone, from = Date.now()) {
   }
   return scheduled;
 }
+function localWeekday(timestamp, timezone) {
+  if (typeof timezone === "number") return new Date(timestamp - timezone * 6e4).getUTCDay();
+  const parts = zoneParts(timestamp, timezone);
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+}
+function nextReminderEvent(reminders, timezone, from = Date.now()) {
+  let winner = null;
+  for (const reminder of reminders) {
+    let candidate = nextReminderAt(reminder.time, timezone, from);
+    for (let attempt = 0; attempt < 8 && !reminder.days.includes(localWeekday(candidate, timezone)); attempt++) candidate = nextReminderAt(reminder.time, timezone, candidate + 1e3);
+    if (reminder.days.includes(localWeekday(candidate, timezone)) && (!winner || candidate < winner.at)) winner = { id: reminder.id, at: candidate };
+  }
+  if (!winner) throw new Error("At least one reminder day is required.");
+  return winner;
+}
 var DeviceCoordinator = class extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -234,6 +261,9 @@ var DeviceCoordinator = class extends DurableObject {
       `);
       const columns = this.ctx.storage.sql.exec("PRAGMA table_info(push_subscription)").toArray();
       if (!columns.some((column) => column.name === "timezone")) this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN timezone TEXT");
+      if (!columns.some((column) => column.name === "reminders_json")) this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN reminders_json TEXT");
+      if (!columns.some((column) => column.name === "next_reminder_id")) this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN next_reminder_id TEXT");
+      if (!columns.some((column) => column.name === "last_sent_key")) this.ctx.storage.sql.exec("ALTER TABLE push_subscription ADD COLUMN last_sent_key TEXT");
     });
   }
   async register(record) {
@@ -267,12 +297,14 @@ var DeviceCoordinator = class extends DurableObject {
   async setPush(input) {
     if (!await this.validate()) throw new Error("Device is revoked.");
     const now = (/* @__PURE__ */ new Date()).toISOString();
+    const reminders = input.reminders?.length ? input.reminders : [{ id: "workout", time: input.time, days: [0, 1, 2, 3, 4, 5, 6], enabled: true }], zone = input.timezone || input.timezoneOffsetMinutes, next = nextReminderEvent(reminders, zone);
     this.ctx.storage.sql.exec(
-      `INSERT INTO push_subscription (singleton, endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL)
+      `INSERT INTO push_subscription (singleton, endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, reminders_json, next_reminder_id, last_sent_key, last_sent_date, updated_at, last_status, last_error)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, NULL)
        ON CONFLICT(singleton) DO UPDATE SET endpoint=excluded.endpoint, p256dh=excluded.p256dh, auth=excluded.auth,
        expiration_time=excluded.expiration_time, reminder_time=excluded.reminder_time, timezone_offset=excluded.timezone_offset,
-       timezone=excluded.timezone, lang=excluded.lang, updated_at=excluded.updated_at, last_error=NULL`,
+       timezone=excluded.timezone, lang=excluded.lang, reminders_json=excluded.reminders_json, next_reminder_id=excluded.next_reminder_id,
+       last_sent_key=NULL, updated_at=excluded.updated_at, last_error=NULL`,
       input.subscription.endpoint,
       input.subscription.keys.p256dh,
       input.subscription.keys.auth,
@@ -281,11 +313,12 @@ var DeviceCoordinator = class extends DurableObject {
       input.timezoneOffsetMinutes,
       input.timezone,
       input.lang,
+      JSON.stringify(reminders),
+      next.id,
       now
     );
-    const next = nextReminderAt(input.time, input.timezone || input.timezoneOffsetMinutes);
-    await this.ctx.storage.setAlarm(next);
-    return { nextReminderAt: new Date(next).toISOString() };
+    await this.ctx.storage.setAlarm(next.at);
+    return { nextReminderAt: new Date(next.at).toISOString() };
   }
   async clearPush(endpoint) {
     if (endpoint) this.ctx.storage.sql.exec("DELETE FROM push_subscription WHERE singleton=1 AND endpoint=?", endpoint);
@@ -295,7 +328,7 @@ var DeviceCoordinator = class extends DurableObject {
   }
   pushRow() {
     return this.ctx.storage.sql.exec(
-      "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"
+      "SELECT endpoint, p256dh, auth, expiration_time, reminder_time, timezone_offset, timezone, lang, reminders_json, next_reminder_id, last_sent_key, last_sent_date, updated_at, last_status, last_error FROM push_subscription WHERE singleton=1"
     ).toArray()[0] ?? null;
   }
   subscription(row) {
@@ -337,30 +370,22 @@ var DeviceCoordinator = class extends DurableObject {
       await this.ctx.storage.deleteAlarm();
       return;
     }
-    const zone = row.timezone || row.timezone_offset, today = localDateAt(Date.now(), zone);
-    if (row.last_sent_date === today) {
-      await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
+    const zone = row.timezone || row.timezone_offset, today = localDateAt(Date.now(), zone), fallback = { id: "workout", time: row.reminder_time, days: [0, 1, 2, 3, 4, 5, 6], enabled: true };
+    let reminders = [fallback];
+    try {
+      const parsed = JSON.parse(row.reminders_json || "");
+      if (Array.isArray(parsed) && parsed.length) reminders = parsed;
+    } catch {
+    }
+    const reminder = reminders.find((item) => item.id === row.next_reminder_id) || fallback, sentKey = `${today}:${reminder.id}`;
+    if (row.last_sent_key === sentKey) {
+      const next2 = nextReminderEvent(reminders, zone, Date.now() + 1e3);
+      this.ctx.storage.sql.exec("UPDATE push_subscription SET next_reminder_id=? WHERE singleton=1", next2.id);
+      await this.ctx.storage.setAlarm(next2.at);
       return;
     }
-    const message = row.lang === "ar" ? {
-      title: "Health OS",
-      body: "\u062D\u0627\u0646 \u0648\u0642\u062A \u062A\u0633\u062C\u064A\u0644 \u064A\u0648\u0645\u0643 \u2014 \u062A\u0645\u0631\u064A\u0646\u060C \u0637\u0639\u0627\u0645\u060C \u0623\u0648 \u0646\u0648\u0645.",
-      data: { url: "/?quick=home" },
-      actions: [
-        { action: "open-habits", title: "\u0627\u0644\u0639\u0627\u062F\u0627\u062A" },
-        { action: "log-meal", title: "\u0648\u062C\u0628\u0629" },
-        { action: "log-sleep", title: "\u0646\u0648\u0645" }
-      ]
-    } : {
-      title: "Health OS",
-      body: "Time to log your day \u2014 a workout, a meal, or your sleep.",
-      data: { url: "/?quick=home" },
-      actions: [
-        { action: "open-habits", title: "Habits" },
-        { action: "log-meal", title: "Meal" },
-        { action: "log-sleep", title: "Sleep" }
-      ]
-    };
+    const copy = { workout: { body: "Your training plan is ready when you are.", url: "/?quick=train", action: "open-workout", title: "Open workout" }, bedtime: { body: "Start your wind-down and protect tomorrow's recovery.", url: "/?quick=health&action=sleep", action: "log-sleep", title: "Log sleep" }, unfinished: { body: "An unfinished workout is saved exactly where you left it.", url: "/?quick=train&action=resume", action: "resume-workout", title: "Resume" }, weekly: { body: "Your weekly progress report and next action are ready.", url: "/?quick=insights", action: "open-weekly", title: "Review" } }[reminder.id];
+    const message = { title: "Health OS", body: copy.body, data: { url: copy.url }, actions: [{ action: copy.action, title: copy.title }] };
     try {
       const response = await sendWebPush(this.env, this.subscription(row), message);
       if (response.status === 404 || response.status === 410) {
@@ -368,7 +393,7 @@ var DeviceCoordinator = class extends DurableObject {
         return;
       }
       if (!response.ok) throw new Error(`Push provider returned ${response.status}.`);
-      this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_status=?, last_error=NULL WHERE singleton=1", today, response.status);
+      this.ctx.storage.sql.exec("UPDATE push_subscription SET last_sent_date=?, last_sent_key=?, last_status=?, last_error=NULL WHERE singleton=1", today, sentKey, response.status);
     } catch (error) {
       const messageText = error instanceof Error ? error.message.slice(0, 180) : "Unknown push failure";
       this.ctx.storage.sql.exec("UPDATE push_subscription SET last_error=? WHERE singleton=1", messageText);
@@ -379,7 +404,9 @@ var DeviceCoordinator = class extends DurableObject {
       }
       throw error;
     }
-    await this.ctx.storage.setAlarm(nextReminderAt(row.reminder_time, zone));
+    const next = nextReminderEvent(reminders, zone, Date.now() + 1e3);
+    this.ctx.storage.sql.exec("UPDATE push_subscription SET next_reminder_id=? WHERE singleton=1", next.id);
+    await this.ctx.storage.setAlarm(next.at);
   }
 };
 
@@ -1695,7 +1722,7 @@ async function route(request, env, ctx) {
     if (!await paired(request, env)) return json({ ok: false, error: "This device is not paired or was revoked." }, 401);
     const [notion, monitor] = await Promise.all([notionHealth(env), env.PUSH_KV?.get(SYSTEM_HEALTH_KEY, "json")]);
     const infrastructure = infrastructureHealth(env);
-    return json({ ok: true, version: "69", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
+    return json({ ok: true, version: "71", environment: env.ENVIRONMENT || "production", checkedAt: (/* @__PURE__ */ new Date()).toISOString(), notion, sync: { mode: "verified-outbox", queued: true }, monitor, infrastructure, objectives: SERVICE_LEVEL_OBJECTIVES, services: { foodAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), vitalsAi: Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY), push: infrastructure.push.configured } });
   }
   if (url.pathname === "/api/telemetry") {
     if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);

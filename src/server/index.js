@@ -1251,7 +1251,7 @@ async function route(request, env, ctx) {
     if (!(await paired(request, env))) return json({ok:false,error:"This device is not paired or was revoked."},401);
     const [notion,monitor]=await Promise.all([notionHealth(env),env.PUSH_KV?.get(SYSTEM_HEALTH_KEY,"json")]);
     const infrastructure=infrastructureHealth(env);
-    return json({ok:true,version:"69",environment:env.ENVIRONMENT||"production",checkedAt:new Date().toISOString(),notion,sync:{mode:"verified-outbox",queued:true},monitor,infrastructure,objectives:SERVICE_LEVEL_OBJECTIVES,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
+    return json({ok:true,version:"71",environment:env.ENVIRONMENT||"production",checkedAt:new Date().toISOString(),notion,sync:{mode:"verified-outbox",queued:true},monitor,infrastructure,objectives:SERVICE_LEVEL_OBJECTIVES,services:{foodAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),vitalsAi:Boolean(env.GEMINI_API_KEY||env.GOOGLE_API_KEY),push:infrastructure.push.configured}});
   }
   if (url.pathname === "/api/telemetry") {
     if (request.method !== "POST") return json({ok:false,error:"Method not allowed."},405);
