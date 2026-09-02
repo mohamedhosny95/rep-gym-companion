@@ -85,6 +85,19 @@ try {
 
   await page.goto(baseUrl, { waitUntil: "load" });
   await page.waitForSelector('html[data-app-ready="true"]', { timeout: 10000 });
+  await page.waitForSelector(".onboarding-backdrop", { timeout: 10000 });
+  assertTrue(await page.locator(".onboarding-backdrop").count()===1,"Guided setup opens on a true first run");
+  assertTrue(await page.locator('[name="setup-goal"]:checked').getAttribute("value")==="strength","Guided setup starts with a clear strength goal");
+  await page.click("[data-onboarding-next]");
+  assertTrue(await page.locator("[data-setup-days]").count()===1,"Guided setup captures schedule and available equipment");
+  await page.selectOption("[data-setup-days]","3");
+  await page.click("[data-onboarding-next]");
+  assertTrue(await page.locator("[data-setup-wake]").count()===1,"Guided setup captures units, sleep timing, and optional connections");
+  await page.click("[data-onboarding-next]");
+  await page.waitForSelector(".onboarding-backdrop",{state:"detached",timeout:10000});
+  const setupState=await page.evaluate(()=>({onboarding:state.onboarding,schedule:state.preferences.schedule,goal:state.analyticsGoal.type}));
+  assertTrue(Boolean(setupState.onboarding.completedAt)&&setupState.onboarding.skipped===false,"Guided setup persists a completed profile");
+  assertTrue(Object.values(setupState.schedule).filter(day=>day.focus==="gym").length===3,"Guided setup creates the requested three-day schedule");
   await page.waitForSelector("text=TODAY", { timeout: 10000 });
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
@@ -437,6 +450,29 @@ try {
       assertTrue(layout.targets.every(size=>size>=44),`primary navigation keeps 44px touch targets at ${width}px`);
     }
   }
+
+  // Integrated adaptive-plan and next-session handoff coverage. This uses
+  // controlled local state so no physical watch or phone bridge is required.
+  await page.setViewportSize({width:390,height:900});
+  await page.evaluate(()=>{
+    const today=isoDay();state.sessionStartedAt=null;state.preferences.schedule[currentDay()]={morning:true,focus:"gym"};
+    state.sleepLogs=state.sleepLogs.filter(item=>item.date!==today);
+    state.recoveryCheckins=[{date:today,soreness:4,energy:2,sleep:7,pain:false,notes:"controlled e2e fatigue"}];
+    renderOverview();
+  });
+  assertTrue(await page.locator(".adaptive-adjustments").count()===1,"Adaptive Today Plan explains its concrete workout changes");
+  await page.click("[data-apply-adaptive]");
+  const appliedPlan=await page.evaluate(()=>state.activeWorkoutPlan);
+  assertTrue(appliedPlan?.mode==="reduced"&&appliedPlan?.targetSession==="gymLite","One tap applies reduced sets, exercise selection, and load policy");
+  await page.evaluate(()=>{
+    const now=Date.now(),record={id:now,date:new Date(now).toISOString(),session:"gym",duration:2400,calories:210,sets:2,loads:{},entries:[{exercise:"Chest Press",set:1,weight:60,reps:12,rpe:7},{exercise:"Chest Press",set:2,weight:60,reps:12,rpe:7}]};
+    state.session="gym";state.history=[record,...state.history];state.progressionProposals=[];renderComplete();
+  });
+  assertTrue(await page.locator(".next-targets-card").count()===1,"Workout completion generates an exact next-session target card");
+  assertTrue(await page.locator(".next-targets-card").getByText(/Chest Press/).count()===1,"Next-session target identifies the completed lift");
+  await page.click("[data-accept-progression]");
+  const targetApplied=await page.evaluate(()=>({target:state.trainingTargets["Chest Press"],set:state.logs["Chest Press"]?.sets?.[0]}));
+  assertTrue(Boolean(targetApplied.target?.acceptedAt)&&String(targetApplied.set?.weight)===String(targetApplied.target?.targetWeight),"One tap prefills the accepted weight for the next session");
 
   assertTrue(consoleErrors.length === 0, `No console/page errors during the run (found ${consoleErrors.length})`);
   if (consoleErrors.length) console.log(consoleErrors.join("\n"));
