@@ -12,30 +12,11 @@ function createReportCardContext() {
     window: {},
     globalThis: {},
     document: {},
-    REP_PERFORMANCE_INSIGHTS: {
-      aggregate: () => ({
-        strength: {
-          totalVolume: 12500,
-          rows: [{ sessionId: "sess-1" }, { sessionId: "sess-2" }],
-          prs: [{ exercise: "Leg Press", weight: 200 }],
-          plateaus: [],
-          exercises: [{ exercise: "Leg Press", sessionCount: 5, currentE1rm: 220, change28d: 5.2, plateau: false, recommendation: "progress" }]
-        },
-        nutrition: {
-          adherence7: { calories: 95, protein: 98 },
-          weightSlopePerWeek: -0.25,
-          maintenance: { low: 2200, high: 2400 }
-        },
-        muscleVolume: {
-          Quads: { sets: 12, volumeKg: 5400, status: "optimal", statusLabel: "Optimal Stimulus" }
-        },
-        experiments: [
-          { title: "Caffeine after 2pm", withLabel: "Late Caffeine", withAverage: "62%", withoutLabel: "No Late Caffeine", withoutAverage: "78%", delta: -16, unit: "pp" }
-        ]
-      })
-    }
+    REP_PERFORMANCE_INSIGHTS: {},
+    REP_PRODUCT_SUITE: {weeklySummary:()=>({period:{start:"2026-08-27",end:"2026-09-02"},planned:4,completed:3,adherence:75,avgReadiness:82,readinessDays:6,rescheduled:1,nextAction:"Repeat the current plan with clean form.",workouts:[{date:"2026-09-01",session:"Gym"}],prs:[{exercise:"Leg Press",value:220,unit:"kg e1RM"}]})}
   };
   context.window.REP_PERFORMANCE_INSIGHTS = context.REP_PERFORMANCE_INSIGHTS;
+  context.window.REP_PRODUCT_SUITE = context.REP_PRODUCT_SUITE;
   vm.createContext(context);
   vm.runInContext(reportCardSource, context);
   return context.window.REP_REPORT_CARD;
@@ -46,12 +27,11 @@ test("Report card generator renders valid HTML with comprehensive metrics in Eng
   const state = { lang: "en" };
   const html = reportCard.generateReportHtml(state);
 
-  assert.ok(html.includes("<!DOCTYPE html>"), "Contains DOCTYPE");
-  assert.ok(html.includes("Comprehensive Mesocycle & Athlete Performance Card"), "Contains English title");
-  assert.ok(html.includes("12,500 kg"), "Contains formatted total volume");
+  assert.ok(html.includes("<!doctype html>"), "Contains DOCTYPE");
+  assert.ok(html.includes("Health OS · Weekly Report"), "Contains English title");
+  assert.ok(html.includes("75%"), "Contains workout adherence");
   assert.ok(html.includes("Leg Press"), "Contains exercise name");
-  assert.ok(html.includes("95%"), "Contains caloric adherence");
-  assert.ok(html.includes("Optimal Stimulus"), "Contains muscle stimulus label");
+  assert.ok(html.includes("Repeat the current plan"), "Contains next action");
   assert.ok(html.includes("@media print"), "Contains print-optimized CSS");
 });
 

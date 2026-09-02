@@ -496,7 +496,7 @@ const state = {
   activeEnergy:saved.activeEnergy||{}, lastVitalsImportDate:saved.lastVitalsImportDate||null, lastVitalsImportAt:saved.lastVitalsImportAt||null,
   vitalsDraft:null, vitalsBusy:false, vitalsStatus:"", vitalsError:false, vitalsImportStatus:"", vitalsImportError:false,
   previewMode: false,
-  timer: null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
+  timer: saved.restTimer||null, exerciseTimer:null, sessionClock:null, touchX: null, wakeLock:null
 };
 window.state=state;
 window.sessions=sessions;
@@ -1104,6 +1104,7 @@ function showSessionPreview(id,openIndices=new Set()){
 }
 function startSession(id) {
   REP_TRAINING_SESSION.startWorkout(state,id,sessions);
+  window.REP_PRODUCT_SUITE?.trackEvent(state,"workout_started",{session:id,resumed:Boolean(state.sessionStartedAt)});
   updatePrimaryTabs();document.body.classList.add("workout-mode");persist();resetWorkoutScroll();renderExercise();startSessionClock();
 }
 
@@ -1113,12 +1114,13 @@ function resetWorkoutScroll(){
 }
 
 function currentItem(base){
-  if(base.name!=="Back Extension"||!state.swaps.backExtension)return localizedItem(base);
-  const swap={...base,name:"Hip Thrust Machine",motion:"floor",setup:"Shoulders against the machine pad, feet flat and hip-width.",execution:"Drive through the heels, lift the hips, squeeze the glutes, then lower with control.",cues:"Keep ribs down and finish with the glutes, not the lower back.",avoid:"Overarching the back or pushing through the toes."};
-  return localizedItem(swap);
+  const selected=state.exerciseSubstitutions?.[base.name]||(base.name==="Back Extension"&&state.swaps.backExtension?"Hip Thrust Machine":null);
+  if(!selected)return localizedItem(base);
+  const overrides=selected==="Hip Thrust Machine"?{motion:"floor",setup:"Shoulders against the machine pad, feet flat and hip-width.",execution:"Drive through the heels, lift the hips, squeeze the glutes, then lower with control.",cues:"Keep ribs down and finish with the glutes, not the lower back.",avoid:"Overarching the back or pushing through the toes."}:{};
+  return localizedItem({...base,...overrides,name:selected});
 }
 function isLoadExercise(item){return ["legpress","hinge","floor","chestpress","row","pulldown"].includes(item.motion)&&["gym","gymLite"].includes(state.session);}
-function exerciseId(base){return base.name==="Back Extension"?(state.swaps.backExtension?"Hip Thrust Machine":"Back Extension"):base.name;}
+function exerciseId(base){return state.exerciseSubstitutions?.[base.name]||(base.name==="Back Extension"&&state.swaps.backExtension?"Hip Thrust Machine":base.name);}
 function normalizedLog(id,sets=3){return REP_TRAINING_SESSION.normalizedLog(state.logs,id,sets);}
 function setsFromLog(log){return REP_TRAINING_SESSION.setsFromLog(log);}
 function progressionAdvice(id){return REP_TRAINING_SESSION.progressionAdvice({logs:state.logs,history:state.history,id,recoveryGate:recoveryGate()});}
@@ -1265,14 +1267,14 @@ function openWorkoutUtilitySheet(){
 }
 
 function showSwapModal(exerciseName){
-  const subs=window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[exerciseName]||[];
+  const equipment=state.onboarding?.equipment||[],curated=window.REP_PRODUCT_SUITE?.availableSubstitutions(exerciseName,equipment)||[],fallback=(window.REP_PERFORMANCE_INSIGHTS?.EXERCISE_SUBSTITUTIONS?.[exerciseName]||[]).map(name=>({name,equipment:[]})),subs=curated.length?curated:fallback;
   if(!subs.length)return;
   const overlay=document.createElement("div");
   overlay.className="timed-mode";
-  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="workout-preflight-panel" style="max-width:400px;margin:auto;"><button class="dialog-close" data-swap-close aria-label="Close">×</button><small style="color:var(--acid);font-weight:900;">${"BIOMECHANICAL SUBSTITUTIONS"}</small><h2 style="margin:6px 0 14px;">${esc(exerciseName)}</h2><p style="color:var(--muted);font-size:13px;margin-bottom:14px;">${"Choose an alternative matching available equipment with equivalent muscle stimulus:"}</p><div style="display:grid;gap:8px;">${subs.map(sub=>`<button class="settings-primary" data-select-swap="${esc(sub)}" style="text-align:left;padding:12px 14px;border-radius:12px;font-size:14px;">${esc(sub)}</button>`).join("")}</div></div>`);
+  overlay.innerHTML=REP_SAFE_DOM.sanitize(`<div class="workout-preflight-panel" style="max-width:400px;margin:auto;"><button class="dialog-close" data-swap-close aria-label="Close">×</button><small style="color:var(--acid);font-weight:900;">${"EQUIPMENT-AWARE SUBSTITUTIONS"}</small><h2 style="margin:6px 0 14px;">${esc(exerciseName)}</h2><p style="color:var(--muted);font-size:13px;margin-bottom:14px;">${curated.length?("Only options matching your setup are shown."):("Review equipment availability before selecting an alternative.")}</p><div style="display:grid;gap:8px;"><button class="quiet-setting" data-select-swap="">${"Use original movement"}</button>${subs.map(sub=>`<button class="settings-primary" data-select-swap="${esc(sub.name)}" style="text-align:left;padding:12px 14px;border-radius:12px;font-size:14px;">${esc(sub.name)}${sub.equipment.length?` · ${esc(sub.equipment.join(", "))}`:""}</button>`).join("")}</div></div>`);
   document.body.appendChild(overlay);
   overlay.querySelector("[data-swap-close]").onclick=()=>overlay.remove();
-  overlay.querySelectorAll("[data-select-swap]").forEach(btn=>{btn.onclick=()=>{const chosen=btn.dataset.selectSwap,session=sessions[state.session];if(session&&session.exercises[state.index]){session.exercises[state.index]={...session.exercises[state.index],name:chosen};persist();overlay.remove();renderExercise();showToast(`Swapped to ${chosen}`);}};});
+  overlay.querySelectorAll("[data-select-swap]").forEach(btn=>{btn.onclick=()=>{const chosen=btn.dataset.selectSwap;state.exerciseSubstitutions=state.exerciseSubstitutions||{};if(chosen)state.exerciseSubstitutions[exerciseName]=chosen;else delete state.exerciseSubstitutions[exerciseName];persist();overlay.remove();renderExercise();showToast(chosen?`Swapped to ${chosen}`:"Original movement restored");};});
 }
 
 function startTempoCoach(base, item){
@@ -1678,7 +1680,7 @@ function prev(){ stopExerciseClock();cancelRestTimer();if(REP_TRAINING_SESSION.p
 function next(){
   stopExerciseClock();cancelRestTimer();
   const res=REP_TRAINING_SESSION.advanceExercise(state,sessions,{weightKg:latestWeightKg(),motionDurations:Object.fromEntries(Object.entries(motionGuide).map(([k,v])=>[k,v[2]]))});
-  if(res.completed&&res.record)queueWorkout(res.record);
+  if(res.completed&&res.record){window.REP_PRODUCT_SUITE?.trackEvent(state,"workout_completed",{session:res.record.session||state.session});queueWorkout(res.record);}
   exerciseTransitioning=!res.completed;persist();resetWorkoutScroll();renderExercise();
 }
 // Real-time drag tracking for swipe-to-navigate between exercises: the card
@@ -1738,6 +1740,7 @@ function updateSessionClock(){const el=document.querySelector("#sessionElapsed")
 // forever - otherwise Home keeps offering to resume a session the user
 // explicitly left, even after just opening an exercise to look around.
 function abandonSession(){
+  window.REP_PRODUCT_SUITE?.trackEvent(state,"workout_abandoned",{session:state.session||"unknown",exercise:state.index});
   REP_TRAINING_SESSION.abandonWorkout(state);
 }
 function showExitConfirm(){
@@ -2677,17 +2680,28 @@ function startTimer(seconds, setIndex) {
   renderRestPreview();
   updateMediaSession("rest", { set: setIndex, time: formatClock(seconds) });
   updateTimer();
+  persist();
   state.timer.interval = setInterval(() => {
     if (!state.timer) return;
     if (!state.timer.paused) {
       state.timer.remaining = Math.max(0, Math.ceil((state.timer.targetEndTime - Date.now()) / 1000));
       updateTimer();
+      if(state.timer.remaining%5===0&&state.timer._lastPersistedRemaining!==state.timer.remaining){state.timer._lastPersistedRemaining=state.timer.remaining;persist();}
       if (state.timer.remaining <= 0) finishTimer();
     } else {
       state.timer.targetEndTime = Date.now() + state.timer.remaining * 1000;
     }
   }, 500);
 }
+function resumePersistedRestTimer(){
+  const savedTimer=state.timer;if(!savedTimer||savedTimer.interval)return false;
+  const remaining=savedTimer.paused?Number(savedTimer.remaining):Math.max(0,Math.ceil((Number(savedTimer.targetEndTime)-Date.now())/1000));
+  if(!remaining){state.timer=null;persist();return false;}
+  state.timer=null;startTimer(remaining,Number(savedTimer.set)||0);state.timer.total=Math.max(remaining,Number(savedTimer.total)||remaining);
+  if(savedTimer.paused){state.timer.paused=true;clearInterval(state.timer.interval);state.timer.interval=null;document.querySelector("#timerPause").textContent=U().resume;}
+  updateTimer();persist();return true;
+}
+window.resumePersistedRestTimer=resumePersistedRestTimer;
 function updateTimer(){
   const t=state.timer;if(!t)return; const min=Math.floor(t.remaining/60),sec=String(t.remaining%60).padStart(2,"0");
   document.querySelector("#timerValue").textContent=`${min}:${sec}`; document.querySelector("#timerRing").style.setProperty("--progress",`${Math.max(0,t.remaining/t.total*100)}%`);
@@ -2723,14 +2737,14 @@ document.querySelector("#timerPause").addEventListener("click",()=>{
   state.timer.paused=!state.timer.paused;
   if(!state.timer.paused){state.timer.targetEndTime=Date.now()+state.timer.remaining*1000;}
   document.querySelector("#timerPause").textContent=state.timer.paused?U().resume:U().pause;
-  updateTimer();
+  updateTimer();persist();
 });
 document.querySelector("#timerAdd").addEventListener("click",()=>{
   if(!state.timer)return;
   state.timer.remaining+=15;
   state.timer.total+=15;
   state.timer.targetEndTime=Date.now()+state.timer.remaining*1000;
-  updateTimer();
+  updateTimer();persist();
 });
 document.querySelector("#homeButton").addEventListener("click",()=>setPrimaryTab("home"));
 function closeTopMore(){
@@ -2841,7 +2855,7 @@ function updateQuickLogVisibility(){
 }
 window.addEventListener("scroll",()=>{if(!quickLogTicking){quickLogTicking=true;requestAnimationFrame(updateQuickLogVisibility);}},{passive:true});
 function runQuickAction(action){
-  if(action==="workout"){
+  if(action==="workout"||action==="train"){
     if(continuingSession()){startSession(state.session);return;}
     state.trainingView="today";
     setPrimaryTab("train");
@@ -2857,6 +2871,8 @@ function runQuickAction(action){
   }else if(action==="health"||action==="sleep"){
     setPrimaryTab("health");
     showLogActivity();
+  }else if(action==="insights"){
+    setPrimaryTab("insights");
   }
 }
 function consumeQuickLaunch(){

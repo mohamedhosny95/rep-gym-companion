@@ -1,5 +1,16 @@
 # Health OS
 
+Version 71 completes the post-launch product suite:
+
+- Missed training automatically moves to the next available recovery day in the current week while Friday remains protected rest; the saved workout player now restores the exact exercise, completed sets, entered loads, and running or paused rest timer.
+- Equipment-aware substitutions use the equipment selected during setup and persist without mutating the original program.
+- Smart reminders separately schedule training, bedtime wind-down, unfinished-workout, and weekly-review prompts with per-device Durable Object alarms. Every reminder is off until the user opts in.
+- Personal Outcome Lab supports caffeine, late meals, supplements, stretching, or any custom behavior over a rolling 90-day window. Results require five yes and five no next-day readiness observations and always state association, not causation.
+- The weekly coaching report includes completed workouts, PRs, adherence, recovery, reschedules, and one next action. It can be saved as a local PDF or shared through a seven-day AES-GCM capability link whose key remains in the URL fragment.
+- Optional progress photos are resized and AES-GCM encrypted in the device vault, support side-by-side comparison with weight/waist context, never upload, and can be included in the passphrase-encrypted backup.
+- The iOS 17 companion includes ActivityKit Lock Screen and Dynamic Island workout status plus App Intent controls for rest, set completion, and workout end. The PWA keeps its Media Session lock-screen fallback.
+- A local-only first-week pulse counts setup, Today Plan use, workout completion, progression acceptance, abandonment, and errors without collecting personal values.
+
 Version 70 turns readiness and workout history into actions:
 
 - Guided first-run setup captures the goal, experience, weekly availability, session length, equipment, units, and sleep timing, while keeping pairing and Apple Health optional.

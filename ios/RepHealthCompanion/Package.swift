@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "RepHealthCompanion",
     platforms: [
-        .iOS(.v16)
+        .iOS(.v17)
     ],
     products: [
         .library(
@@ -15,7 +15,8 @@ let package = Package(
     targets: [
         .target(
             name: "RepHealthCompanion",
-            path: "."
+            path: ".",
+            exclude: ["RepWorkoutLiveActivityWidget.swift"]
         )
     ]
 )

@@ -14,10 +14,15 @@ export type PushSubscriptionInput = {
 export type PushScheduleInput = {
   subscription: PushSubscriptionInput;
   time: string;
+  reminders?: PushReminderInput[];
   timezoneOffsetMinutes: number;
   timezone: string | null;
   lang: "ar" | "en";
 };
+
+export const PUSH_REMINDER_IDS = ["workout", "bedtime", "unfinished", "weekly"] as const;
+export type PushReminderId = typeof PUSH_REMINDER_IDS[number];
+export type PushReminderInput = { id: PushReminderId; time: string; days: number[]; enabled: true };
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -47,9 +52,20 @@ export function validatePushSchedule(value: unknown): PushScheduleInput | null {
   if (timezone) { try { new Intl.DateTimeFormat("en", { timeZone: timezone }).format(); } catch { return null; } }
   try { if (new URL(endpoint).protocol !== "https:") return null; } catch { return null; }
   if (!endpoint || endpoint.length > 1800 || !p256dh || p256dh.length > 300 || !auth || auth.length > 200) return null;
+  const remindersRaw = Array.isArray(value.reminders) ? value.reminders : [];
+  if (remindersRaw.length > 4) return null;
+  const reminders: PushReminderInput[] = [];
+  for (const item of remindersRaw) {
+    if (!isRecord(item) || !PUSH_REMINDER_IDS.includes(item.id as PushReminderId) || item.enabled === false) return null;
+    const reminderTime=String(item.time??"").trim(),days=Array.isArray(item.days)?[...new Set(item.days.map(Number))]:[];
+    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)||!days.length||days.length>7||days.some(day=>!Number.isInteger(day)||day<0||day>6))return null;
+    reminders.push({id:item.id as PushReminderId,time:reminderTime,days,enabled:true});
+  }
+  if(new Set(reminders.map(item=>item.id)).size!==reminders.length)return null;
   return {
     subscription: { endpoint, expirationTime: Number.isFinite(Number(value.subscription.expirationTime)) ? Number(value.subscription.expirationTime) : null, keys: { p256dh, auth } },
     time,
+    reminders: reminders.length?reminders:[{id:"workout",time,days:[0,1,2,3,4,5,6],enabled:true}],
     timezoneOffsetMinutes,
     timezone,
     lang: value.lang === "ar" ? "ar" : "en"

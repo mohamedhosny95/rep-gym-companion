@@ -15,8 +15,8 @@ test("the mobile shell exposes five primary tabs",async()=>{
 test("every local script in the document exists",async()=>{
   const html=await read("dist/client/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"dist","client",source))));
-  assert.ok(sources.includes("vendor/dompurify.min.js")); assert.ok(sources.includes("safe-dom.js")); assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js")); assert.ok(sources.includes("performance-insights.js")); assert.ok(sources.includes("adaptive-coach.js")); assert.ok(sources.includes("training-session.js"));
-  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync-outbox.js","telemetry.js","sync.js","enhancements.js","habits.js","performance-ui.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
+  assert.ok(sources.includes("vendor/dompurify.min.js")); assert.ok(sources.includes("safe-dom.js")); assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js")); assert.ok(sources.includes("performance-insights.js")); assert.ok(sources.includes("product-suite.js")); assert.ok(sources.includes("adaptive-coach.js")); assert.ok(sources.includes("training-session.js"));
+  const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync-outbox.js","telemetry.js","sync.js","enhancements.js","habits.js","performance-ui.js","product-suite-ui.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
   assert.doesNotMatch(html,/qrcode\.js/);
 });
 
@@ -35,7 +35,7 @@ test("the content-versioned service worker uses network-first navigation and nev
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","onboarding","activeWorkoutPlan","progressionProposals","trainingTargets","nutritionView","trainingView","systemHealth","syncActivity","settingsSection"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=19/);
+  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","onboarding","activeWorkoutPlan","progressionProposals","trainingTargets","nutritionView","trainingView","systemHealth","syncActivity","settingsSection","weekOverrides","scheduleAdjustments","launchEvents","customExperiments","experimentCheckins","exerciseSubstitutions","smartReminders","restTimer"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=20/);
 });
 
 test("health navigation stays in document flow and synchronization uses a verified durable outbox",async()=>{
@@ -114,7 +114,7 @@ test("browser pairing keeps only a non-secret marker and synchronizes tabs",asyn
 
 test("deployment client is deterministically built from source",async()=>{
   const meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version);
-  for(const file of ["safe-dom.js","build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","store.js","importer.js","report-card.js","command-palette.js","recovery-map.js","plate-calculator.js","heart-rate-monitor.js","audio-coach.js","barcode-scanner.js","muscle-heatmap.js","custom-workouts.js","bootstrap.js","adaptive-coach.js","training-session.js","app.js","sync-outbox.js","telemetry.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","performance-insights.js","offline-nutrition.js","health-ui.js","performance-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
+  for(const file of ["safe-dom.js","build-meta.js","index.html","auth.js","storage.js","ui-state.js","ui-shell.js","store.js","importer.js","report-card.js","command-palette.js","recovery-map.js","plate-calculator.js","heart-rate-monitor.js","audio-coach.js","barcode-scanner.js","muscle-heatmap.js","custom-workouts.js","bootstrap.js","adaptive-coach.js","training-session.js","app.js","sync-outbox.js","telemetry.js","sync.js","sync-center.js","styles.css","sw.js","health-data.js","health-engine.js","health-coverage.js","performance-insights.js","product-suite.js","product-suite-ui.js","offline-nutrition.js","health-ui.js","performance-ui.js","habits.js","features.js","qrcode.js","enhancements.js"]){
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }
@@ -134,7 +134,7 @@ test("offline versions, local dates, durable storage, and accessibility stay ali
   assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/date\.getFullYear\(\)/);
   assert.match(storage,/state:\$\{key\}/);assert.match(storage,/JSON\.stringify\(legacy\.local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
   assert.doesNotMatch(sw,/catch\(\(\) => caches\.match\("\.\/index\.html"\)\)/);
-  assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length\s*>\s*120/);assert.match(worker,/coverage_minutes/);assert.match(worker,/version:\s*"69"/);assert.match(worker,/sync:\s*\{\s*mode:\s*"verified-outbox",\s*queued:\s*true/);
+  assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length\s*>\s*120/);assert.match(worker,/coverage_minutes/);assert.match(worker,/version:\s*"71"/);assert.match(worker,/sync:\s*\{\s*mode:\s*"verified-outbox",\s*queued:\s*true/);
 });
 
 test("coverage-aware health features and native companion stay wired",async()=>{
@@ -146,6 +146,14 @@ test("coverage-aware health features and native companion stay wired",async()=>{
   for(const marker of ["MORNING CHECK","WORKOUT PREFLIGHT","PERSONAL BASELINE","data-health-report","healthWorkflow","workout-preflight-panel"])assert.match(ui,new RegExp(marker));
   assert.match(storage,/bodyMeasurements/);assert.match(storage,/healthMetrics/);
   assert.match(readme,/Background Delivery/);assert.match(swift,/HKObserverQuery/);assert.match(swift,/enableBackgroundDelivery/);assert.match(swift,/KeychainStore/);
+});
+
+test("post-launch suite ships encrypted reports, photos, reminders, resume state, and native Live Activities",async()=>{
+  const [suite,ui,features,app,sw,info,controller,intents,widget,worker]=await Promise.all([read("dist/client/product-suite.js"),read("dist/client/product-suite-ui.js"),read("dist/client/features.js"),read("dist/client/app.js"),read("dist/client/sw.js"),read("ios/RepHealthCompanion/Info.plist"),read("ios/RepHealthCompanion/WorkoutLiveActivityController.swift"),read("ios/RepHealthCompanion/WorkoutLiveActivityIntents.swift"),read("ios/RepHealthCompanion/RepWorkoutLiveActivityWidget.swift"),read("src/server/durable-objects/device-coordinator.ts")]);
+  for(const marker of ["reconcileSchedule","analyzeExperiments","weeklySummary","createPrivateWeeklyLink","availableSubstitutions"])assert.match(suite,new RegExp(marker));
+  for(const marker of ["PERSONAL OUTCOME LAB","ENCRYPTED PROGRESS VAULT","SMART REMINDERS","Save PDF"])assert.match(ui,new RegExp(marker));
+  assert.match(features,/saveProgressPhoto/);assert.match(features,/AES-GCM/);assert.match(app,/resumePersistedRestTimer/);assert.match(sw,/resume-workout/);
+  assert.match(info,/NSSupportsLiveActivities/);assert.match(controller,/Activity\.request/);assert.match(intents,/LiveActivityIntent/);assert.match(widget,/ActivityConfiguration/);assert.match(worker,/nextReminderEvent/);
 });
 
 test("performance intelligence is local, confidence-scored, and evidence-grounded",async()=>{

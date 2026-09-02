@@ -50,6 +50,9 @@ jobs:
             -sdk "$sdk_path" \
             -target "${architecture}-apple-ios17.0-simulator" \
             ios/RepHealthCompanion/HealthKitSyncCoordinator.swift \
+            ios/RepHealthCompanion/RepWorkoutActivityAttributes.swift \
+            ios/RepHealthCompanion/WorkoutLiveActivityController.swift \
+            ios/RepHealthCompanion/WorkoutLiveActivityIntents.swift \
             ios/RepHealthCompanion/RepHealthCompanionApp.swift 2>&1 | tee swift-typecheck.log
           status="${PIPESTATUS[0]}"
           set -e
