@@ -115,6 +115,8 @@ try {
   await restorePage.setInputFiles("[data-backup-import]", backupPath);
   await restoredLoad;
   await restorePage.waitForSelector('html[data-app-ready="true"]', { timeout: 10000 });
+  await restorePage.click("#homeButton");
+  await restorePage.waitForSelector('[data-habit-id="sleep"]', { timeout: 10000 });
   check(await restorePage.locator('[data-habit-id="sleep"][aria-pressed="true"]').count() === 1, "Fresh profile restores the habit record");
   await restorePage.click('[data-app-tab="food"]');
   check((await restorePage.locator(".food-log").textContent()).includes("recovery drill meal"), "Fresh profile restores the meal record");

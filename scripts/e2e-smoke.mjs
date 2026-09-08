@@ -101,6 +101,18 @@ try {
   await page.waitForSelector("text=TODAY", { timeout: 10000 });
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
+  assertTrue(page.url().endsWith("#/today"),"Cold start has a shareable Today URL");
+  await page.click('[data-app-tab="insights"]');
+  assertTrue(page.url().endsWith("#/insights"),"Primary navigation updates the URL");
+  await page.goBack();
+  await page.waitForSelector('[data-app-tab="home"][aria-current="page"]');
+  assertTrue(/^Good (morning|afternoon|evening|night)\.$/.test(await page.locator("main h1").textContent()),"Browser Back returns to the previous primary section");
+  await page.goForward();
+  await page.waitForSelector('[data-app-tab="insights"][aria-current="page"]');
+  assertTrue(await page.locator("main h1").textContent()==="What your data says.","Browser Forward restores the primary section");
+  assertTrue(page.url().endsWith("#/insights"),"Browser Forward restores the exact route URL");
+  await page.goBack();
+  await page.waitForSelector('[data-app-tab="home"][aria-current="page"]');
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
   const backupCheck=await page.evaluate(async()=>{const sample={app:"Rep Gym Companion",data:{foodEntries:[{id:"recovery-drill"}]}},encrypted=await window.REP_FEATURES.encryptExport(sample,"recovery-drill-passphrase"),restored=await window.REP_FEATURES.decryptExport(encrypted,"recovery-drill-passphrase");let tamperRejected=false;try{await window.REP_FEATURES.decryptExport({...encrypted,format:"older-format"},"recovery-drill-passphrase");}catch{tamperRejected=true;}return {roundTrip:JSON.stringify(sample)===JSON.stringify(restored),schema:encrypted.schema,tamperRejected};});
   assertTrue(backupCheck.roundTrip&&backupCheck.schema===5,"Schema-5 encrypted backup completes a recovery round trip");
@@ -140,6 +152,12 @@ try {
   await page.click('[data-training-view="program"]');
   await page.waitForTimeout(200);
   assertTrue(await page.locator('.program-discovery').count() === 1, "Program opens the contextual workout library");
+  assertTrue(page.url().endsWith("#/training/program"),"Training subviews have shareable URLs");
+  await page.goBack();
+  await page.waitForSelector('[data-training-view="today"][aria-current="page"]');
+  assertTrue(page.url().endsWith("#/training/today"),"Browser Back restores the exact Training subview");
+  await page.goForward();
+  await page.waitForSelector('[data-training-view="program"][aria-current="page"]');
   assertTrue(await page.locator('.program-session-card.has-session-media').count() === 6, "Every real workout plan has contextual discovery media");
   assertTrue(await page.locator('.program-session-card.is-recommended').count() === 1, "Program marks today's real scheduled plan");
   await page.click('[data-program-filter="sport"]');
@@ -313,6 +331,7 @@ try {
   await page.waitForTimeout(200);
   const healthNavPosition = await page.locator(".health-subnav").evaluate(el => getComputedStyle(el).position);
   assertTrue(healthNavPosition === "relative", "Health section selector stays in the page flow instead of floating over content");
+  assertTrue(await page.locator('[data-health-view]').count()===2&&await page.locator('[data-health-view="insights"]').count()===0,"Health contains only Vitals and Wellness; Insights has one destination");
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Explainable Today Coach appears in Vitals");
   assertTrue(await page.locator(".health-quality-card").count() === 1, "Health import quality card appears in Vitals");
   const summaryHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
@@ -348,11 +367,13 @@ try {
   assertTrue(await page.locator(".food-log article, .food-entry").count() > 0, "Manual food entry is saved and listed");
   assertTrue((await page.locator(".food-sync-state").count()) > 0, "Food entry shows its durable save state");
   assertTrue(await page.locator("[data-food-sync-now]").count() === 0, "Food has no category-level sync button");
+  await page.goto(`${baseUrl}/#/nutrition/plan`,{waitUntil:"load"});
+  await page.waitForSelector('html[data-app-ready="true"]',{timeout:10000});
+  await page.waitForSelector('[data-nutrition-view="plan"][aria-current="page"]');
+  assertTrue(await page.locator('[data-app-tab="food"][aria-current="page"]').count()===1,"A direct Nutrition Plan URL restores its parent and exact subview");
 
   // insights
-  await page.click('[data-app-tab="health"]');
-  await page.waitForTimeout(200);
-  await page.click('[data-health-view="insights"]');
+  await page.click('[data-app-tab="insights"]');
   await page.waitForTimeout(300);
   assertTrue(await page.locator(".progress-overview .progress-feature").count() === 1, "Progress leads with a real seven-day training summary");
   assertTrue(await page.locator(".insight-stats article").count() > 0, "Insights stats render");
@@ -379,6 +400,10 @@ try {
   await page.waitForTimeout(200);
   await page.click('[data-settings-tab="coach"]');
   assertTrue(await page.locator('[data-health-profile="wakeTime"]').count() === 1, "Personal baseline settings are editable");
+  assertTrue(page.url().endsWith("#/settings/coach"),"Settings sections have exact route URLs");
+  await page.click('[data-settings-back]');
+  await page.waitForSelector('.sync-center');
+  assertTrue(page.url().endsWith("#/settings/sync"),"Settings Back returns to the previous Settings section");
 
   const serviceWorkerReady=await page.evaluate(()=>Promise.race([navigator.serviceWorker.ready.then(()=>true),new Promise(resolve=>setTimeout(()=>resolve(false),5000))]));
   if(serviceWorkerReady){
@@ -390,6 +415,7 @@ try {
     // Offline mutation & outbox persistence test
     await page.click('[data-app-tab="food"]');
     await page.waitForTimeout(200);
+    await page.click('[data-nutrition-view="log"]');
     await page.fill("[data-food-note]", "offline protein smoothie");
     await page.click("[data-manual-food]");
     await page.waitForTimeout(200);
@@ -406,6 +432,7 @@ try {
     await context.setOffline(true);
     await page.click('[data-app-tab="food"]');
     await page.waitForTimeout(200);
+    await page.click('[data-nutrition-view="log"]');
     await page.fill("[data-food-note]", "offline recovery bowl");
     await page.click("[data-manual-food]");
     await page.waitForTimeout(200);
@@ -440,15 +467,37 @@ try {
   // The app is mobile-primary. Exercise every primary destination at the
   // compact widths we support instead of treating one 390 px viewport as a
   // proxy for the entire phone range.
-  for(const width of [320,360,375,390,414,430]){
+  const indicatorChecks=[];
+  for(const width of [320,360,375,390,393,414,430]){
     await page.setViewportSize({width,height:900});
     for(const tab of ["home","train","food","health","insights"]){
       await page.click(`[data-app-tab="${tab}"]`);
-      await page.waitForTimeout(80);
-      const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...document.querySelectorAll(".app-tabs button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)}));
+      await page.waitForTimeout(350);
+      const layout=await page.evaluate(()=>{const nav=document.querySelector(".app-tabs"),active=nav.querySelector('[aria-current="page"]'),navBox=nav.getBoundingClientRect(),activeBox=active.getBoundingClientRect(),pseudo=getComputedStyle(nav,"::before"),indicatorLeft=navBox.left+parseFloat(getComputedStyle(nav).borderLeftWidth)+parseFloat(pseudo.left)+new DOMMatrixReadOnly(pseudo.transform).m41,indicatorWidth=parseFloat(pseudo.width);return {overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...nav.querySelectorAll("button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),indicatorError:Math.max(Math.abs(indicatorLeft-activeBox.left),Math.abs(indicatorWidth-activeBox.width)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)};});
+      indicatorChecks.push({width,tab,error:layout.indicatorError});
       assertTrue(layout.overflow<=1,`${tab} has no horizontal overflow at ${width}px${layout.overflow>1?` (${layout.overflow}px: ${layout.offenders.join(", ")})`:""}`);
       assertTrue(layout.targets.every(size=>size>=44),`primary navigation keeps 44px touch targets at ${width}px`);
     }
+  }
+  const worstIndicator=indicatorChecks.sort((a,b)=>b.error-a.error)[0];
+  assertTrue(worstIndicator.error<=0.5,`primary navigation indicator stays aligned across phone widths (worst ${worstIndicator.error.toFixed(2)}px at ${worstIndicator.width}px on ${worstIndicator.tab})`);
+
+  for(const device of [
+    {name:"Honor 20 Pro portrait",width:360,height:780,landscape:false},
+    {name:"iPhone 15 Pro portrait",width:393,height:852,landscape:false},
+    {name:"Honor 20 Pro landscape",width:780,height:360,landscape:true},
+    {name:"iPhone 15 Pro landscape",width:852,height:393,landscape:true}
+  ]){
+    await page.setViewportSize({width:device.width,height:device.height});
+    await page.click('[data-app-tab="home"]');
+    await page.waitForTimeout(100);
+    const layout=await page.evaluate(()=>{
+      const nav=document.querySelector(".app-tabs"),box=nav.getBoundingClientRect(),buttons=[...nav.querySelectorAll("button")];
+      return {overflow:document.documentElement.scrollWidth-window.innerWidth,navBottom:window.innerHeight-box.bottom,minTarget:Math.min(...buttons.map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height))),direction:getComputedStyle(buttons[0]).flexDirection};
+    });
+    assertTrue(layout.overflow<=1&&layout.navBottom>=-1,`${device.name} keeps navigation inside the viewport without horizontal overflow`);
+    assertTrue(layout.minTarget>=44,`${device.name} keeps every primary action at least 44px`);
+    if(device.landscape)assertTrue(layout.direction==="row",`${device.name} uses the compact landscape navigation`);
   }
 
   // Integrated adaptive-plan and next-session handoff coverage. This uses

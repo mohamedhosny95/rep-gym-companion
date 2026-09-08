@@ -813,7 +813,7 @@ function renderInsights(){
   <section class="insights-card"><div class="insights-head"><small>${"WHAT THE DATA SAYS"}</small></div>${items.length?items.map(i=>`<p class="insight insight-${i.tone}">${esc(i.text)}</p>`).join(""):`<p class="insight-empty">${"Log a few more days of training, food, and weight, and automatic observations will show up here."}</p>`}</section>`);
   document.querySelectorAll("[data-trend-horizon]").forEach(btn=>{btn.onclick=()=>{state.trendHorizon=btn.dataset.trendHorizon;persist();renderInsights();};});
 }
-function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const active=button.dataset.appTab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:"Today",train:"Training",food:"Nutrition",care:"Wellness",insights:"Insights",vitals:"Vitals"};button.querySelector("span").textContent=labels[button.dataset.appTab];});}
+function updatePrimaryTabs(){document.querySelectorAll("[data-app-tab]").forEach(button=>{const tab=button.dataset.appTab,active=tab==="health"?["care","vitals","health"].includes(state.activeTab):tab===state.activeTab;button.setAttribute("aria-current",active?"page":"false");const labels={home:"Today",train:"Training",food:"Nutrition",health:"Health",insights:"Insights"};button.querySelector("span").textContent=labels[tab]||tab;});const paletteLabel=document.querySelector("#commandPaletteButton span");if(paletteLabel)paletteLabel.textContent="Command palette";const previewLabel=document.querySelector("#previewModeButton span");if(previewLabel)previewLabel.textContent="Preview mode";}
 function focusViewHeading(){
   requestAnimationFrame(()=>{const heading=app.querySelector("h1");if(!heading)return;heading.tabIndex=-1;heading.focus({preventScroll:true});scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
 }
@@ -934,6 +934,7 @@ function showPlateCalculator(initialWeight=60,onApply=null){
 }
 
 function setPrimaryTab(tab){
+  if(window.REP_NAVIGATION?.navigateTab(tab))return;
   state.activeTab=tab;
   persistDebounced();
   updatePrimaryTabs();
@@ -1059,7 +1060,7 @@ function renderHome() {
   document.querySelector("[data-goto-vitals]")?.addEventListener("click", ()=>setPrimaryTab("vitals"));
   document.querySelector("[data-recovery]").addEventListener("click", renderRecovery);
   document.querySelector("[data-log-activity]").addEventListener("click", ()=>showLogActivity());
-  document.querySelector("[data-history]").addEventListener("click", renderHistory);
+  document.querySelector("[data-history]").addEventListener("click", ()=>window.REP_NAVIGATION?.navigate("training-history")||renderHistory());
   document.querySelector("[data-bad-day]").addEventListener("click", renderBadDay);
   document.querySelector("[data-review]").addEventListener("click", renderReview);
   document.querySelector("[data-install]").addEventListener("click", installApp);
@@ -1900,8 +1901,8 @@ function renderComplete() {
   const prSection=prs.length?`<div class="complete-pr-list"><small><i>${ICONS.flame}</i>${"NEW PERSONAL BEST"}</small>${prs.map(([name,p])=>`<div><strong>${esc(name)}</strong><span>${p.weight} kg${p.reps?` × ${esc(String(p.reps))}`:""}</span></div>`).join("")}</div>`:"";
   app.innerHTML = REP_SAFE_DOM.sanitize(`<section class="complete workout-complete"><div class="workout-complete-card"><div class="complete-badge"><span>✓</span></div><p class="eyebrow">${u.sessionComplete}</p><h1>${u.thatCounts}</h1><p class="complete-session-name">${ls.name}</p><p class="complete-copy">${u.completeSub}</p><div class="complete-stat-grid">${stats.map(([value,label])=>`<div><strong>${esc(value)}</strong><span>${label}</span></div>`).join("")}</div>${prSection}<div class="complete-actions"><button class="complete-primary" data-history-after>${"View session history"} <b>→</b></button><button data-home>${u.backSessions}</button></div><button class="complete-reset" data-reset>${"Repeat this workout"}</button></div></section>`);
   if(prs.length){vibrateGym("pr");triggerConfetti();}
-  document.querySelector("[data-history-after]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");renderHistory();});
-  document.querySelector("[data-home]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");renderHome();});
+  document.querySelector("[data-history-after]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");window.REP_NAVIGATION?.navigate("training-history")||renderHistory();});
+  document.querySelector("[data-home]").addEventListener("click",()=>{document.body.classList.remove("workout-complete-mode");setPrimaryTab("train");});
   document.querySelector("[data-reset]").addEventListener("click", () => {
     document.body.classList.remove("workout-complete-mode");document.body.classList.add("workout-mode");
     REP_TRAINING_SESSION.resetWorkout(state);
