@@ -30,7 +30,7 @@
   state.healthView=["care","insights","vitals"].includes(rawSaved.healthView)?rawSaved.healthView:"vitals";
   state.connectionCapabilities=rawSaved.connectionCapabilities&&typeof rawSaved.connectionCapabilities==="object"?rawSaved.connectionCapabilities:null;
   state.lastSyncedAt=rawSaved.lastSyncedAt||null;
-  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"04:45",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
+  state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"05:00",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
   state.healthMetrics=rawSaved.healthMetrics&&typeof rawSaved.healthMetrics==="object"?rawSaved.healthMetrics:{};
   state.healthSummarySignatures=rawSaved.healthSummarySignatures&&typeof rawSaved.healthSummarySignatures==="object"?rawSaved.healthSummarySignatures:{};
   state.analyticsGoal=performance?.normalizeGoal(rawSaved.analyticsGoal)||{type:"strength",exercise:"Chest Press",target:0,updatedAt:null};

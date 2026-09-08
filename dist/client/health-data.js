@@ -9,8 +9,8 @@ window.REP_HEALTH_GUIDE = Object.freeze({
   },
   rules: {
     minimumSleepHours: 7,
-    wakeTime: "04:45",
-    targetBedtime: "21:45",
+    wakeTime: "05:00",
+    targetBedtime: "22:00",
     redFlagThreshold: 2,
     reviewWeek: 8,
     stallSessions: 2,
