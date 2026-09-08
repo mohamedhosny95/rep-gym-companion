@@ -1,6 +1,6 @@
 window.REP_HEALTH_GUIDE = Object.freeze({
-  version: "2026.09.1",
-  updatedAt: "2026-09-01",
+  version: "2026.09.2",
+  updatedAt: "2026-09-09",
   sources: {
     training: "https://app.notion.com/p/3b6fa9cab09281c9aa03d11732cc200b",
     nutrition: "https://app.notion.com/p/398fa9cab09281ecba7ad4a50cc27f28",
@@ -81,7 +81,7 @@ window.REP_HEALTH_GUIDE = Object.freeze({
       Friday: ["Kerella · morning (dose 2/2, doctor's Rx)", "Scalp dry → thin layer, massage in, leave on, don't rinse", "Same as Monday — doctor's Rx"],
       Saturday: ["Non-wash / spa day", "Nothing unless itchy, same as Wednesday", "See spa protocol for the day's care"]
     },
-    strictHairRules: ["Wash days: Sunday, Tuesday, Thursday only — the gym evenings", "Nizapex max 2×/week (Sun + Thu)", "Mask once/week, Tuesday only", "Kerella twice weekly (Mon + Fri mornings), only on non-wash days", "Never Kerella and a hair-washing shower on the same day", "Conditioner and mask stay off the scalp", "Exact Kerella frequency is doctor's Rx — don't extend it without checking", "Minimal product, always"],
+    strictHairRules: ["Wash days: Sunday, Tuesday, Thursday only — free evenings since gym is a morning session", "Nizapex max 2×/week (Sun + Thu)", "Mask once/week, Tuesday only", "Kerella twice weekly (Mon + Fri mornings), only on non-wash days", "Never Kerella and a hair-washing shower on the same day", "Conditioner and mask stay off the scalp", "Exact Kerella frequency is doctor's Rx — don't extend it without checking", "Minimal product, always"],
     weekly: ["Face: Salicylic Acid Soap 2% once/week, evening, instead of the usual face wash", "Beard: neckline and cheek-line trim", "Nails: full trim + file, fingers and toes, post-shower", "Body exfoliation 2–3×/week, loofah or glove, pair with gym days", "Towels: fresh one every 2–3 uses", "Bedsheets/pillowcase: change weekly", "Ears: washcloth on the outer ear only during shower — never insert anything into the canal"],
     monthly: ["Skin self-check — scan for new moles or changes", "Gym gear — air out shoes and bag, check for buildup", "Cross-check the Body Care Products list, reorder what's low", "Every 6 months: professional dental cleaning (mention sensitive gums)", "Annually: dermatologist skin check"]
   }

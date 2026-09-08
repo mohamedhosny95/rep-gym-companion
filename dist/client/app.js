@@ -20,7 +20,7 @@ const ICONS={
 const sessions = {
   morning: {
     name: "Morning Activation", short: "AM", meta: "Sun–Thu · Home · 10–15 min", icon: "sun", accent: "#c9ff3d",
-    description: "Light mobility and activation. RPE 3 throughout — training now happens in the evening, so this session stands on its own for consistency, mobility, and pelvic-health/vascular goals. No progression — it stays light indefinitely.",
+    description: "Light mobility and activation. RPE 3 throughout — on Sun/Tue/Thu the gym session follows later that same morning, so this must never pre-fatigue it. This session stands on its own for consistency, mobility, and pelvic-health/vascular goals. No progression — it stays light indefinitely.",
     exercises: [
       ex("Brisk Marching in Place", "3 min", "RPE 3", 0, "warm-up", "march", "Stand tall, arms relaxed at your sides.", "March in place, lifting knees toward hip height and swinging the arms naturally.", "Torso upright. Land softly on the balls of your feet.", "Leaning backward or stomping heavily."),
       ex("Cat-Cow", "1 × 8", "RPE 3", 0, "mobility", "catcow", "Hands and knees; wrists under shoulders, knees under hips.", "Inhale into Cow; exhale and round into Cat. One full cycle per breath.", "Move slowly with your breath.", "Forcing range or moving from the neck only."),
@@ -34,8 +34,8 @@ const sessions = {
     ]
   },
   gym: {
-    name: "Gym Session", short: "GYM", meta: "Sun / Tue / Thu · 7:30 PM · 45–50 min", icon: "dumbbell", accent: "#ff8b3d",
-    description: "Beginner full-body machines. RPE 7 means finish each set with 2–3 good reps in reserve.",
+    name: "Gym Session", short: "GYM", meta: "Sun / Tue / Thu · 10:00 AM · 45–50 min", icon: "dumbbell", accent: "#ff8b3d",
+    description: "Beginner full-body machines. RPE 7 means finish each set with 2–3 good reps in reserve. Gym is back to mornings — the AM circuit precedes it the same day, so same-day pre-fatigue risk is real again.",
     exercises: [
       ex("Stationary Bike", "5 min", "Light resistance", 0, "warm-up", "bike", "Set the seat so your knee stays slightly bent at the bottom.", "Pedal easily for five minutes.", "Stay at conversational effort — this is preparation.", "Starting with high resistance or pace."),
       ex("Leg Press", "3 × 10–12", "RPE 7", 90, "squat", "legpress", "Feet shoulder-width on the platform; back flat on the pad.", "Lower under control toward 90° at the knees, then press without hard lockout.", "Drive through the whole foot.", "Knees caving in or bouncing at the bottom.", 3),
@@ -86,8 +86,8 @@ const sessions = {
     ]
   },
   cardio: {
-    name: "Cardio Workout", short: "CARDIO", meta: "Any day without football or padel · 30–35 min", icon: "pulse", accent: "#7dc9ff",
-    description: "Choose this treadmill session when you are not playing football or padel. It gives you a complete moderate cardio workout without inventing a replacement game.",
+    name: "Cardio Workout", short: "CARDIO", meta: "Monday or Wednesday · 7:30 PM · 30–35 min", icon: "pulse", accent: "#7dc9ff",
+    description: "Standalone fallback — only use this on a Mon/Wed when football or padel is cancelled and there would otherwise be no session that day. Not part of the normal football/padel routine.",
     exercises: [
       ex("Easy Warm-up Walk", "3–5 min", "Easy pace", 0, "warm-up", "walk", "Set the treadmill flat or at a very gentle incline.", "Walk easily and let your stride settle.", "Breathe comfortably; prepare, don't test yourself.", "Jumping straight to main pace."),
       ex("Incline Treadmill Walk", "20–25 min", "RPE 5–6 · 4–6% incline", 0, "main", "inclinewalk", "Start around 4–6% incline at a comfortable walking pace.", "Hold RPE 5–6: short sentences are possible, full conversation is not.", "Brace gently, swing arms naturally, and look forward.", "Overstriding or holding the rails. Progress incline or pace, not duration."),
@@ -1926,7 +1926,7 @@ function renderRecovery() {
       <article class="recovery-card"><span class="card-kicker">Saturday</span><h2>Active recovery</h2><ul><li>No gym and no morning circuit.</li><li>Optional light walking and 5–10 min gentle stretching.</li><li><strong>Legs up the wall:</strong> 5 min, breathe slowly.</li><li>Soreness should resolve, not accumulate.</li></ul></article>
       <article class="recovery-card wide"><span class="card-kicker">Saturday · 45–55 min</span><h2>Steam → Sauna → Jacuzzi</h2><ol class="spa-list"><li><span>Shower — rinse</span><strong>2 min</strong></li><li><span>Steam room</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Sauna</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Jacuzzi</span><strong>15–20</strong></li><li><span>Cool shower + rehydrate</span><strong>2 min</strong></li></ol><p class="check-result">Water before and between every step. Exit immediately if dizzy, nauseous, or unwell. Skip if sick, dehydrated, or hungover.</p></article>
       <article class="recovery-card warning wide"><span class="card-kicker">Stop, don't push</span><h2>Real red flags</h2><ul><li><strong>Sharp or joint pain:</strong> stop that exercise.</li><li><strong>Soreness beyond 72 hours:</strong> back off volume.</li><li><strong>Persistent fatigue or declining sleep:</strong> address it before adding load.</li><li>Pain that persists for days or feels unlike normal soreness needs a doctor, not a training workaround.</li></ul></article>
-      <article class="recovery-card wide"><span class="card-kicker">Bad-day fallback</span><h2>Something beats nothing.</h2><ul><li><strong>Non-negotiable:</strong> Kegels 3 × 10 + 3 min marching.</li><li>Cut cardio first, then reduce gym to Leg Press + Chest Press + Row.</li><li>Protect the morning circuit last.</li><li>Review the full program at week 8, or after 2+ lifts stall for 2+ sessions.</li></ul></article>
+      <article class="recovery-card wide"><span class="card-kicker">Bad-day fallback</span><h2>Something beats nothing.</h2><ul><li><strong>Non-negotiable:</strong> Kegels 3 × 10 + 3 min marching.</li><li>Cut football/padel or cardio first, then reduce gym to Leg Press + Chest Press + Row.</li><li>Protect the morning circuit last.</li><li>Review the full program at week 8, or after 2+ lifts stall for 2+ sessions.</li></ul></article>
     </section>`);
   bindRecoveryTools();
 }
