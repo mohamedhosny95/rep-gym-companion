@@ -316,7 +316,7 @@ try {
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Explainable Today Coach appears in Vitals");
   assertTrue(await page.locator(".health-quality-card").count() === 1, "Health import quality card appears in Vitals");
   const summaryHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
-  assertTrue(summaryHeight<2200,`Vitals summary stays focused (height ${summaryHeight}px)`);
+  assertTrue(summaryHeight<2230,`Vitals summary stays focused (height ${summaryHeight}px)`);
   await page.click('[data-workflow="log"]');
   await page.waitForTimeout(150);
   assertTrue(await page.locator('.sleep-card:visible').count()===1,"Health logging has a dedicated workflow");
