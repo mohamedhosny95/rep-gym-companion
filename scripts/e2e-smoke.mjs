@@ -101,6 +101,15 @@ try {
   await page.waitForSelector("text=TODAY", { timeout: 10000 });
   assertTrue(true, "Today tab loads on cold start");
   assertTrue((await page.locator('[data-app-tab="home"][aria-current="page"]').count()) > 0, "Today tab is marked active on cold start");
+  await page.click('[data-app-tab="insights"]');
+  await page.goBack();
+  await page.waitForSelector('[data-app-tab="home"][aria-current="page"]');
+  assertTrue(/^Good (morning|afternoon|evening|night)\.$/.test(await page.locator("main h1").textContent()),"Browser Back returns to the previous primary section");
+  await page.goForward();
+  await page.waitForSelector('[data-app-tab="insights"][aria-current="page"]');
+  assertTrue(await page.locator("main h1").textContent()==="What your data says.","Browser Forward restores the primary section");
+  await page.goBack();
+  await page.waitForSelector('[data-app-tab="home"][aria-current="page"]');
   assertTrue(await page.locator(".health-coach-card").count() === 1, "Today Coach appears on the first cold-start Home render");
   const backupCheck=await page.evaluate(async()=>{const sample={app:"Rep Gym Companion",data:{foodEntries:[{id:"recovery-drill"}]}},encrypted=await window.REP_FEATURES.encryptExport(sample,"recovery-drill-passphrase"),restored=await window.REP_FEATURES.decryptExport(encrypted,"recovery-drill-passphrase");let tamperRejected=false;try{await window.REP_FEATURES.decryptExport({...encrypted,format:"older-format"},"recovery-drill-passphrase");}catch{tamperRejected=true;}return {roundTrip:JSON.stringify(sample)===JSON.stringify(restored),schema:encrypted.schema,tamperRejected};});
   assertTrue(backupCheck.roundTrip&&backupCheck.schema===5,"Schema-5 encrypted backup completes a recovery round trip");
@@ -440,16 +449,20 @@ try {
   // The app is mobile-primary. Exercise every primary destination at the
   // compact widths we support instead of treating one 390 px viewport as a
   // proxy for the entire phone range.
+  const indicatorChecks=[];
   for(const width of [320,360,375,390,414,430]){
     await page.setViewportSize({width,height:900});
     for(const tab of ["home","train","food","health","insights"]){
       await page.click(`[data-app-tab="${tab}"]`);
-      await page.waitForTimeout(80);
-      const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...document.querySelectorAll(".app-tabs button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)}));
+      await page.waitForTimeout(350);
+      const layout=await page.evaluate(()=>{const nav=document.querySelector(".app-tabs"),active=nav.querySelector('[aria-current="page"]'),navBox=nav.getBoundingClientRect(),activeBox=active.getBoundingClientRect(),pseudo=getComputedStyle(nav,"::before"),indicatorLeft=navBox.left+parseFloat(getComputedStyle(nav).borderLeftWidth)+parseFloat(pseudo.left)+new DOMMatrixReadOnly(pseudo.transform).m41,indicatorWidth=parseFloat(pseudo.width);return {overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,targets:[...nav.querySelectorAll("button")].map(button=>Math.min(button.getBoundingClientRect().width,button.getBoundingClientRect().height)),indicatorError:Math.max(Math.abs(indicatorLeft-activeBox.left),Math.abs(indicatorWidth-activeBox.width)),offenders:[...document.querySelectorAll("body *")].filter(element=>{const box=element.getBoundingClientRect();return box.right>document.documentElement.clientWidth+1||box.left<-1;}).slice(0,6).map(element=>`${element.tagName.toLowerCase()}.${element.className||""}[${Math.round(element.getBoundingClientRect().left)},${Math.round(element.getBoundingClientRect().right)}]`)};});
+      indicatorChecks.push({width,tab,error:layout.indicatorError});
       assertTrue(layout.overflow<=1,`${tab} has no horizontal overflow at ${width}px${layout.overflow>1?` (${layout.overflow}px: ${layout.offenders.join(", ")})`:""}`);
       assertTrue(layout.targets.every(size=>size>=44),`primary navigation keeps 44px touch targets at ${width}px`);
     }
   }
+  const worstIndicator=indicatorChecks.sort((a,b)=>b.error-a.error)[0];
+  assertTrue(worstIndicator.error<=0.5,`primary navigation indicator stays aligned across phone widths (worst ${worstIndicator.error.toFixed(2)}px at ${worstIndicator.width}px on ${worstIndicator.tab})`);
 
   // Integrated adaptive-plan and next-session handoff coverage. This uses
   // controlled local state so no physical watch or phone bridge is required.

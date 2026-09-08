@@ -154,6 +154,14 @@
   }
   deleteFoodEntry=function(id){const index=state.foodEntries.findIndex(entry=>entry.id===id),entry=state.foodEntries[index];if(!entry)return;state.foodEntries.splice(index,1);queueNutritionSummary();persist();renderNutrition();showUndo("Meal deleted.",()=>{state.foodEntries.splice(index,0,entry);queueNutritionSummary();persist();renderNutrition();});};
 
+  const PRIMARY_TABS=new Set(["home","train","food","health","insights"]);
+  let restoringPrimaryTabHistory=false;
+  function primaryTabForState(){return ["care","vitals"].includes(state.activeTab)?"health":PRIMARY_TABS.has(state.activeTab)?state.activeTab:"home";}
+  function rememberPrimaryTab(tab,{replace=false}={}){
+    if(restoringPrimaryTabHistory||!PRIMARY_TABS.has(tab)||history.state?.repPrimaryTab===tab)return;
+    const prior=history.state&&typeof history.state==="object"?history.state:{};
+    history[replace?"replaceState":"pushState"]({...prior,repPrimaryTab:tab},"",location.href);
+  }
   updatePrimaryTabs=function(){
     document.querySelectorAll("[data-app-tab]").forEach(button=>{
       const tab=button.dataset.appTab;
@@ -176,9 +184,17 @@
     else if(tab==="insights")renderInsights();
     else if(tab==="vitals")renderVitals();
     else renderHome();
+    rememberPrimaryTab(primaryTabForState());
     focusViewHeading();
     if(navigator.onLine&&localStorage.getItem(syncKeyStorage)&&typeof fetchPendingVitals==="function")setTimeout(()=>{fetchPendingVitals(false).catch(()=>{});},100);
   };
+  rememberPrimaryTab(primaryTabForState(),{replace:true});
+  window.addEventListener("popstate",event=>{
+    const tab=event.state?.repPrimaryTab;
+    if(!PRIMARY_TABS.has(tab)||tab===primaryTabForState())return;
+    restoringPrimaryTabHistory=true;
+    try{setPrimaryTab(tab);}finally{restoringPrimaryTabHistory=false;}
+  });
   function healthNav(){const items=[["vitals","Vitals"],["care","Wellness"],["insights","Trends"]];const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label","Health sections");nav.innerHTML=REP_SAFE_DOM.sanitize(items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}">${label}</button>`).join(""));const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
   const confidenceLabel=value=>({high:"High confidence",medium:"Medium confidence",low:"Low confidence"}[value]||value);
   function adaptiveTodayPlan(){

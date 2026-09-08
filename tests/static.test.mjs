@@ -12,6 +12,16 @@ test("the mobile shell exposes five primary tabs",async()=>{
   assert.deepEqual(tabs,["home","train","food","health","insights"]);
 });
 
+test("primary navigation keeps its active indicator aligned and participates in browser history",async()=>{
+  const css=await read("dist/client/styles.css"),enhancements=await read("dist/client/enhancements.js");
+  assert.match(css,/\.app-tabs::before\s*\{[^}]*width:\s*calc\(\(100% - 24px\) \/ 5\)/);
+  assert.match(css,/button:nth-child\(5\)\[aria-current="page"\][^}]*translateX\(calc\(400% \+ 12px\)\)/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.app-tabs::before[^}]*transition:\s*none/);
+  assert.match(enhancements,/history\[replace\?"replaceState":"pushState"\]/);
+  assert.match(enhancements,/addEventListener\("popstate"/);
+  assert.match(enhancements,/restoringPrimaryTabHistory=true/);
+});
+
 test("every local script in the document exists",async()=>{
   const html=await read("dist/client/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"dist","client",source))));

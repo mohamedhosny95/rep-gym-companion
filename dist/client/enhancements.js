@@ -154,6 +154,14 @@
   }
   deleteFoodEntry=function(id){const index=state.foodEntries.findIndex(entry=>entry.id===id),entry=state.foodEntries[index];if(!entry)return;state.foodEntries.splice(index,1);queueNutritionSummary();persist();renderNutrition();showUndo("Meal deleted.",()=>{state.foodEntries.splice(index,0,entry);queueNutritionSummary();persist();renderNutrition();});};
 
+  const PRIMARY_TABS=new Set(["home","train","food","health","insights"]);
+  let restoringPrimaryTabHistory=false;
+  function primaryTabForState(){return ["care","vitals"].includes(state.activeTab)?"health":PRIMARY_TABS.has(state.activeTab)?state.activeTab:"home";}
+  function rememberPrimaryTab(tab,{replace=false}={}){
+    if(restoringPrimaryTabHistory||!PRIMARY_TABS.has(tab)||history.state?.repPrimaryTab===tab)return;
+    const prior=history.state&&typeof history.state==="object"?history.state:{};
+    history[replace?"replaceState":"pushState"]({...prior,repPrimaryTab:tab},"",location.href);
+  }
   updatePrimaryTabs=function(){
     document.querySelectorAll("[data-app-tab]").forEach(button=>{
       const tab=button.dataset.appTab;
@@ -176,9 +184,17 @@
     else if(tab==="insights")renderInsights();
     else if(tab==="vitals")renderVitals();
     else renderHome();
+    rememberPrimaryTab(primaryTabForState());
     focusViewHeading();
     if(navigator.onLine&&localStorage.getItem(syncKeyStorage)&&typeof fetchPendingVitals==="function")setTimeout(()=>{fetchPendingVitals(false).catch(()=>{});},100);
   };
+  rememberPrimaryTab(primaryTabForState(),{replace:true});
+  window.addEventListener("popstate",event=>{
+    const tab=event.state?.repPrimaryTab;
+    if(!PRIMARY_TABS.has(tab)||tab===primaryTabForState())return;
+    restoringPrimaryTabHistory=true;
+    try{setPrimaryTab(tab);}finally{restoringPrimaryTabHistory=false;}
+  });
   function healthNav(){const items=[["vitals","Vitals"],["care","Wellness"],["insights","Trends"]];const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label","Health sections");nav.innerHTML=REP_SAFE_DOM.sanitize(items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}">${label}</button>`).join(""));const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
   const confidenceLabel=value=>({high:"High confidence",medium:"Medium confidence",low:"Low confidence"}[value]||value);
   function adaptiveTodayPlan(){
@@ -436,7 +452,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(`Latest: ${new Date(dates[0]).toLocaleString()}`):("A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=REP_SAFE_DOM.sanitize(dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(undefined)}</button>`).join(""));history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"193611b28ffa"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"0caaa118cb61"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!repAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await repAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair Health OS",url});else await navigator.clipboard.writeText(url);showToast("Pairing link copied.");}catch{showToast("Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt("Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"Rep Gym Companion",schema:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload(),assets:{progressPhotos:await features.exportProgressPhotos()}} ,payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`health-os-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast("Encrypted backup downloaded, including progress photos.");}catch(error){showToast(String(error.message||error));}}
