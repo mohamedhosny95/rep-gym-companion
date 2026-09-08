@@ -36,16 +36,16 @@
     "generate:vapid": "node scripts/generate-vapid.mjs"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.21.3",
-    "@types/node": "^26.2.0",
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@types/node": "^26.4.1",
     "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
-    "eslint": "^10.8.1",
-    "playwright": "^1.48.0",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.10",
-    "wrangler": "^4.125.0"
+    "eslint": "^10.10.0",
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.129.0"
   },
   "dependencies": {
     "dompurify": "^3.4.14"
