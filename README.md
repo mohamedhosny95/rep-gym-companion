@@ -471,6 +471,14 @@ updates the same calendar-day record, so the schedule does not create duplicates
 
 **Production:** [rep-gym-companion.mohamedahmedhosny95.workers.dev](https://rep-gym-companion.mohamedahmedhosny95.workers.dev)
 
+Run the deployed mobile audit after a release. It checks portrait and landscape layouts for the Honor 20 Pro (360 × 780) and iPhone 15 Pro (393 × 852), including 44 px touch targets, overflow, navigation placement, LCP, CLS, long tasks, and browser errors:
+
+```sh
+npm run test:devices
+```
+
+To audit staging or a preview instead, set `REP_DEVICE_AUDIT_URL` to that deployment URL.
+
 GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Worker is the sole production runtime. The application has no runtime dependency on ChatGPT Sites or OpenAI Apps hosting.
 
 The normal production path is the gated `deploy-production` GitHub Actions

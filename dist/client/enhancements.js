@@ -27,7 +27,7 @@
   state.savedMeals=Array.isArray(rawSaved.savedMeals)?rawSaved.savedMeals:[];
   state.habitOrder=Array.isArray(rawSaved.habitOrder)?rawSaved.habitOrder:[];
   state.mealQuantities=rawSaved.mealQuantities&&typeof rawSaved.mealQuantities==="object"?rawSaved.mealQuantities:{};
-  state.healthView=["care","insights","vitals"].includes(rawSaved.healthView)?rawSaved.healthView:"vitals";
+  state.healthView=["care","vitals"].includes(rawSaved.healthView)?rawSaved.healthView:"vitals";
   state.connectionCapabilities=rawSaved.connectionCapabilities&&typeof rawSaved.connectionCapabilities==="object"?rawSaved.connectionCapabilities:null;
   state.lastSyncedAt=rawSaved.lastSyncedAt||null;
   state.healthProfile={wakeTime:/^([01]\d|2[0-3]):[0-5]\d$/.test(rawSaved.healthProfile?.wakeTime||"")?rawSaved.healthProfile.wakeTime:"05:00",baseSleepHours:Math.max(6,Math.min(10,Number(rawSaved.healthProfile?.baseSleepHours)||7.5)),baselineDays:[21,28,42].includes(Number(rawSaved.healthProfile?.baselineDays))?Number(rawSaved.healthProfile.baselineDays):28};
@@ -53,7 +53,10 @@
   state.exerciseSubstitutions=rawSaved.exerciseSubstitutions&&typeof rawSaved.exerciseSubstitutions==="object"?rawSaved.exerciseSubstitutions:{};
   state.smartReminders=Array.isArray(rawSaved.smartReminders)?rawSaved.smartReminders:[];
   state.timer=rawSaved.restTimer&&typeof rawSaved.restTimer==="object"?{...rawSaved.restTimer}:state.timer;
-  state.settingsSection=["general","schedule","targets","coach","sync","security"].includes(rawSaved.settingsSection)?rawSaved.settingsSection:"general";state.pairHandoff=null;state.pairHandoffBusy=false;state.undoTimer=null;state.nutritionView=["log","today","plan"].includes(rawSaved.nutritionView)?rawSaved.nutritionView:"log";state.trainingView=["today","program"].includes(rawSaved.trainingView)?rawSaved.trainingView:"today";state.wellnessExpanded=false;state.systemHealth=rawSaved.systemHealth||null;state.syncActivity=Array.isArray(rawSaved.syncActivity)?rawSaved.syncActivity.slice(0,40):[];state.syncMessage="";state.syncProgress={done:0,total:0,failed:0};state.systemSelfTest=null;
+  state.settingsSection=["general","schedule","targets","coach","sync","security"].includes(rawSaved.settingsSection)?rawSaved.settingsSection:"general";state.pairHandoff=null;state.pairHandoffBusy=false;state.undoTimer=null;state.nutritionView=["log","today","plan"].includes(rawSaved.nutritionView)?rawSaved.nutritionView:"log";state.trainingView=["today","program","history"].includes(rawSaved.trainingView)?rawSaved.trainingView:"today";state.wellnessExpanded=false;state.systemHealth=rawSaved.systemHealth||null;state.syncActivity=Array.isArray(rawSaved.syncActivity)?rawSaved.syncActivity.slice(0,40):[];state.syncMessage="";state.syncProgress={done:0,total:0,failed:0};state.systemSelfTest=null;
+
+  const navigation=window.REP_NAVIGATION;
+  function navigateTo(route,fallback){if(navigation?.has(route))navigation.navigate(route);else fallback?.();}
 
   function statePayload(){
     const restTimer=state.timer?{remaining:state.timer.remaining,total:state.timer.total,paused:state.timer.paused,set:state.timer.set,targetEndTime:state.timer.targetEndTime}:null;
@@ -140,8 +143,8 @@
     document.querySelector("[data-food-note]")?.setAttribute("aria-label","Meal description");
     let nav=document.querySelector(".module-subnav[data-nav-for='nutrition']");
     if(!nav){
-      nav=document.createElement("nav");nav.className="module-subnav";nav.dataset.navFor="nutrition";nav.setAttribute("aria-label","Nutrition sections");nav.innerHTML=REP_SAFE_DOM.sanitize([["log","Log"],["today","Today"],["plan","Plan"]].map(([id,label])=>`<button data-nutrition-view="${id}" class="${state.nutritionView===id?"is-active":""}">${label}</button>`).join(""));profile.insertAdjacentElement("afterend",nav);
-      nav.querySelectorAll("[data-nutrition-view]").forEach(button=>button.onclick=()=>{state.nutritionView=button.dataset.nutritionView;persist();renderNutrition();});
+      nav=document.createElement("nav");nav.className="module-subnav";nav.dataset.navFor="nutrition";nav.setAttribute("aria-label","Nutrition sections");nav.innerHTML=REP_SAFE_DOM.sanitize([["log","Log"],["today","Today"],["plan","Plan"]].map(([id,label])=>`<button data-nutrition-view="${id}" class="${state.nutritionView===id?"is-active":""}" aria-current="${state.nutritionView===id?"page":"false"}">${label}</button>`).join(""));profile.insertAdjacentElement("afterend",nav);
+      nav.querySelectorAll("[data-nutrition-view]").forEach(button=>button.onclick=()=>navigateTo(`nutrition-${button.dataset.nutritionView}`,()=>{state.nutritionView=button.dataset.nutritionView;persist();renderNutrition();}));
     }
     const mark=(selector,view)=>document.querySelectorAll(selector).forEach(el=>{if(el)el.dataset.nutritionSection=view;});
     mark(".macro-dashboard, .supplement-card, .water-card, .food-log, .reminder-strip, .food-section-head", "today");
@@ -150,32 +153,13 @@
     const connection=document.querySelector(".food-connect");if(connection){connection.dataset.nutritionSection="plan";connection.hidden=state.nutritionView!=="plan"&&!state.foodPendingPayload;}
     document.querySelectorAll("[data-nutrition-section]").forEach(element=>{if(element!==connection)element.hidden=element.dataset.nutritionSection!==state.nutritionView;});
     const header=document.querySelector(".food-head"),disclosure=header?.querySelector(".integration-disclosure");if(disclosure){const details=shell?.disclose(disclosure,{label:"How nutrition estimates and AI work",className:"nutrition-disclosure"});const guide=header.querySelector(".guide-version");if(details&&guide)details.insertBefore(guide,disclosure);}
-    if(state.nutritionView==="log"&&!localStorage.getItem(syncKeyStorage)&&!state.foodPendingPayload){const banner=document.createElement("button");banner.className="connection-banner";banner.type="button";banner.innerHTML=REP_SAFE_DOM.sanitize(`<span><strong>${"AI analysis is not connected"}</strong><small>${"Save a note now or set it up once"}</small></span><b>${"Set up"} →</b>`);banner.onclick=()=>{state.nutritionView="plan";persist();renderNutrition();};nav.insertAdjacentElement("afterend",banner);}
+    if(state.nutritionView==="log"&&!localStorage.getItem(syncKeyStorage)&&!state.foodPendingPayload){const banner=document.createElement("button");banner.className="connection-banner";banner.type="button";banner.innerHTML=REP_SAFE_DOM.sanitize(`<span><strong>${"AI analysis is not connected"}</strong><small>${"Save a note now or set it up once"}</small></span><b>${"Set up"} →</b>`);banner.onclick=()=>navigateTo("nutrition-plan",()=>{state.nutritionView="plan";persist();renderNutrition();});nav.insertAdjacentElement("afterend",banner);}
   }
   deleteFoodEntry=function(id){const index=state.foodEntries.findIndex(entry=>entry.id===id),entry=state.foodEntries[index];if(!entry)return;state.foodEntries.splice(index,1);queueNutritionSummary();persist();renderNutrition();showUndo("Meal deleted.",()=>{state.foodEntries.splice(index,0,entry);queueNutritionSummary();persist();renderNutrition();});};
 
   const PRIMARY_TABS=new Set(["home","train","food","health","insights"]);
-  let restoringPrimaryTabHistory=false;
   function primaryTabForState(){return ["care","vitals"].includes(state.activeTab)?"health":PRIMARY_TABS.has(state.activeTab)?state.activeTab:"home";}
-  function rememberPrimaryTab(tab,{replace=false}={}){
-    if(restoringPrimaryTabHistory||!PRIMARY_TABS.has(tab)||history.state?.repPrimaryTab===tab)return;
-    const prior=history.state&&typeof history.state==="object"?history.state:{};
-    history[replace?"replaceState":"pushState"]({...prior,repPrimaryTab:tab},"",location.href);
-  }
-  updatePrimaryTabs=function(){
-    document.querySelectorAll("[data-app-tab]").forEach(button=>{
-      const tab=button.dataset.appTab;
-      const active=tab==="health"?["care","vitals"].includes(state.activeTab)||state.activeTab==="health":tab==="insights"?state.activeTab==="insights":tab===state.activeTab;
-      button.setAttribute("aria-current",active?"page":"false");
-      const labels={home:"Today",train:"Training",food:"Nutrition",health:"Health",insights:"Insights"};
-      const span=button.querySelector("span");
-      if(span)span.textContent=labels[tab]||tab;
-    });
-    
-    const paletteLabel=document.querySelector("#commandPaletteButton span");if(paletteLabel)paletteLabel.textContent="Command palette";
-    const previewLabel=document.querySelector("#previewModeButton span");if(previewLabel)previewLabel.textContent="Preview mode";
-  };
-  setPrimaryTab=function(tab){
+  function activatePrimaryTab(tab){
     if(tab==="health")tab=state.healthView==="care"?"care":"vitals";
     state.activeTab=tab;persistDebounced();updatePrimaryTabs();
     if(tab==="home")renderOverview();
@@ -184,18 +168,18 @@
     else if(tab==="insights")renderInsights();
     else if(tab==="vitals")renderVitals();
     else renderHome();
-    rememberPrimaryTab(primaryTabForState());
-    focusViewHeading();
     if(navigator.onLine&&localStorage.getItem(syncKeyStorage)&&typeof fetchPendingVitals==="function")setTimeout(()=>{fetchPendingVitals(false).catch(()=>{});},100);
-  };
-  rememberPrimaryTab(primaryTabForState(),{replace:true});
-  window.addEventListener("popstate",event=>{
-    const tab=event.state?.repPrimaryTab;
-    if(!PRIMARY_TABS.has(tab)||tab===primaryTabForState())return;
-    restoringPrimaryTabHistory=true;
-    try{setPrimaryTab(tab);}finally{restoringPrimaryTabHistory=false;}
-  });
-  function healthNav(){const items=[["vitals","Vitals"],["care","Wellness"],["insights","Trends"]];const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label","Health sections");nav.innerHTML=REP_SAFE_DOM.sanitize(items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}">${label}</button>`).join(""));const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
+  }
+  function routeIdForPrimaryTab(tab){
+    if(tab==="home")return "today";
+    if(tab==="train")return state.trainingView==="program"?"training-program":"training-today";
+    if(tab==="food")return `nutrition-${state.nutritionView}`;
+    if(tab==="health")return state.healthView==="care"?"health-wellness":"health-vitals";
+    if(tab==="care")return "health-wellness";
+    if(tab==="vitals")return "health-vitals";
+    return tab;
+  }
+  function healthNav(){const items=[["vitals","Vitals"],["care","Wellness"]];const nav=document.createElement("nav");nav.className="health-subnav";nav.setAttribute("aria-label","Health sections");nav.innerHTML=REP_SAFE_DOM.sanitize(items.map(([id,label])=>`<button data-health-view="${id}" class="${state.healthView===id?"is-active":""}" aria-current="${state.healthView===id?"page":"false"}">${label}</button>`).join(""));const header=app.querySelector(".module-head,.recovery-head");header?.insertAdjacentElement("afterend",nav);nav.querySelectorAll("[data-health-view]").forEach(button=>button.onclick=()=>setPrimaryTab(button.dataset.healthView));}
   const confidenceLabel=value=>({high:"High confidence",medium:"Medium confidence",low:"Low confidence"}[value]||value);
   function adaptiveTodayPlan(){
     const ready=health.readiness(state,isoDay(),state.healthProfile),recommendation=health.trainingRecommendation(state,isoDay(),state.healthProfile,ready);
@@ -233,14 +217,14 @@
     const reference=document.querySelector("[data-view-care-plan]");if(reference&&!document.querySelector("[data-wellness-expand]")){const button=document.createElement("button");button.className="wellness-expand";button.dataset.wellnessExpand="";button.textContent=state.wellnessExpanded?("Show current routine"):("Show full daily routine");button.onclick=()=>{state.wellnessExpanded=!state.wellnessExpanded;renderHygiene();};reference.insertAdjacentElement("beforebegin",button);}
   }
   renderHygiene=function(){state.healthView="care";baseCare();healthNav();organizeWellness();};
-  renderInsights=function(){state.healthView="insights";baseInsights();healthNav();(document.querySelector(".trends-grid")||document.querySelector(".health-subnav"))?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyReviewCard()));};
+  renderInsights=function(){baseInsights();document.querySelector(".trends-grid")?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyReviewCard()));};
   renderOverview=function(){baseOverview();const anchor=document.querySelector(".vitals-trio");anchor?.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(coachCard(true)));bindAdaptiveActions();};
   function organizeTraining(){
     const hero=document.querySelector(".hero");if(!hero)return;
     let nav=document.querySelector(".module-subnav[aria-label*='Training']");
     if(!nav){
       nav=document.createElement("nav");nav.className="module-subnav";nav.setAttribute("aria-label","Training sections");
-      nav.innerHTML=REP_SAFE_DOM.sanitize([["today","Today"],["program","Program"],["history","History"]].map(([id,label])=>`<button data-training-view="${id}" class="${state.trainingView===id?"is-active":""}">${label}</button>`).join(""));
+      nav.innerHTML=REP_SAFE_DOM.sanitize([["today","Today"],["program","Program"],["history","History"]].map(([id,label])=>`<button data-training-view="${id}" class="${state.trainingView===id?"is-active":""}" aria-current="${state.trainingView===id?"page":"false"}">${label}</button>`).join(""));
       hero.insertAdjacentElement("afterend",nav);
     }
     document.querySelector(".install-card")?.remove();
@@ -284,7 +268,7 @@
       });
       exporterCard.querySelector("[data-share-program]")?.addEventListener("click",()=>{
         if(navigator.clipboard){
-          const shareUrl=`${window.location.origin}${window.location.pathname}#program-active`;
+          const shareUrl=`${window.location.origin}${window.location.pathname}#/training/program`;
           navigator.clipboard.writeText(shareUrl).then(()=>showToast("Program link copied!"));
         }
       });
@@ -292,7 +276,7 @@
         window.REP_REPORT_CARD?.openPrintableReport(state);
       });
     }
-    nav.querySelectorAll("[data-training-view]").forEach(button=>button.onclick=()=>{if(button.dataset.trainingView==="history")return renderHistory();state.trainingView=button.dataset.trainingView;persist();renderHome();});
+    nav.querySelectorAll("[data-training-view]").forEach(button=>button.onclick=()=>navigateTo(`training-${button.dataset.trainingView}`,()=>{if(button.dataset.trainingView==="history")return renderHistory();state.trainingView=button.dataset.trainingView;persist();renderHome();}));
   }
   renderHome=function(){
     baseTrainingHome();
@@ -337,7 +321,7 @@
   window.applyThemeSettings=applyThemeSettings;
   applyThemeSettings();
 
-  function settingsNav(active){return `<nav class="settings-nav" aria-label="${"Settings sections"}">${[["general","General"],["schedule","Schedule"],["targets","Targets"],["coach","Coach"],["sync","Sync"],["security","Security"]].map(([id,label])=>`<button data-settings-tab="${id}" class="${active===id?"is-active":""}">${label}</button>`).join("")}</nav>`;}
+  function settingsNav(active){return `<nav class="settings-nav" aria-label="${"Settings sections"}">${[["general","General"],["schedule","Schedule"],["targets","Targets"],["coach","Coach"],["sync","Sync"],["security","Security"]].map(([id,label])=>`<button data-settings-tab="${id}" class="${active===id?"is-active":""}" aria-current="${active===id?"page":"false"}">${label}</button>`).join("")}</nav>`;}
   function pwaInstallCard(){
     const isStandalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
     if(isStandalone)return `<section class="settings-card" style="border-color:rgba(201,255,61,.3);background:linear-gradient(145deg,rgba(201,255,61,.06),var(--panel));"><small style="color:var(--acid);font-weight:900;">${"INSTALLED APP"}</small><h2>${"Health OS is running as a Standalone PWA"}</h2><p style="margin:0;color:var(--muted);font-size:11px;">✓ ${"Full screen with fast offline caching and no browser bar."}</p></section>`;
@@ -407,11 +391,12 @@
     document.querySelector("[data-system-self-test]")?.addEventListener("click",async()=>{try{await syncCenter.backupSelfTest(features);await probeSystemHealth(false);state.systemSelfTest={ok:true,message:"Backup encryption round-trip and server connection passed."};}catch(error){state.systemSelfTest={ok:false,message:String(error.message||error)};}renderSettings("sync");});
     document.querySelector("[data-push-test]")?.addEventListener("click",async()=>{try{const response=await repAuth.fetch("/api/push/test",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({endpoint:state.pushEndpoint})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||"Push test failed.");state.systemSelfTest={ok:true,message:"A test notification was sent to this device."};}catch(error){state.systemSelfTest={ok:false,message:String(error.message||error)};}renderSettings("sync");});
   }
-  function renderSettings(section=state.settingsSection){stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="settings";state.settingsSection=section;persist();app.innerHTML=REP_SAFE_DOM.sanitize(`${moduleHeader("SETTINGS","Make it fit your life.","Units, schedule, targets, sync, and backups.")}${settingsNav(section)}${section==="general"?generalSettings():section==="schedule"?scheduleSettings():section==="targets"?targetsSettings():section==="coach"?coachSettings():section==="sync"?syncCenter.render(state):securitySettings()}`);bindSettings();if(section==="sync")bindSyncCenter();document.querySelectorAll("[data-app-tab]").forEach(button=>button.setAttribute("aria-current","false"));}
+  function renderSettings(section=state.settingsSection){stopExerciseClock();stopSessionClock();document.body.classList.remove("workout-mode");state.view="settings";state.settingsSection=section;persist();app.innerHTML=REP_SAFE_DOM.sanitize(`<button class="settings-back" data-settings-back type="button" aria-label="Back to previous screen">← <span>Back</span></button>${moduleHeader("SETTINGS","Make it fit your life.","Units, schedule, targets, sync, and backups.")}${settingsNav(section)}${section==="general"?generalSettings():section==="schedule"?scheduleSettings():section==="targets"?targetsSettings():section==="coach"?coachSettings():section==="sync"?syncCenter.render(state):securitySettings()}`);bindSettings();if(section==="sync")bindSyncCenter();document.querySelectorAll("[data-app-tab]").forEach(button=>button.setAttribute("aria-current","false"));}
   window.renderRepSettings=renderSettings;
   app.addEventListener("change",event=>{const input=event.target.closest?.("[data-health-profile]");if(!input)return;const key=input.dataset.healthProfile,value=key==="wakeTime"?input.value:Number(input.value);if(key==="wakeTime"||Number.isFinite(value)){state.healthProfile[key]=value;persist();}});
   function bindSettings(){
-    document.querySelectorAll("[data-settings-tab]").forEach(button=>button.onclick=()=>renderSettings(button.dataset.settingsTab));
+    document.querySelector("[data-settings-back]")?.addEventListener("click",()=>navigation?.back("today"));
+    document.querySelectorAll("[data-settings-tab]").forEach(button=>button.onclick=()=>navigateTo(`settings-${button.dataset.settingsTab}`,()=>renderSettings(button.dataset.settingsTab)));
     document.querySelectorAll("[data-theme-mode]").forEach(button=>button.onclick=()=>{state.preferences.themeMode=button.dataset.themeMode;persist();applyThemeSettings();renderSettings("general");});
     document.querySelectorAll("[data-theme-accent]").forEach(button=>button.onclick=()=>{state.preferences.themeAccent=button.dataset.themeAccent;persist();applyThemeSettings();renderSettings("general");});
     document.querySelectorAll("[data-sound-pack]").forEach(button=>button.onclick=()=>{state.preferences.soundPack=button.dataset.soundPack;persist();if(window.playChime)window.playChime();renderSettings("general");});
@@ -452,7 +437,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(`Latest: ${new Date(dates[0]).toLocaleString()}`):("A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=REP_SAFE_DOM.sanitize(dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(undefined)}</button>`).join(""));history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"0caaa118cb61"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.REP_BUILD_VERSION||"8613cbb2185b"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!repAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await repAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair Health OS",url});else await navigator.clipboard.writeText(url);showToast("Pairing link copied.");}catch{showToast("Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt("Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"Rep Gym Companion",schema:APP_SCHEMA,guideVersion:REP_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload(),assets:{progressPhotos:await features.exportProgressPhotos()}} ,payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`health-os-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast("Encrypted backup downloaded, including progress photos.");}catch(error){showToast(String(error.message||error));}}
@@ -462,9 +447,9 @@
   async function deleteLocalData(){if(!confirm("Delete all Health OS data on this device?"))return;if(!confirm("This cannot be undone. Are you sure?"))return;await repAuth.fetch("/api/pair/disconnect",{method:"POST"}).catch(()=>{});await window.REP_STORE?.clear();localStorage.removeItem(storageKey);repAuth.clear();localStorage.removeItem(errorLogKey);indexedDB?.deleteDatabase("rep-device-vault-v1");location.reload();}
   exportData=function(){return exportEncrypted();};
   importData=importSecureBackup;
-  const baseHistory=renderHistory;renderHistory=function(){baseHistory();const exportButton=document.querySelector("[data-export]");if(exportButton)exportButton.textContent="Export encrypted backup";const tools=document.querySelector(".data-tools");if(tools&&!tools.querySelector("[data-open-settings]")){const button=document.createElement("button");button.dataset.openSettings="";button.textContent="Settings & security";tools.prepend(button);button.onclick=()=>renderSettings("security");}};
+  const baseHistory=renderHistory;renderHistory=function(){baseHistory();const exportButton=document.querySelector("[data-export]");if(exportButton)exportButton.textContent="Export encrypted backup";const tools=document.querySelector(".data-tools");if(tools&&!tools.querySelector("[data-open-settings]")){const button=document.createElement("button");button.dataset.openSettings="";button.textContent="Settings & security";tools.prepend(button);button.onclick=()=>navigateTo("settings-security",()=>renderSettings("security"));}};
 
-  async function claimPairFromUrl(){const url=new URL(location.href),fromUrl=url.searchParams.get("pair"),token=fromUrl||sessionStorage.getItem("rep-pair-handoff-v1");if(!token)return;if(fromUrl){sessionStorage.setItem("rep-pair-handoff-v1",token);url.searchParams.delete("pair");history.replaceState({},"",`${url.pathname}${url.search}${url.hash}`);}try{const response=await repAuth.fetch("/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);repAuth.markPaired();state.connectionCapabilities={foodAi:Boolean(data.foodAi),notion:Boolean(data.notion),vitalsAi:Boolean(data.vitalsAi),push:Boolean(data.push)};sessionStorage.removeItem("rep-pair-handoff-v1");persist();showToast("This device is securely paired.");}catch(error){if(navigator.onLine){sessionStorage.removeItem("rep-pair-handoff-v1");showToast(String(error.message||error));}}}
+  async function claimPairFromUrl(){const url=new URL(location.href),fromUrl=url.searchParams.get("pair"),token=fromUrl||sessionStorage.getItem("rep-pair-handoff-v1");if(!token)return;if(fromUrl){sessionStorage.setItem("rep-pair-handoff-v1",token);url.searchParams.delete("pair");history.replaceState(history.state||{},"",`${url.pathname}${url.search}${url.hash}`);}try{const response=await repAuth.fetch("/api/pair/claim",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);repAuth.markPaired();state.connectionCapabilities={foodAi:Boolean(data.foodAi),notion:Boolean(data.notion),vitalsAi:Boolean(data.vitalsAi),push:Boolean(data.push)};sessionStorage.removeItem("rep-pair-handoff-v1");persist();showToast("This device is securely paired.");}catch(error){if(navigator.onLine){sessionStorage.removeItem("rep-pair-handoff-v1");showToast(String(error.message||error));}}}
   async function probeSystemHealth(render=false){if(!repAuth.isPaired()||!navigator.onLine)return;try{const response=await repAuth.fetch("/api/system-health"),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Health check failed (${response.status})`);state.systemHealth=data;state.connectionCapabilities={...(state.connectionCapabilities||{}),notion:Boolean(data.notion?.configured),notionHealthy:Boolean(data.notion?.healthy),foodAi:Boolean(data.services?.foodAi),vitalsAi:Boolean(data.services?.vitalsAi),push:Boolean(data.services?.push)};persist();if(render){if(state.view==="settings")renderSettings(state.settingsSection);else if(state.view==="nutrition")renderNutrition();}}catch(error){state.systemHealth={checkedAt:new Date().toISOString(),notion:{configured:Boolean(state.connectionCapabilities?.notion),healthy:false,error:String(error.message||error)}};if(state.connectionCapabilities)state.connectionCapabilities.notionHealthy=false;persist();if(render&&state.view==="settings")renderSettings(state.settingsSection);}}
   async function refreshCapabilities(){if(!repAuth.isPaired()||!navigator.onLine)return;try{const caps=await repAuth.fetch("/api/pair-check",{method:"POST"}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Connection check failed (${response.status})`);return data;});repAuth.markPaired();state.connectionCapabilities={foodAi:Boolean(caps.foodAi),notion:Boolean(caps.notion),notionHealthy:state.connectionCapabilities?.notionHealthy,vitalsAi:Boolean(caps.vitalsAi),push:Boolean(caps.push),persistent:Boolean(caps.persistent)};persist();await probeSystemHealth(state.view==="nutrition");}catch(error){if(/incorrect|expired|revoked|not paired/i.test(String(error.message))){repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";persist();}}}
 
@@ -478,6 +463,29 @@
   const renderSettingsCore=renderSettings;
   renderSettings=function(section=state.settingsSection){renderSettingsCore(section);if(section==="security")loadConnectedDevices();if(["security","sync"].includes(section)){const stale=!state.systemHealth?.checkedAt||Date.now()-new Date(state.systemHealth.checkedAt).getTime()>5*60*1000;if(stale)probeSystemHealth(true);}};
   window.renderRepSettings=renderSettings;
+
+  function activateTrainingRoute(view){state.trainingView=view;if(view==="history"){state.activeTab="train";persist();updatePrimaryTabs();renderHistory();return;}activatePrimaryTab("train");}
+  function activateNutritionRoute(view){state.nutritionView=view;activatePrimaryTab("food");}
+  function activateHealthRoute(view){state.healthView=view;activatePrimaryTab(view);}
+  function installNavigationRoutes(){
+    if(!navigation)return;
+    navigation.register([
+      {id:"today",path:"/today",title:"Today",activate:()=>activatePrimaryTab("home")},
+      {id:"training-today",path:"/training/today",title:"Training",activate:()=>activateTrainingRoute("today")},
+      {id:"training-program",path:"/training/program",aliases:["/program-active"],title:"Program",activate:()=>activateTrainingRoute("program")},
+      {id:"training-history",path:"/training/history",title:"History",activate:()=>activateTrainingRoute("history")},
+      {id:"nutrition-log",path:"/nutrition/log",title:"Log meal",activate:()=>activateNutritionRoute("log")},
+      {id:"nutrition-today",path:"/nutrition/today",title:"Nutrition",activate:()=>activateNutritionRoute("today")},
+      {id:"nutrition-plan",path:"/nutrition/plan",title:"Nutrition plan",activate:()=>activateNutritionRoute("plan")},
+      {id:"health-vitals",path:"/health/vitals",title:"Vitals",activate:()=>activateHealthRoute("vitals")},
+      {id:"health-wellness",path:"/health/wellness",title:"Wellness",activate:()=>activateHealthRoute("care")},
+      {id:"insights",path:"/insights",title:"Insights",activate:()=>activatePrimaryTab("insights")},
+      ...["general","schedule","targets","coach","sync","security"].map(section=>({id:`settings-${section}`,path:`/settings/${section}`,title:"Settings",activate:()=>renderSettings(section)}))
+    ]);
+    navigation.setTabResolver(routeIdForPrimaryTab);
+    navigation.start({fallback:routeIdForPrimaryTab(primaryTabForState())});
+  }
+  installNavigationRoutes();
 
   let onboardingStep=0,onboardingDraft=null;
   function readOnboardingStep(){
@@ -503,15 +511,15 @@
     backdrop.querySelector("[data-onboarding-next]")?.addEventListener("click",()=>{readOnboardingStep();if(onboardingStep<2){onboardingStep++;renderOnboarding();return;}finishOnboarding(backdrop);});
   }
   function finishOnboarding(backdrop){
-    const normalized=adaptive.normalizeOnboarding(onboardingDraft),goalType={"fat-loss":"fat_loss",muscle:"muscle_gain",recovery:"recovery"}[normalized.goal]||"strength";state.onboarding={...normalized,completedAt:new Date().toISOString(),skipped:false};state.preferences.weightUnit=onboardingDraft.weightUnit;state.preferences.waterUnit=onboardingDraft.waterUnit;state.preferences.schedule=adaptive.suggestedSchedule(normalized.daysPerWeek);state.healthProfile.wakeTime=onboardingDraft.wakeTime;state.healthProfile.baseSleepHours=Number(onboardingDraft.baseSleepHours);state.analyticsGoal=performance.normalizeGoal({...state.analyticsGoal,type:goalType});productSuite.trackEvent(state,"onboarding_completed",{goal:normalized.goal,days:normalized.daysPerWeek});persist();backdrop.remove();renderOverview();showToast("Your adaptive plan is ready.");if(normalized.healthConnection==="now")renderSettings("sync");
+    const normalized=adaptive.normalizeOnboarding(onboardingDraft),goalType={"fat-loss":"fat_loss",muscle:"muscle_gain",recovery:"recovery"}[normalized.goal]||"strength";state.onboarding={...normalized,completedAt:new Date().toISOString(),skipped:false};state.preferences.weightUnit=onboardingDraft.weightUnit;state.preferences.waterUnit=onboardingDraft.waterUnit;state.preferences.schedule=adaptive.suggestedSchedule(normalized.daysPerWeek);state.healthProfile.wakeTime=onboardingDraft.wakeTime;state.healthProfile.baseSleepHours=Number(onboardingDraft.baseSleepHours);state.analyticsGoal=performance.normalizeGoal({...state.analyticsGoal,type:goalType});productSuite.trackEvent(state,"onboarding_completed",{goal:normalized.goal,days:normalized.daysPerWeek});persist();backdrop.remove();navigateTo("today",renderOverview);showToast("Your adaptive plan is ready.");if(normalized.healthConnection==="now")navigateTo("settings-sync",()=>renderSettings("sync"));
   }
   function openOnboarding(force=false){
     if(!force&&state.onboarding.completedAt)return;onboardingStep=0;onboardingDraft={...state.onboarding,equipment:[...state.onboarding.equipment],weightUnit:state.preferences.weightUnit,waterUnit:state.preferences.waterUnit,wakeTime:state.healthProfile.wakeTime,baseSleepHours:state.healthProfile.baseSleepHours};renderOnboarding();
   }
 
-  document.querySelector("#settingsButton")?.addEventListener("click",()=>renderSettings());
+  document.querySelector("#settingsButton")?.addEventListener("click",()=>navigateTo(`settings-${state.settingsSection}`,()=>renderSettings()));
   async function syncFromTopBar(){
-    if(!repAuth.isPaired()){showToast("Pair this device first in the Sync Center.");renderSettings("sync");return;}
+    if(!repAuth.isPaired()){showToast("Pair this device first in the Sync Center.");navigateTo("settings-sync",()=>renderSettings("sync"));return;}
     if(state.syncState==="syncing")return;
     showToast("Syncing everything…");
     await window.REP_SYNC_RUNTIME?.syncEverything();

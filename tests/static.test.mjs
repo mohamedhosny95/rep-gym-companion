@@ -12,20 +12,25 @@ test("the mobile shell exposes five primary tabs",async()=>{
   assert.deepEqual(tabs,["home","train","food","health","insights"]);
 });
 
-test("primary navigation keeps its active indicator aligned and participates in browser history",async()=>{
-  const css=await read("dist/client/styles.css"),enhancements=await read("dist/client/enhancements.js");
+test("primary navigation keeps its active indicator aligned and uses the central URL router",async()=>{
+  const css=await read("dist/client/styles.css"),enhancements=await read("dist/client/enhancements.js"),navigation=await read("dist/client/navigation.js");
   assert.match(css,/\.app-tabs::before\s*\{[^}]*width:\s*calc\(\(100% - 24px\) \/ 5\)/);
   assert.match(css,/button:nth-child\(5\)\[aria-current="page"\][^}]*translateX\(calc\(400% \+ 12px\)\)/);
   assert.match(css,/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.app-tabs::before[^}]*transition:\s*none/);
-  assert.match(enhancements,/history\[replace\?"replaceState":"pushState"\]/);
-  assert.match(enhancements,/addEventListener\("popstate"/);
-  assert.match(enhancements,/restoringPrimaryTabHistory=true/);
+  assert.match(navigation,/history\[replace\?"replaceState":"pushState"\]/);
+  assert.match(navigation,/addEventListener\("popstate"/);
+  assert.match(navigation,/routeFromLocation/);
+  for(const path of ["/training/program","/training/history","/nutrition/plan","/health/wellness","/insights"])assert.ok(enhancements.includes(path));
+  assert.match(enhancements,/path:`\/settings\/\$\{section\}`/);
+  assert.doesNotMatch(enhancements,/restoringPrimaryTabHistory|rememberPrimaryTab/);
+  assert.doesNotMatch(enhancements,/(?:setPrimaryTab|updatePrimaryTabs)=function/);
+  assert.doesNotMatch(enhancements,/\["insights","Trends"\]/);
 });
 
 test("every local script in the document exists",async()=>{
   const html=await read("dist/client/index.html"),sources=[...html.matchAll(/<script src="([^"?]+)(?:\?[^\"]*)?"/g)].map(match=>match[1]);
   await Promise.all(sources.map(source=>access(join(root,"dist","client",source))));
-  assert.ok(sources.includes("vendor/dompurify.min.js")); assert.ok(sources.includes("safe-dom.js")); assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js")); assert.ok(sources.includes("performance-insights.js")); assert.ok(sources.includes("product-suite.js")); assert.ok(sources.includes("adaptive-coach.js")); assert.ok(sources.includes("training-session.js"));
+  assert.ok(sources.includes("vendor/dompurify.min.js")); assert.ok(sources.includes("safe-dom.js")); assert.ok(sources.includes("auth.js")); assert.ok(sources.includes("storage.js")); assert.ok(sources.includes("navigation.js")); assert.ok(sources.includes("bootstrap.js")); assert.ok(sources.includes("features.js")); assert.ok(sources.includes("health-engine.js")); assert.ok(sources.includes("performance-insights.js")); assert.ok(sources.includes("product-suite.js")); assert.ok(sources.includes("adaptive-coach.js")); assert.ok(sources.includes("training-session.js"));
   const bootstrap=await read("dist/client/bootstrap.js");for(const source of ["app.js","sync-outbox.js","telemetry.js","sync.js","enhancements.js","habits.js","performance-ui.js","product-suite-ui.js"])assert.match(bootstrap,new RegExp(source.replace(".","\\.")));
   assert.doesNotMatch(html,/qrcode\.js/);
 });
@@ -42,6 +47,7 @@ test("all dynamic HTML sinks pass through the shared sanitizer",async()=>{
 test("the content-versioned service worker uses network-first navigation and never caches API responses",async()=>{
   const sw=await read("dist/client/sw.js"),meta=await read("dist/client/build-meta.js"),version=meta.match(/REP_BUILD_VERSION="([a-f0-9]{12})"/)?.[1];assert.ok(version,"content build version is generated");assert.match(sw,new RegExp(`rep-companion-\\$\\{BUILD_VERSION\\}`));assert.match(sw,/\.\/auth\.js/);assert.match(sw,/\.\/sync-center\.js/);assert.match(sw,/\.\/health-coverage\.js/);assert.match(sw,/\.\/performance-insights\.js/);assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw,/request\.mode === "navigate"/);assert.doesNotMatch(sw,/qrcode\.js/);
+  assert.match(sw,/\.\/navigation\.js/);
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
@@ -78,7 +84,7 @@ test("daily habits are durable, streak-aware, and included in direct sync",async
 test("startup and social assets stay within their performance budgets",async()=>{
   const social=await stat(join(root,"dist","client","rep-social-preview.png")),html=await read("dist/client/index.html"),sw=await read("dist/client/sw.js");
   assert.ok(social.size<300_000,`social preview is ${social.size} bytes`);
-  assert.doesNotMatch(html,/src="app\.js/);assert.doesNotMatch(html,/src="enhancements\.js/);assert.doesNotMatch(sw,/qrcode\.js/);
+  assert.doesNotMatch(html,/src="app\.js/);assert.doesNotMatch(html,/src="enhancements\.js/);assert.match(html,/src="navigation\.js/);assert.doesNotMatch(sw,/qrcode\.js/);
 });
 
 test("timer chimes and the audio coach share one browser audio context",async()=>{
@@ -128,6 +134,8 @@ test("deployment client is deterministically built from source",async()=>{
     const source=await readFile(join(root,"src/client",file)).catch(()=>null),deployed=await readFile(join(root,"dist/client",file)).catch(()=>null);
     assert.ok(source,`src/client/${file} exists`);assert.ok(deployed,`dist/client/${file} exists`);const expected=Buffer.from(source.toString("utf8").replaceAll("__BUILD_VERSION__",version));assert.deepEqual(expected,deployed,`${file} is built from src/client`);
   }
+  const navigationSource=await readFile(join(root,"src/client/navigation.js")),navigationBuilt=await readFile(join(root,"dist/client/navigation.js"));
+  assert.deepEqual(navigationSource,navigationBuilt,"navigation.js is built from src/client");
 });
 
 test("deployment Worker is deterministically built from source",async()=>{
