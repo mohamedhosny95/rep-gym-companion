@@ -1,6 +1,6 @@
 (function(){
   const REQUEST_TIMEOUT_MS=30000,SIGNATURES_KEY="rep-sync-signatures-v1",outbox=window.REP_SYNC_OUTBOX;
-  const typeMap={morning:"Morning Activation",gym:"Gym",football:"Football",padel:"Padel",cardio:"Cardio",bad:"Bad Day Floor",gymLite:"Reduced Gym"};
+  const typeMap={morning:"Morning Activation",gym:"Gym",football:"Football",padel:"Padel",cardio:"Cardio",bad:"Low-Energy Reset",gymLite:"Reduced Gym"};
   const activityLabel=item=>item.payload?.food_name||item.payload?.rawNote||item.payload?.name||item.workout?.type||item.payload?.plan||item.payload?.date||item.kind||"Sync record";
   const record=(item,status,extra={})=>window.REP_SYNC_CENTER?.record(state,{id:item.id,kind:item.kind,label:activityLabel(item),status,...extra});
   const signatures=()=>{try{return JSON.parse(localStorage.getItem(SIGNATURES_KEY)||"{}");}catch{return {};}};
@@ -20,7 +20,7 @@
     return [...dates].filter(date=>Object.values(care[date]?.checked||{}).some(Boolean)||care[date]?.notes||Object.keys(habits[date]?.checked||{}).length>0).map(date=>{
       const combined=window.REP_HABITS?.payloadForDate?.(date);if(combined)return healthItem("hygiene",combined);
       const day=care[date]||{},checked=day.checked||{},keys=Object.keys(checked),done=keys.filter(key=>checked[key]).length,complete=prefix=>{const group=keys.filter(key=>key.startsWith(`${prefix}-`));return group.length>0&&group.every(key=>checked[key]);};
-      return healthItem("hygiene",{date,morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:complete("post"),hairRoutineComplete:complete("hair"),spf:Boolean(checked["morning-0"]),floss:Boolean(checked["evening-1"]),beardOil:Boolean(checked["morning-3"]&&checked["evening-3"]),showerWithin30m:Boolean(checked["post-0"]),completion:keys.length?Math.round(done/keys.length*100):0,notes:day.notes||""});
+      return healthItem("hygiene",{date,morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:complete("post"),hairRoutineComplete:complete("hair"),spf:Boolean(checked["morning-1"]),floss:Boolean(checked["evening-1"]),beardOil:Boolean(checked["morning-3"]||checked["evening-6"]),showerWithin30m:Boolean(checked["post-0"]),completion:keys.length?Math.round(done/keys.length*100):0,notes:day.notes||""});
     });
   }
   function habitItems(){return Object.entries(state.daily?.habits||{}).flatMap(([date,day])=>Object.keys(day?.checked||{}).map(id=>window.REP_HABITS?.payloadForHabit?.(date,id))).filter(Boolean).map(payload=>healthItem("habit",payload));}

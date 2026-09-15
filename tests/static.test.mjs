@@ -51,7 +51,17 @@ test("the content-versioned service worker uses network-first navigation and nev
 });
 
 test("the state migration preserves health data and adds coaching preferences",async()=>{
-  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","onboarding","activeWorkoutPlan","progressionProposals","trainingTargets","nutritionView","trainingView","systemHealth","syncActivity","settingsSection","weekOverrides","scheduleAdjustments","launchEvents","customExperiments","experimentCheckins","exerciseSubstitutions","smartReminders","restTimer"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=20/);
+  const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","onboarding","activeWorkoutPlan","progressionProposals","trainingTargets","nutritionView","trainingView","systemHealth","syncActivity","settingsSection","weekOverrides","scheduleAdjustments","launchEvents","customExperiments","experimentCheckins","exerciseSubstitutions","smartReminders","restTimer"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=21/);
+});
+
+test("the September 15 health plan is the app's versioned source of truth",async()=>{
+  const [guide,app,enhancements]=await Promise.all([read("dist/client/health-data.js"),read("dist/client/app.js"),read("dist/client/enhancements.js")]);
+  for(const marker of ["2026.09.15","calories: 2250","calories: 2075","calories: 2150","calorieCeiling: 2480","Creatine monohydrate · 5 g daily","Balance Protein Crackers · half pack","Kerella Monday and Friday only as prescribed"])assert.match(guide,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+  for(const marker of ["Sun–Thu · Home · 7–10 min","RPE 7–8","Football Warm-up Jog\", \"2 min","Padel Shoulder Prep\", \"2 min","Skip optional step","Jacuzzi</span><strong>10–15","d===\"Mon\"?\"PDL\":d===\"Wed\"?\"FB\""])assert.ok(app.includes(marker),marker);
+  assert.match(enhancements,/LEGACY_TARGETS/);
+  assert.match(enhancements,/calories:2250,protein:185/);
+  assert.match(enhancements,/calories:2075,protein:175/);
+  assert.match(enhancements,/calories:2150,protein:175/);
 });
 
 test("health navigation stays in document flow and synchronization uses a verified durable outbox",async()=>{
