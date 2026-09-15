@@ -92,7 +92,7 @@
     const habitNote=`Habit tracker: ${done.length}/${todays.length}${done.length?` — ${done.map(habit=>habit.en).join(", ")}`:""}`;
     return {
       date,morningComplete:complete("morning"),eveningComplete:complete("evening"),postWorkoutComplete:complete("post"),hairRoutineComplete:complete("hair"),
-      spf:Boolean(values["morning-0"]),floss:Boolean(values["evening-1"]),beardOil:Boolean(values["morning-3"]&&values["evening-3"]),showerWithin30m:Boolean(values["post-0"]),
+      spf:Boolean(values["morning-1"]),floss:Boolean(values["evening-1"]),beardOil:Boolean(values["morning-3"]||values["evening-6"]),showerWithin30m:Boolean(values["post-0"]),
       completion:total?Math.round(doneTotal/total*100):0,notes:[String(care.notes||"").trim(),habitNote].filter(Boolean).join("\n"),habitChecks
     };
   }
