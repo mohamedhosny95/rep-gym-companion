@@ -72,3 +72,119 @@ test("Sync Outbox: Permanent failure transition and manual recovery", () => {
   assert.equal(queue[0].attempts, 0);
   assert.equal(outbox.due(queue).length, 1);
 });
+
+test("Sync Outbox: Rapid enqueue-during-flight with interleaved out-of-order completions preserves latest revisions", () => {
+  let queue = [];
+  const totalItems = 30;
+
+  // Enqueue 30 items
+  for (let i = 0; i < totalItems; i++) {
+    queue = outbox.enqueue(queue, { id: `item-${i}`, payload: { step: 1 } });
+  }
+  assert.equal(queue.length, totalItems);
+
+  // All 30 items enter transmitting at revision 1
+  for (let i = 0; i < totalItems; i++) {
+    queue = outbox.transmitting(queue, `item-${i}`);
+    assert.equal(queue.find(e => e.id === `item-${i}`).revision, 1);
+  }
+
+  // While in flight:
+  // Items 0..19 get updated to step 2 (revision 2)
+  for (let i = 0; i < 20; i++) {
+    queue = outbox.enqueue(queue, { id: `item-${i}`, payload: { step: 2 } });
+    assert.equal(queue.find(e => e.id === `item-${i}`).revision, 2);
+  }
+
+  // Items 0..9 get updated again to step 3 (revision 3)
+  for (let i = 0; i < 10; i++) {
+    queue = outbox.enqueue(queue, { id: `item-${i}`, payload: { step: 3 } });
+    assert.equal(queue.find(e => e.id === `item-${i}`).revision, 3);
+  }
+
+  // Older revision 1 responses arrive for all 30 items
+  for (let i = 0; i < totalItems; i++) {
+    queue = outbox.remove(queue, `item-${i}`, { revision: 1 });
+  }
+
+  // Items 20..29 had no updates, so their revision 1 success removed them
+  // Items 0..19 had newer revisions, so they were left pending
+  assert.equal(queue.length, 20);
+  const summaryAfterV1 = outbox.summary(queue);
+  assert.equal(summaryAfterV1.pending, 20);
+  assert.equal(summaryAfterV1.transmitting, 0);
+
+  // Verify payloads and revisions
+  for (let i = 0; i < 10; i++) {
+    const entry = queue.find(e => e.id === `item-${i}`);
+    assert.equal(entry.revision, 3);
+    assert.equal(entry.item.payload.step, 3);
+    assert.equal(entry.status, "pending");
+  }
+  for (let i = 10; i < 20; i++) {
+    const entry = queue.find(e => e.id === `item-${i}`);
+    assert.equal(entry.revision, 2);
+    assert.equal(entry.item.payload.step, 2);
+    assert.equal(entry.status, "pending");
+  }
+
+  // Older revision 2 responses arrive for items 0..19
+  for (let i = 0; i < 20; i++) {
+    queue = outbox.remove(queue, `item-${i}`, { revision: 2 });
+  }
+
+  // Items 10..19 were at revision 2, so they are now removed
+  // Items 0..9 were at revision 3, so they remain pending
+  assert.equal(queue.length, 10);
+  for (let i = 0; i < 10; i++) {
+    const entry = queue.find(e => e.id === `item-${i}`);
+    assert.equal(entry.revision, 3);
+    assert.equal(entry.item.payload.step, 3);
+    assert.equal(entry.status, "pending");
+  }
+
+  // Finally, revision 3 responses arrive for items 0..9
+  for (let i = 0; i < 10; i++) {
+    queue = outbox.remove(queue, `item-${i}`, { revision: 3 });
+  }
+
+  assert.equal(queue.length, 0);
+  assert.equal(outbox.summary(queue).total, 0);
+});
+
+test("Sync Outbox: Reclaims stale and interrupted transmissions under mixed timeouts", () => {
+  let queue = [];
+  const now = Date.now();
+
+  // 10 items fresh transmitting, 10 items stale transmitting (>30s)
+  for (let i = 0; i < 20; i++) {
+    queue = outbox.enqueue(queue, { id: `stale-${i}`, count: i });
+    queue = outbox.transmitting(queue, `stale-${i}`);
+  }
+
+  // Set 10 items to stale timestamps (35 seconds in the past)
+  for (let i = 0; i < 10; i++) {
+    const entry = queue.find(e => e.id === `stale-${i}`);
+    entry.transmittingAt = new Date(now - 35000).toISOString();
+  }
+  // 10 items remain fresh (set timestamp to now)
+  for (let i = 10; i < 20; i++) {
+    const entry = queue.find(e => e.id === `stale-${i}`);
+    entry.transmittingAt = new Date(now).toISOString();
+  }
+
+  // due() should reclaim and return only the 10 stale items
+  const dueItems = outbox.due(queue, { now });
+  assert.equal(dueItems.length, 10);
+  for (const item of dueItems) {
+    assert.equal(item.status, "pending");
+    assert.ok(Number(item.id.replace("stale-", "")) < 10);
+  }
+
+  // Reclaim with startup=true should reclaim ALL remaining transmitting items
+  const startupReclaimed = outbox.reclaim(queue, { startup: true, now });
+  const summary = outbox.summary(startupReclaimed);
+  assert.equal(summary.transmitting, 0);
+  assert.equal(summary.pending, 20);
+});
+

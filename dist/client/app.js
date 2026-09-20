@@ -477,6 +477,16 @@ function anatomyVisual(motion) {
 function localDay(date=new Date()){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");}
 function shiftLocalDay(days){const date=new Date();date.setHours(12,0,0,0);date.setDate(date.getDate()+days);return localDay(date);}
 function shiftDateKey(key,days){const [year,month,date]=String(key).slice(0,10).split("-").map(Number),value=new Date(year,month-1,date,12);value.setDate(value.getDate()+days);return localDay(value);}
+function recordDateKey(record){
+  if(!record) return "";
+  const raw = record.dateKey || record.date || record.createdAt;
+  if(!raw) return "";
+  const str = String(raw);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if(!isNaN(d.getTime())) return localDay(d);
+  return str.slice(0, 10);
+}
 const storageKey = "rep-gym-companion-v1";
 const saved = window.REP_HYDRATED_STATE || JSON.parse(localStorage.getItem(storageKey) || "{}");
 const state = {
@@ -630,14 +640,14 @@ function todayPlan(day) {
 }
 function isoDay(){return localDay();}
 function latestRecovery(){return state.recoveryCheckins[0]||null;}
-function recoveryFlags(c){return c?(Number(c.soreness)>=4?1:0)+(Number(c.energy)<=2?1:0)+(Number(c.sleep)<REP_HEALTH_GUIDE.rules.minimumSleepHours?1:0)+(c.pain?1:0):0;}
-function recoveryGate(){const c=latestRecovery();if(!c)return {flags:0,hold:false,stale:true};const age=(Date.now()-new Date(c.date).getTime())/86400000;const flags=recoveryFlags(c);return {flags,hold:age<=10&&flags>=REP_HEALTH_GUIDE.rules.redFlagThreshold,stale:age>10};}
+function recoveryFlags(c){return c?(Number(c.soreness)>=4?1:0)+(Number(c.energy)<=2?1:0)+(Number(c.sleep)<REP_HEALTH_GUIDE.rules.minimumSleepHours?1:0)+(c.pain?1:0)+(c.illness?1:0):0;}
+function recoveryGate(){const c=latestRecovery();if(!c)return {flags:0,hold:false,pause:false,illness:false,stale:true};const age=(Date.now()-new Date(c.createdAt||c.date).getTime())/86400000;const flags=recoveryFlags(c);const active=age<=10;const illness=active&&Boolean(c.illness);const pause=illness;const hold=active&&(flags>=REP_HEALTH_GUIDE.rules.redFlagThreshold||illness);return {flags,hold,pause,illness,stale:age>10};}
 function programStatus(){
   const week=Math.max(1,Math.floor((Date.now()-new Date(state.programStart).getTime())/604800000)+1),gym=state.history.filter(h=>h.session==="gym").slice(0,2),stalled=[];
   if(gym.length===2){const names=["Leg Press","Back Extension","Hip Thrust Machine","Chest Press","Seated Cable Row","Lat Pulldown"];for(const name of names){const score=h=>Math.max(0,...setsFromLog(h.loads?.[name]).map(s=>(Number(s.weight)||0)*(Number(s.reps)||0)));if(score(gym[0])&&score(gym[0])<=score(gym[1]))stalled.push(name);}}
   return {week,stalled,review:week>=REP_HEALTH_GUIDE.rules.reviewWeek||stalled.length>=2};
 }
-function healthStatusStrip(){const gate=recoveryGate(),program=programStatus();let label="Progress available",tone="good";if(gate.hold){label=`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label="Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
+function healthStatusStrip(){const gate=recoveryGate(),program=programStatus();let label="Progress available",tone="good";if(gate.pause||gate.illness){label="Illness reported · pause training";tone="hold";}else if(gate.hold){label=`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label="Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
 
 function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0||Object.keys(state.daily?.habits||{}).length>0;}
 function notionProtected(){return Boolean(localStorage.getItem(syncKeyStorage))&&!["failed","auth"].includes(state.syncState);}
@@ -1761,7 +1771,7 @@ function logActivity(type,customName,minutes,calories,notes){
   const duration=mins*60,label=type==="other"?String(customName||"Activity").trim().slice(0,60)||"Activity":(ACTIVITY_TYPES.find(([id])=>id===type)?.[1].en||"Activity");
   const rawCalories=Number(calories),kcal=Number.isFinite(rawCalories)&&String(calories).trim()!==""?Math.max(0,Math.round(rawCalories)):estimateCalories(type,duration),note=String(notes||"").trim().slice(0,200);
   const record={id:Date.now(),date:new Date().toISOString(),session:"activity",activityType:type,activityLabel:label,duration,calories:kcal,sets:0,loads:{},entries:[{entry:`${label} · ${mins} min`,exercise:label,set:1,weight:"",reps:"",rpe:"",note,duration,rest:"",progression:"",personalBest:false}],cardio:null};
-  state.history.unshift(record);state.history=state.history.slice(0,60);
+  state.history.unshift(record);state.history=state.history.slice(0,400);
   queueWorkout(record);persist();return true;
 }
 function queueWorkout(record){
@@ -1923,7 +1933,7 @@ function renderRecovery() {
       <article class="recovery-card"><span class="card-kicker">Every day</span><h2>Daily basics</h2><ul><li><strong>Sleep:</strong> Track actual sleep, not only time in bed. If 10:00 PM–5:00 AM produces under 7 hours, move wind-down and bedtime earlier.</li><li><strong>Hydration:</strong> Follow thirst, urine colour, heat, and sweat loss.</li><li><strong>Nutrition:</strong> Follow the current day-type plan and protect protein and recovery.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">When useful</span><h2>After lifting, football, or padel</h2><ul><li>Foam roller or massage gun is optional for about 5–10 minutes.</li><li>Keep pressure comfortable and never sacrifice sleep to fit recovery tools in.</li><li>Wednesday has no special ban; use them gently only when time and energy allow.</li><li>Skip routine icing after lifting; assess actual pain or injury separately.</li></ul></article>
       <article class="recovery-card"><span class="card-kicker">Friday</span><h2>Full rest</h2><ul><li>No gym, no morning circuit, no structured recovery work.</li><li>Skip planned stretching or mobility too — let it be a true day off.</li><li>Normal daily basics still apply: sleep, hydration, protein.</li></ul></article>
-      <article class="recovery-card"><span class="card-kicker">2-minute check-in</span><h2>Weekly signals</h2><form class="checkin" id="checkin"><label>Soreness<select name="soreness">${ratingOptions(check.soreness)}</select></label><label>Energy<select name="energy">${ratingOptions(check.energy)}</select></label><label class="wide">Average sleep<input name="sleep" type="number" min="0" max="12" step="0.5" value="${recentSleepAvg(7)??check.sleep??7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${check.pain?"checked":""}> Any pain (not soreness)</span></label><label class="wide">Notes<input name="notes" maxlength="180" value="${esc(check.notes||"")}" placeholder="Optional context"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>Save & sync check-in</button></article>
+      <article class="recovery-card"><span class="card-kicker">2-minute check-in</span><h2>Weekly signals</h2><form class="checkin" id="checkin"><label>Soreness<select name="soreness">${ratingOptions(check.soreness)}</select></label><label>Energy<select name="energy">${ratingOptions(check.energy)}</select></label><label class="wide">Average sleep<input name="sleep" type="number" min="0" max="12" step="0.5" value="${recentSleepAvg(7)??check.sleep??7}" inputmode="decimal"></label><label class="wide"><span><input name="pain" type="checkbox" ${check.pain?"checked":""}> Any pain (not soreness)</span></label><label class="wide"><span><input name="illness" type="checkbox" ${check.illness?"checked":""}> Any illness symptoms</span></label><label class="wide">Notes<input name="notes" maxlength="180" value="${esc(check.notes||"")}" placeholder="Optional context"></label></form><p class="check-result" id="checkResult"></p><button class="module-save" data-save-checkin>Save & sync check-in</button></article>
       <article class="recovery-card wide"><span class="card-kicker">Guided recovery</span><h2>Start a timer</h2><div class="timer-presets"><button data-guide-timer="480" data-guide-label="Foam roll">Foam roll <b>8:00</b></button><button data-guide-timer="420" data-guide-label="Massage gun">Massage gun <b>7:00</b></button><button data-guide-timer="300" data-guide-label="Legs up the wall">Legs up wall <b>5:00</b></button><button data-guide-timer="600" data-guide-label="Gentle stretch">Gentle stretch <b>10:00</b></button></div></article>
       <article class="recovery-card"><span class="card-kicker">Saturday</span><h2>Active recovery</h2><ul><li>No gym and no morning circuit.</li><li>Optional light walking and 5–10 min gentle mobility or stretching.</li><li><strong>Legs up the wall:</strong> optional if relaxing, not a required recovery tool.</li><li>Optional spa is for relaxation, not a required intervention.</li></ul></article>
       <article class="recovery-card wide"><span class="card-kicker">Saturday · optional</span><h2>Steam → Sauna → Jacuzzi</h2><ol class="spa-list"><li><span>Shower — rinse</span><strong>2 min</strong></li><li><span>Steam room</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Sauna</span><strong>10–12</strong></li><li><span>Cool shower + water</span><strong>3–5</strong></li><li><span>Jacuzzi</span><strong>10–15</strong></li><li><span>Cool shower + rehydrate</span><strong>2 min</strong></li></ol><p class="check-result">Exit if light-headed, excessively hot, weak, nauseous, or dehydrated. Skip when sick or dehydrated. If actively trying to conceive, reassess repeated sauna or hot-tub exposure.</p></article>
@@ -1934,14 +1944,16 @@ function renderRecovery() {
 }
 function ratingOptions(selected){return [1,2,3,4,5].map(n=>`<option ${Number(selected||3)===n?"selected":""}>${n}</option>`).join("");}
 function updateCheckin(){
-  const form=new FormData(document.querySelector("#checkin")); const c={soreness:Number(form.get("soreness")),energy:Number(form.get("energy")),sleep:Number(form.get("sleep")),pain:form.get("pain")==="on",notes:String(form.get("notes")||"")};
-  const flags=(c.soreness>=4?1:0)+(c.energy<=2?1:0)+(c.sleep<7?1:0)+(c.pain?1:0);
-  document.querySelector("#checkResult").textContent=(flags>=2?`${flags} red flags — take an extra light day or hold progression flat.`:flags===1?"1 red flag — keep an eye on it and prioritize recovery.":"No red flags — stay consistent and progress as planned.");
+  const form=new FormData(document.querySelector("#checkin")); const c={soreness:Number(form.get("soreness")),energy:Number(form.get("energy")),sleep:Number(form.get("sleep")),pain:form.get("pain")==="on",illness:form.get("illness")==="on",notes:String(form.get("notes")||"")};
+  const flags=recoveryFlags(c);
+  document.querySelector("#checkResult").textContent=c.illness
+    ? (flags>=2 ? `${flags} red flags (illness reported) — pause training and recover.` : "Illness reported — pause training and recover.")
+    : (flags>=2 ? `${flags} red flags — take an extra light day or hold progression flat.` : flags===1 ? "1 red flag — keep an eye on it and prioritize recovery." : "No red flags — stay consistent and progress as planned.");
   saved.checkin=c; persistDebounced();
 }
-function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),decision=gate.hold?("Extra light day · hold progression"):("Proceed as planned");return `<section class="decision-card ${gate.hold?"hold":""}"><div><small>${"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${gate.stale?("Log a fresh check-in to activate progression gating."):(`${gate.flags} red flags in the latest check-in.`)}</p></div><div><strong>${`WEEK ${p.week}`}</strong><span>${p.review?("Review due"):("Review at week 8")}</span>${p.stalled.length>=2?`<em>${`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
+function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),decision=(gate.pause||gate.illness)?("Pause training and recover"):gate.hold?("Extra light day · hold progression"):("Proceed as planned");const detail=gate.stale?("Log a fresh check-in to activate progression gating."):(gate.pause||gate.illness)?("Illness symptoms reported. Skip training and prioritize rest."):(`${gate.flags} red flags in the latest check-in.`);return `<section class="decision-card ${(gate.pause||gate.hold)?"hold":""}"><div><small>${"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${detail}</p></div><div><strong>${`WEEK ${p.week}`}</strong><span>${p.review?("Review due"):("Review at week 8")}</span>${p.stalled.length>=2?`<em>${`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
 function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));const gotoVitals=document.querySelector("[data-goto-vitals]");gotoVitals?.addEventListener("click",()=>setPrimaryTab("vitals"));gotoVitals?.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setPrimaryTab("vitals");}});}
-function saveRecoveryCheckin(){updateCheckin();const c={...saved.checkin,date:new Date().toISOString()},flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>x.date.slice(0,10)!==isoDay());state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,24);queueHealth("recovery",c);persist();renderRecovery();}
+function saveRecoveryCheckin(){updateCheckin();const now=new Date(),today=isoDay(),nowIso=now.toISOString();const c={...saved.checkin,date:today,dateKey:today,createdAt:nowIso};const flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.illness?"Pause and recover":c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>recordDateKey(x)!==today);state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,400);queueHealth("recovery",c);persist();renderRecovery();}
 
 function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
 function dailyBucket(kind){state.daily[kind]=state.daily[kind]||{};state.daily[kind][isoDay()]=state.daily[kind][isoDay()]||{checked:{},notes:""};return state.daily[kind][isoDay()];}
@@ -1965,7 +1977,7 @@ function foodProfile(){
   };
 }
 function autoMealType(){const h=new Date().getHours();return h>=18?"Dinner":h>=15?"Snack":h>=11?"Lunch":"Breakfast";}
-function todayFoodEntries(){const today=isoDay(),res=[];for(const entry of (state.foodEntries||[])){const k=String(entry.date||"").slice(0,10);if(k===today)res.push(entry);else if(k<today)break;}return res.sort((a,b)=>String(b.date).localeCompare(String(a.date)));}
+function todayFoodEntries(){const today=isoDay(),res=[];for(const entry of (state.foodEntries||[])){const k=entry.dateKey||(entry.date&&entry.date.includes("T")?localDay(new Date(entry.date)):String(entry.date||"").slice(0,10));if(k===today)res.push(entry);}return res.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));}
 function foodTotals(entries=todayFoodEntries()){return entries.reduce((t,e)=>{for(const key of ["calories","protein_g","carbs_g","fat_g","fiber_g","sugar_g","sodium_mg"])t[key]+=Number(e[key])||0;return t;},{calories:0,protein_g:0,carbs_g:0,fat_g:0,fiber_g:0,sugar_g:0,sodium_mg:0});}
 function meter(label,value,goal,unit,color="var(--acid)"){const pct=goal?Math.round(value/goal*100):0;return `<article class="macro-meter" style="--meter:${Math.min(pct,100)}%;--meter-color:${color}"><span>${label}</span><strong>${Math.round(value)}</strong><small>${goal?`${pct}% · ${Math.max(Math.round(goal-value),0)} ${unit} left`:`${unit} · flexible`}</small><i></i></article>`;}
 function nutritionPlanNote(){const guide=REP_HEALTH_GUIDE.nutrition,key=nutritionPlanKey(),target=guide.targets[key],meals=guide.meals[key],macroSummary=`P${target.protein} · ${target.carbs?`C${target.carbs}`:"carbs flexible"} · F${target.fat}`,calorieSummary=target.calorieCeiling?`${target.calories} kcal typical · ${target.calorieCeiling} occasional ceiling`:`${target.calories} kcal`;return `<details class="nutrition-plan-note"><summary><span class="plan-note-icon">≡</span><span><small>${"REFERENCE NOTE"}</small><strong>${"Today's nutrition plan"}</strong><em>${target.label} · ${calorieSummary} · ${macroSummary}</em></span><b>${"Tap to view"}</b></summary><div class="plan-note-body"><p>${"This plan is a reference only. Nothing is logged until you enter a meal and confirm the AI estimate below."}</p><ol>${meals.map(([time,name,macros])=>`<li><time>${esc(time)}</time><span><strong>${esc(name)}</strong><small>${esc(macros)}</small></span></li>`).join("")}</ol><div class="plan-note-extras"><strong>${"Supplements"}</strong><ul>${guide.supplements.map(item=>`<li>${esc(item)}</li>`).join("")}</ul><small>${esc(guide.milk)}</small><strong>${"Plan rules"}</strong><ul>${guide.rules.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></div></div></details>`;}
@@ -2015,8 +2027,8 @@ function supplementsCard(){
 }
 function weekKey(d=new Date()){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return localDay(x);}
 function currentWeekWeight(){return state.bodyWeights.find(w=>w.week===weekKey())||null;}
-function todayWeighIn(){return state.bodyWeights.find(w=>w.date===isoDay())||null;}
-function saveBodyWeight(kg){const value=Math.round(Number(kg)*10)/10;if(!Number.isFinite(value)||value<30||value>300)return false;const week=weekKey();state.bodyWeights=state.bodyWeights.filter(w=>w.week!==week);state.bodyWeights.unshift({week,date:isoDay(),kg:value});state.bodyWeights=state.bodyWeights.slice(0,104);queueNutritionSummary();persist();return true;}
+function todayWeighIn(){const today=isoDay();return state.bodyWeights.find(w=>recordDateKey(w)===today)||null;}
+function saveBodyWeight(kg){const value=Math.round(Number(kg)*10)/10;if(!Number.isFinite(value)||value<30||value>300)return false;const week=weekKey(),today=isoDay(),nowIso=new Date().toISOString();state.bodyWeights=state.bodyWeights.filter(w=>w.week!==week);state.bodyWeights.unshift({week,date:today,dateKey:today,createdAt:nowIso,kg:value});state.bodyWeights=state.bodyWeights.slice(0,104);queueNutritionSummary();persist();return true;}
 function deleteBodyWeight(week){state.bodyWeights=state.bodyWeights.filter(w=>w.week!==week);queueNutritionSummary();persist();}
 // Daily sleep log. No HealthKit access from a PWA, so this is always manual
 // entry - the user reads bedtime/wake time off the Apple Watch and logs it here.
@@ -2033,7 +2045,7 @@ function saveSleepLog(bedtime,wake,hrv,rhr,resp){
   const hrvValue=Number(hrv),rhrValue=Number(rhr),respValue=Number(resp);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
   state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:null,rhr:Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:null,resp:Number.isFinite(respValue)&&respValue>0?respValue:null});
-  state.sleepLogs=state.sleepLogs.slice(0,120);
+  state.sleepLogs=state.sleepLogs.slice(0,400);
   queueHealth("sleep",{date,sleep:hours});
   persist();return true;
 }
@@ -2048,7 +2060,7 @@ function computeStreak(){
   for(const h of state.history||[])if(h.date)activeDates.add(String(h.date).slice(0,10));
   for(const e of state.foodEntries||[])if(e.date)activeDates.add(String(e.date).slice(0,10));
   for(const s of state.sleepLogs||[])if(s.date)activeDates.add(String(s.date).slice(0,10));
-  for(const c of state.recoveryCheckins||[])if(c.date)activeDates.add(String(c.date).slice(0,10));
+  for(const c of state.recoveryCheckins||[]){const k=recordDateKey(c);if(k)activeDates.add(k);}
   if(state.daily){
     for(const k of ["hygiene","nutrition","journal"]){
       for(const [dateStr,item] of Object.entries(state.daily[k]||{})){
@@ -2132,7 +2144,7 @@ function computeRecoveryScore(dateStr=isoDay()){
   if(sleepEntry?.rhr&&rhrBase)components.push({weight:20,value:Math.max(0,Math.min(100,Math.round(50-(sleepEntry.rhr-rhrBase)/rhrBase*250)))});
   const respBase=metricBaseline("resp",30,dateStr);
   if(sleepEntry?.resp&&respBase)components.push({weight:10,value:Math.max(0,Math.min(100,Math.round(50-(sleepEntry.resp-respBase)/respBase*250)))});
-  const checkin=state.recoveryCheckins.find(c=>String(c.date).slice(0,10)===dateStr);
+  const checkin=state.recoveryCheckins.find(c=>recordDateKey(c)===dateStr);
   if(checkin)components.push({weight:15,value:Math.max(0,100-recoveryFlags(checkin)*25-(checkin.pain?25:0))});
   if(!components.length)return null;
   const totalWeight=components.reduce((n,c)=>n+c.weight,0),score=Math.round(components.reduce((n,c)=>n+c.value*c.weight,0)/totalWeight);
@@ -2308,7 +2320,7 @@ function saveVitalsFromDraft(){
   const hrv=Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:(existing?.hrv||null),rhr=Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:(existing?.rhr||null),resp=Number.isFinite(respValue)&&respValue>0?respValue:(existing?.resp||null);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
   state.sleepLogs.unshift({date,bedtime,wake,hours,hrv,rhr,resp});
-  state.sleepLogs=state.sleepLogs.slice(0,120);
+  state.sleepLogs=state.sleepLogs.slice(0,400);
   queueHealth("sleep",{date,sleep:hours});
   const activeEnergyValue=Number(d.active_energy_kcal);
   if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0)state.activeEnergy[date]=Math.round(activeEnergyValue);
@@ -2349,7 +2361,7 @@ function applyVitalsEntry(entry){
   if(hours&&hours>0){
     state.sleepLogs=state.sleepLogs.filter(s=>s.date!==entry.date);
     state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours,hrv,rhr,resp});
-    state.sleepLogs=state.sleepLogs.slice(0,120);
+    state.sleepLogs=state.sleepLogs.slice(0,400);
   }
   const activeEnergyValue=Number(entry.active_energy_kcal);
   if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0&&activeEnergyValue<=10000)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);

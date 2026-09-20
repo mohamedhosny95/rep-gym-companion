@@ -41,11 +41,13 @@
     const delay=pending.length?500:future?Math.max(500,Math.min(future-Date.now(),30*60*1000)):null;
     if(delay!==null)retryTimer=setTimeout(()=>void processOutbox(),delay);
   }
-  async function sendItem(item,{force=false}={}){
+  async function sendItem(item,{force=false,revision}={}){
     if(!navigator.onLine)throw Error("You are offline. This record remains safely pending on this device.");
     if(!repAuth.isPaired())throw Object.assign(Error("Pair this device once before syncing."),{auth:true});
+    const entryBefore=(state.syncQueue||[]).find(entry=>entry.id===item.id);
+    const targetRevision=revision??entryBefore?.revision??1;
     const body=item.kind==="workout"?{workout:item.workout}:{kind:item.kind,payload:item.payload},serialized=JSON.stringify(body),known=signatures();
-    if(!force&&known[item.id]===serialized){state.syncQueue=outbox.remove(state.syncQueue,item.id);return {ok:true,verified:true,unchanged:true};}
+    if(!force&&known[item.id]===serialized){state.syncQueue=outbox.remove(state.syncQueue,item.id,{revision:targetRevision});return {ok:true,verified:true,unchanged:true};}
     state.syncQueue=outbox.transmitting(state.syncQueue,item.id);record(item,"transmitting",{updatedAt:new Date().toISOString(),error:""});markFood(item,"syncing");persist();
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);let response;
     try{response=await repAuth.fetch("/api/notion-sync",{method:"POST",headers:{"content-type":"application/json","x-rep-idempotency-key":item.id},body:serialized,signal:controller.signal});}
@@ -53,25 +55,41 @@
     finally{clearTimeout(timeout);}
     const data=await response.json().catch(()=>({})),receiptMatches=data.verified===true&&(item.kind==="workout"||Boolean(data.notionPageId))&&(item.kind==="workout"||data.kind===item.kind)&&(item.kind!=="food"||data.entryId===item.payload?.id);
     if(!response.ok||!data.ok||!receiptMatches)throw Object.assign(Error(data.error||"Notion did not return a verified save receipt."),{auth:response.status===401,permanent:response.status>=400&&response.status<500&&![408,409,425,429].includes(response.status)});
-    known[item.id]=serialized;saveSignatures(known);state.syncQueue=outbox.remove(state.syncQueue,item.id);
-    if(item.kind==="food"){const entry=(state.foodEntries||[]).find(food=>food.id===item.payload?.id);if(entry){entry.notionSync="synced";entry.notionUrl=data.notionUrl||"";entry.notionPageId=data.notionPageId;entry.notionSyncedAt=new Date().toISOString();delete entry.notionError;}}
-    state.lastSyncedAt=new Date().toISOString();record(item,"synced",{notionUrl:data.notionUrl||"",updatedAt:state.lastSyncedAt,error:""});persist();return data;
+    known[item.id]=serialized;saveSignatures(known);state.syncQueue=outbox.remove(state.syncQueue,item.id,{revision:targetRevision});
+    const stillQueued=(state.syncQueue||[]).some(entry=>entry.id===item.id);
+    if(!stillQueued){
+      if(item.kind==="food"){const entry=(state.foodEntries||[]).find(food=>food.id===item.payload?.id);if(entry){entry.notionSync="synced";entry.notionUrl=data.notionUrl||"";entry.notionPageId=data.notionPageId;entry.notionSyncedAt=new Date().toISOString();delete entry.notionError;}}
+      state.lastSyncedAt=new Date().toISOString();record(item,"synced",{notionUrl:data.notionUrl||"",updatedAt:state.lastSyncedAt,error:""});
+    }else{
+      if(item.kind==="food"){const entry=(state.foodEntries||[]).find(food=>food.id===item.payload?.id);if(entry&&data.notionPageId){entry.notionPageId=data.notionPageId;entry.notionUrl=data.notionUrl||entry.notionUrl||"";}}
+      record(item,"pending",{updatedAt:new Date().toISOString(),error:""});
+    }
+    persist();return data;
   }
   function markFailure(entry,error){
     const item=entry.item,message=String(error.message||error).slice(0,180),permanent=Boolean(error.auth||error.permanent);
-    state.syncQueue=outbox.failed(state.syncQueue,item.id,message,{permanent});record(item,permanent?"permanently_failed":"retryable_failed",{error:message,updatedAt:new Date().toISOString()});markFood(item,permanent?"failed":"pending",message);
+    state.syncQueue=outbox.failed(state.syncQueue,item.id,message,{permanent,revision:entry.revision});
+    const stillPending=(state.syncQueue||[]).some(e=>e.id===item.id&&e.status==="pending");
+    if(!stillPending){
+      record(item,permanent?"permanently_failed":"retryable_failed",{error:message,updatedAt:new Date().toISOString()});
+      markFood(item,permanent?"failed":"pending",message);
+    }
     if(error.auth){repAuth.clear();state.connectionCapabilities=null;state.syncState="auth";state.pairMessage="This device was unpaired. Pending records remain on this device.";}
   }
   async function processOutbox({all=false,force=false}={}){
     if(processing||!navigator.onLine||!repAuth.isPaired()){scheduleRetry();return;}
+    state.syncQueue=outbox.reclaim(state.syncQueue);
     const entries=outbox.due(state.syncQueue,{all});if(!entries.length){scheduleRetry();return;}
     processing=true;state.syncState="syncing";state.syncProgress={done:0,total:entries.length,failed:0};state.syncMessage="";updateSyncPanel();
     for(const entry of entries){
-      try{await sendItem(entry.item,{force});state.syncProgress.done++;}
-      catch(error){markFailure(entry,error);state.syncProgress.failed++;state.syncProgress.done++;if(error.auth)break;}
+      const current=(state.syncQueue||[]).find(e=>e.id===entry.id);
+      if(!current)continue;
+      const targetItem=current.item||entry.item,targetRevision=current.revision??entry.revision;
+      try{await sendItem(targetItem,{force,revision:targetRevision});state.syncProgress.done++;}
+      catch(error){markFailure(current||entry,error);state.syncProgress.failed++;state.syncProgress.done++;if(error.auth)break;}
       persist();updateSyncPanel();
     }
-    processing=false;if(state.syncState!=="auth")state.syncState=state.syncProgress.failed?"pending":"synced";
+    processing=false;if(state.syncState!=="auth")state.syncState=(state.syncProgress.failed||outbox.summary(state.syncQueue).total)?"pending":"synced";
     const summary=outbox.summary(state.syncQueue);
     state.syncMessage=summary.permanently_failed?`${summary.permanently_failed} record${summary.permanently_failed===1?"":"s"} failed and need${summary.permanently_failed===1?"s":""} review in Sync Center.`:summary.total?`${summary.total} record${summary.total===1?"":"s"} pending verification.`:"";
     persist();updateSyncPanel();scheduleRetry();
@@ -135,7 +153,7 @@
     }
   }
   function install(){
-    state.syncQueue=(state.syncQueue||[]).map(outbox.normalize).filter(Boolean);persist();syncPending=syncEverything;
+    state.syncQueue=outbox.reclaim(state.syncQueue,{startup:true});persist();syncPending=syncEverything;
     queueWorkout=record=>{if(!record?.entries?.length)return;persist();void syncRecord(workoutItem(record));};
     queueHealth=(kind,payload)=>{persist();void syncRecord(healthItem(kind,payload));};
     addEventListener("online",()=>void processOutbox());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")void processOutbox();});

@@ -48,7 +48,7 @@ test("parseAppleHealthXml extracts body weights, sleep, and heart metrics", () =
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
   <Record type="HKQuantityTypeIdentifierBodyMass" value="82.4" unit="kg" startDate="2026-08-01 07:00:00 +0200"/>
-  <Record type="HKCategoryTypeIdentifierSleepAnalysis" startDate="2026-08-01 22:00:00 +0200" endDate="2026-08-02 06:00:00 +0200"/>
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis" value="HKCategoryValueSleepAnalysisAsleep" startDate="2026-08-01 22:00:00 +0200" endDate="2026-08-02 06:00:00 +0200"/>
   <Record type="HKQuantityTypeIdentifierHeartRateVariabilitySDNN" value="65.2" unit="ms" startDate="2026-08-02 06:05:00 +0200"/>
 </HealthData>`;
 
@@ -67,4 +67,21 @@ test("detectAndImport auto-detects Strong CSV format and updates state", () => {
   const result = importer.detectAndImport(csv, state);
   assert.equal(result.format, "Strong CSV");
   assert.equal(state.history.length, 1);
+});
+
+test("native/importer sleep union before wake-date attribution: asleep intervals 22:00-23:30 and 23:00-01:00 yield 3h attributed only to second day", () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<HealthData>
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis" value="HKCategoryValueSleepAnalysisAsleep" startDate="2026-08-11 22:00:00 +0200" endDate="2026-08-11 23:30:00 +0200"/>
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis" value="HKCategoryValueSleepAnalysisAsleep" startDate="2026-08-11 23:00:00 +0200" endDate="2026-08-12 01:00:00 +0200"/>
+</HealthData>`;
+
+  const result = importer.parseAppleHealthXml(xml);
+  const day1Log = result.sleepLogs.find(s => s.date === "2026-08-11");
+  const day2Log = result.sleepLogs.find(s => s.date === "2026-08-12");
+
+  assert.equal(day1Log, undefined, "Day 1 must not receive any sleep hours from the merged episode");
+  assert.ok(day2Log, "Day 2 must receive the merged sleep episode");
+  assert.equal(day2Log.hours, 3, "Merged sleep duration must be 3.0h (not 1.5h + 2.0h)");
+  assert.equal(result.sleepLogs.length, 1);
 });
