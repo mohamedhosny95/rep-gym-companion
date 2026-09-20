@@ -16,15 +16,26 @@ function createMockIndexedDB() {
           },
           transaction(storeNames, mode = "readonly") {
             const storeMap = stores.get("records");
-            const tx = { oncomplete: null, onerror: null };
+            let pendingOps = 0;
+            let completeCallback = null;
+            function maybeComplete() {
+              if (pendingOps === 0 && completeCallback) {
+                const cb = completeCallback;
+                completeCallback = null;
+                setTimeout(cb, 0);
+              }
+            }
             return {
               objectStore(storeName) {
                 return {
                   get(key) {
+                    pendingOps++;
                     const req = { result: undefined, error: null, onsuccess: null, onerror: null };
                     setTimeout(() => {
                       req.result = storeMap.get(key);
                       if (req.onsuccess) req.onsuccess();
+                      pendingOps--;
+                      maybeComplete();
                     }, 0);
                     return req;
                   },
@@ -36,10 +47,10 @@ function createMockIndexedDB() {
                   }
                 };
               },
-              get oncomplete() { return tx._oncomplete; },
+              get oncomplete() { return completeCallback; },
               set oncomplete(fn) {
-                tx._oncomplete = fn;
-                setTimeout(() => { if (fn) fn(); }, 0);
+                completeCallback = fn;
+                maybeComplete();
               }
             };
           },
