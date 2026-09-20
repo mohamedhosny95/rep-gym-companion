@@ -43,6 +43,16 @@
     stretch: 30
   };
 
+  const WORKOUT_HISTORY_LIMIT = 400;
+  const WORKOUT_HISTORY_RETENTION_LIMIT = WORKOUT_HISTORY_LIMIT;
+
+  function clearSessionCompletion(state, sessionId){
+    if(!state || !sessionId || !state.completed) return;
+    Object.keys(state.completed)
+      .filter(k => k.startsWith(`${sessionId}-`))
+      .forEach(k => delete state.completed[k]);
+  }
+
   function setsFromLog(log){
     if(Array.isArray(log?.sets)) return log.sets;
     if(log?.current) return [{...log.current, rpe:"", note:""}];
@@ -171,6 +181,8 @@
     state.session = sessionId;
     if(!isContinuing){
       state.sessionStartedAt = now;
+      state.index = 0;
+      clearSessionCompletion(state, sessionId);
     }
     state.view = "player";
     state.activeTab = "train";
@@ -278,10 +290,11 @@
       }
     }
 
-    state.history = [record, ...(state.history || [])].slice(0, 60);
+    state.history = [record, ...(state.history || [])].slice(0, WORKOUT_HISTORY_LIMIT);
     if(state.session === "gym"){
       promoteLogs(state.logs);
     }
+    clearSessionCompletion(state, state.session);
     state.sessionStartedAt = null;
     return { record, state };
   }
@@ -289,11 +302,7 @@
   function abandonWorkout(state, sessionId = state?.session){
     if(!state) return state;
     const sid = sessionId || state.session;
-    if(sid && state.completed){
-      Object.keys(state.completed)
-        .filter(k => k.startsWith(`${sid}-`))
-        .forEach(k => delete state.completed[k]);
-    }
+    clearSessionCompletion(state, sid);
     state.index = 0;
     state.sessionStartedAt = null;
     return state;
@@ -302,11 +311,7 @@
   function resetWorkout(state, sessionId = state?.session){
     if(!state) return state;
     const sid = sessionId || state.session;
-    if(sid && state.completed){
-      Object.keys(state.completed)
-        .filter(k => k.startsWith(`${sid}-`))
-        .forEach(k => delete state.completed[k]);
-    }
+    clearSessionCompletion(state, sid);
     state.index = 0;
     state.sessionStartedAt = null;
     return state;
@@ -315,6 +320,9 @@
   return Object.freeze({
     SESSION_MET,
     MOTION_DURATIONS,
+    WORKOUT_HISTORY_LIMIT,
+    WORKOUT_HISTORY_RETENTION_LIMIT,
+    clearSessionCompletion,
     setsFromLog,
     normalizedLog,
     promoteLogs,

@@ -370,3 +370,187 @@ test("cardioAdvice evaluates progression readiness consistently", () => {
   assert.equal(sessionModule.isCardioProgressionReady(readyHistory), true);
   assert.ok(sessionModule.cardioAdvice(readyHistory).startsWith("Ready"));
 });
+
+test("completeWorkout retains at least 400 workout history records without truncating imported history", () => {
+  assert.ok(
+    sessionModule.WORKOUT_HISTORY_LIMIT >= 400,
+    "WORKOUT_HISTORY_LIMIT constant must be exported and be at least 400"
+  );
+  assert.equal(
+    sessionModule.WORKOUT_HISTORY_LIMIT,
+    sessionModule.WORKOUT_HISTORY_RETENTION_LIMIT,
+    "WORKOUT_HISTORY_RETENTION_LIMIT alias should match WORKOUT_HISTORY_LIMIT"
+  );
+
+  // Generate 400 imported workout records matching the importer's retention limit
+  const importedHistory = Array.from({ length: 400 }, (_, i) => ({
+    id: 1600000000000 + i * 1000,
+    date: new Date(1600000000000 + i * 1000).toISOString(),
+    session: "gym",
+    duration: 1800,
+    calories: 250,
+    sets: 3,
+    entries: []
+  }));
+
+  const state = createInitialState({
+    session: "gym",
+    index: 2,
+    sessionStartedAt: 1700000000000,
+    completed: { "gym-0": [0] },
+    history: [...importedHistory]
+  });
+
+  const finishTime = 1700001000000;
+  const { record } = sessionModule.completeWorkout(state, mockSessions, {
+    now: finishTime
+  });
+
+  assert.ok(record, "Workout completes successfully");
+  assert.equal(
+    state.history.length,
+    sessionModule.WORKOUT_HISTORY_LIMIT,
+    "History retains up to WORKOUT_HISTORY_LIMIT (400) records instead of truncating to 60"
+  );
+  assert.equal(state.history[0].id, finishTime, "Newly completed workout is prepended at index 0");
+  assert.equal(state.history[1].id, importedHistory[0].id, "Most recent imported record is preserved at index 1");
+  assert.equal(state.history[399].id, importedHistory[398].id, "Oldest preserved imported record is retained at index 399");
+
+  // Also verify smaller history expands without premature capping
+  const smallHistoryState = createInitialState({
+    session: "morning",
+    index: 2,
+    sessionStartedAt: 1700000000000,
+    completed: { "morning-0": [0] },
+    history: importedHistory.slice(0, 10)
+  });
+  sessionModule.completeWorkout(smallHistoryState, mockSessions, { now: finishTime + 1000 });
+  assert.equal(smallHistoryState.history.length, 11, "Small history expands to include new completion");
+});
+
+test("completeWorkout clears completed set markers after constructing history record while preserving reference logs", () => {
+  const state = createInitialState({
+    session: "gym",
+    index: 2,
+    sessionStartedAt: 1700000000000,
+    completed: {
+      "gym-0": [0, 1],
+      "gym-1": [0],
+      "morning-0": [0] // Unrelated session completion marker
+    },
+    logs: {
+      "Leg Press": {
+        sets: [
+          { weight: "140", reps: "10", rpe: "8", note: "solid" },
+          { weight: "140", reps: "10", rpe: "8.5", note: "" }
+        ]
+      }
+    }
+  });
+
+  const { record } = sessionModule.completeWorkout(state, mockSessions, {
+    now: 1700001000000
+  });
+
+  // History record captures the completed sets
+  assert.ok(record);
+  assert.equal(record.sets, 3, "Record reflects completed sets from session");
+  assert.equal(record.entries.length, 3, "Record entries contain all completed sets");
+
+  // Completed markers for this session must be cleared from state
+  assert.equal(state.completed["gym-0"], undefined, "gym-0 markers cleared on workout completion");
+  assert.equal(state.completed["gym-1"], undefined, "gym-1 markers cleared on workout completion");
+  assert.deepEqual(state.completed["morning-0"], [0], "Unrelated session markers are preserved");
+  assert.equal(state.sessionStartedAt, null, "sessionStartedAt is cleared");
+
+  // Verify previous-session logs remain available as load/repetition reference
+  assert.ok(state.logs["Leg Press"], "Exercise logs preserved");
+  assert.equal(state.logs["Leg Press"].sets[0].weight, "140");
+  assert.ok(state.logs["Leg Press"].previousSets, "Previous sets promoted for reference");
+  assert.equal(state.logs["Leg Press"].previousSets[0].weight, "140");
+  assert.equal(state.logs["Leg Press"].previousSets[0].reps, "10");
+});
+
+test("second workout starts with no completed sets and clears stale markers", () => {
+  // 1. Normal flow: workout completed, then a second workout starts
+  const state = createInitialState({
+    session: "gym",
+    index: 2,
+    sessionStartedAt: 1700000000000,
+    completed: {
+      "gym-0": [0, 1],
+      "gym-1": [0]
+    },
+    logs: {
+      "Leg Press": {
+        sets: [
+          { weight: "120", reps: "12", rpe: "7", note: "" },
+          { weight: "120", reps: "12", rpe: "7", note: "" }
+        ]
+      }
+    }
+  });
+
+  // Complete workout 1
+  sessionModule.completeWorkout(state, mockSessions, { now: 1700001000000 });
+  assert.equal(state.sessionStartedAt, null);
+  assert.equal(state.completed["gym-0"], undefined);
+  assert.equal(state.completed["gym-1"], undefined);
+
+  // Start workout 2 of the same session type
+  const startResult = sessionModule.startWorkout(state, "gym", mockSessions, { now: 1700002000000 });
+  assert.equal(startResult.isContinuing, false, "Second workout starts as a genuinely new session");
+  assert.equal(state.index, 0, "Index resets to 0 for fresh workout");
+  assert.equal(state.sessionStartedAt, 1700002000000, "New session gets fresh start timestamp");
+
+  const gymCompletionKeys = Object.keys(state.completed).filter(k => k.startsWith("gym-"));
+  assert.deepEqual(gymCompletionKeys, [], "No completed set markers carry over into the new session");
+
+  // Load/repetition reference is preserved from workout 1
+  assert.equal(state.logs["Leg Press"].previousSets[0].weight, "120");
+
+  // Toggling a set in the fresh session works from scratch
+  const firstSetToggle = sessionModule.toggleSetCompletion(state, "gym", 0, 0);
+  assert.equal(firstSetToggle.isDone, true);
+  assert.deepEqual(state.completed["gym-0"], [0], "Fresh session correctly tracks new set completion");
+
+  // 2. Cold start with stale completed markers (e.g. from reload, un-abandoned session, or dirty state)
+  const dirtyState = createInitialState({
+    session: "morning",
+    sessionStartedAt: null, // Not active / not resumable
+    index: 2,
+    completed: {
+      "morning-0": [0],
+      "morning-1": [0],
+      "cardio-0": [0] // Other session marker
+    }
+  });
+
+  const dirtyStartResult = sessionModule.startWorkout(dirtyState, "morning", mockSessions, { now: 1700003000000 });
+  assert.equal(dirtyStartResult.isContinuing, false, "Not continuing an inactive session");
+  assert.equal(dirtyState.index, 0, "Index reset to 0");
+  assert.equal(dirtyState.sessionStartedAt, 1700003000000);
+  assert.equal(dirtyState.completed["morning-0"], undefined, "Stale morning-0 marker cleared");
+  assert.equal(dirtyState.completed["morning-1"], undefined, "Stale morning-1 marker cleared");
+  assert.deepEqual(dirtyState.completed["cardio-0"], [0], "Unrelated session marker preserved");
+
+  // 3. Completing via advanceExercise followed by starting a second workout
+  const advanceState = createInitialState({
+    session: "morning",
+    index: 2, // Last exercise for morning (3 exercises)
+    sessionStartedAt: 1700000000000,
+    completed: { "morning-0": [0], "morning-1": [0], "morning-2": [0] }
+  });
+
+  const advResult = sessionModule.advanceExercise(advanceState, mockSessions, { now: 1700000600000 });
+  assert.equal(advResult.completed, true, "Advance on final exercise completes workout");
+  assert.equal(advanceState.sessionStartedAt, null);
+  assert.equal(advanceState.completed["morning-0"], undefined, "Markers cleared by completion in advanceExercise");
+
+  // Start next workout
+  const nextStart = sessionModule.startWorkout(advanceState, "morning", mockSessions, { now: 1700001200000 });
+  assert.equal(nextStart.isContinuing, false);
+  assert.equal(advanceState.index, 0);
+  assert.deepEqual(Object.keys(advanceState.completed).filter(k => k.startsWith("morning-")), []);
+});
+
