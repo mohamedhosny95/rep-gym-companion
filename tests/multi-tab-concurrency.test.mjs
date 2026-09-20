@@ -604,3 +604,399 @@ test("Multi-tab concurrency: Simultaneous flushes from two tabs queue safely and
   assert.ok(foods.some(f => f.name === "Apple"));
   assert.ok(foods.some(f => f.name === "Orange"));
 });
+
+test("Defect 1: Revision-aware outbox deletion retains concurrently newer revision 2 when tab A acknowledges revision 1", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  // 1. Seed durable store with outbox revision 1
+  const tabInit = createTabStorageContext(sharedIDB, sharedLS);
+  const stateInit = await tabInit.hydrate("rep-app");
+  stateInit.outbox = [
+    { id: "sync:1", revision: 1, version: 1, item: { id: "sync:1", data: "initial" }, status: "pending" }
+  ];
+  tabInit.persist("rep-app", stateInit);
+  await tabInit.flush();
+
+  // Verify seed in records
+  const records = sharedStores.get("records");
+  assert.equal(records.get("state:outbox").length, 1);
+  assert.equal(records.get("state:outbox")[0].revision, 1);
+
+  // 2. Both tabs hydrate outbox revision 1
+  const tabA = createTabStorageContext(sharedIDB, sharedLS);
+  const tabB = createTabStorageContext(sharedIDB, sharedLS);
+  const stateA = await tabA.hydrate("rep-app");
+  const stateB = await tabB.hydrate("rep-app");
+  assert.equal(stateA.outbox[0].revision, 1);
+  assert.equal(stateB.outbox[0].revision, 1);
+
+  // 3. Tab A acknowledges revision 1 and persists an empty outbox
+  stateA.outbox = [];
+  tabA.persist("rep-app", stateA);
+
+  // 4. Tab B has already changed/enqueued the same id at revision 2
+  stateB.outbox = [
+    { id: "sync:1", revision: 2, version: 2, item: { id: "sync:1", data: "updated" }, status: "pending" }
+  ];
+  tabB.persist("rep-app", stateB);
+
+  // Flush A first (A persists empty outbox)
+  await tabA.flush();
+  assert.equal(records.get("state:outbox").length, 0, "Tab A flush left durable outbox empty");
+
+  // Tab B flushes after A
+  await tabB.flush();
+
+  // 5. Durable IndexedDB and a fresh reload must retain revision 2
+  const durableOutbox = records.get("state:outbox");
+  assert.equal(durableOutbox.length, 1, "Durable outbox retains revision 2");
+  assert.equal(durableOutbox[0].id, "sync:1");
+  assert.equal(durableOutbox[0].revision, 2);
+  assert.equal(durableOutbox[0].item.data, "updated");
+
+  // Fresh reload in tab C
+  const tabC = createTabStorageContext(sharedIDB, sharedLS);
+  const stateC = await tabC.hydrate("rep-app");
+  assert.equal(stateC.outbox.length, 1, "Fresh reload retains revision 2");
+  assert.equal(stateC.outbox[0].id, "sync:1");
+  assert.equal(stateC.outbox[0].revision, 2);
+  assert.equal(stateC.outbox[0].item.data, "updated");
+
+  // Intentional deletion when there is no newer revision is preserved
+  stateC.outbox = [];
+  tabC.persist("rep-app", stateC);
+  await tabC.flush();
+  assert.equal(records.get("state:outbox").length, 0, "Intentional deletion of observed revision is preserved");
+
+  const tabD = createTabStorageContext(sharedIDB, sharedLS);
+  const stateD = await tabD.hydrate("rep-app");
+  assert.equal(stateD.outbox.length, 0, "Durable outbox remains empty after intentional deletion");
+});
+
+test("Defect 2: replace() is exclusive with queued/in-flight writes, invalidating prior writes and guaranteeing replacement state", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  const tab = createTabStorageContext(sharedIDB, sharedLS);
+  const state = await tab.hydrate("rep-app");
+
+  // 1. Queue a pending write
+  state.foodEntries = [{ id: "stale-food", name: "Old Stale Food", calories: 999 }];
+  tab.persist("rep-app", state);
+  const pendingFlush = tab.flush();
+
+  // 2. Concurrently call replace() with replacement data
+  const replacementState = {
+    foodEntries: [{ id: "fresh-food", name: "Fresh Banana", calories: 105 }],
+    history: [{ date: "2026-08-25", session: "gym", exercises: [] }]
+  };
+  await tab.replace("rep-app", replacementState);
+
+  // Wait for prior flush to settle
+  await pendingFlush;
+
+  // 3. Durable data must equal replacement, never stale queued state
+  const records = sharedStores.get("records");
+  const durableFoods = records.get("state:foodEntries");
+  assert.equal(durableFoods.length, 1);
+  assert.equal(durableFoods[0].id, "fresh-food");
+  assert.equal(durableFoods[0].name, "Fresh Banana");
+
+  const durableHistory = records.get("state:history");
+  assert.equal(durableHistory.length, 1);
+  assert.equal(durableHistory[0].date, "2026-08-25");
+
+  // Fresh reload must see only replacement state
+  const tabReload = createTabStorageContext(sharedIDB, sharedLS);
+  const reloaded = await tabReload.hydrate("rep-app");
+  assert.equal(reloaded.foodEntries.length, 1);
+  assert.equal(reloaded.foodEntries[0].id, "fresh-food");
+  assert.equal(reloaded.history.length, 1);
+  assert.equal(reloaded.history[0].date, "2026-08-25");
+});
+
+test("Defect 2: clear() is exclusive with queued/in-flight writes, invalidating prior writes and leaving durable data empty", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  const tab = createTabStorageContext(sharedIDB, sharedLS);
+  const state = await tab.hydrate("rep-app");
+
+  // 1. Queue a pending write
+  state.foodEntries = [{ id: "queued-food", name: "Queued Food", calories: 500 }];
+  state.history = [{ date: "2026-08-25", session: "cardio" }];
+  tab.persist("rep-app", state);
+  const pendingFlush = tab.flush();
+
+  // 2. Concurrently call clear()
+  await tab.clear();
+
+  // Wait for prior flush to settle
+  await pendingFlush;
+
+  // 3. Durable data must remain empty
+  const records = sharedStores.get("records");
+  assert.equal(records.size, 0, "Object store must be completely cleared");
+
+  // Fresh reload must see empty large keys
+  const tabReload = createTabStorageContext(sharedIDB, sharedLS);
+  const reloaded = await tabReload.hydrate("rep-app");
+  assert.deepEqual(reloaded.foodEntries || [], []);
+  assert.deepEqual(reloaded.history || [], []);
+});
+
+test("Defect 3: Anonymous workout-set concurrent edits merge independent field changes into one set without duplicating", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  // 1. Seed base anonymous set object: {weight:"50", reps:"5"}
+  const tabInit = createTabStorageContext(sharedIDB, sharedLS);
+  const stateInit = await tabInit.hydrate("rep-app");
+  stateInit.logs = {
+    "Bench Press": {
+      sets: [{ weight: "50", reps: "5" }]
+    }
+  };
+  tabInit.persist("rep-app", stateInit);
+  await tabInit.flush();
+
+  // 2. Tab 1 & Tab 2 hydrate base
+  const tab1 = createTabStorageContext(sharedIDB, sharedLS);
+  const tab2 = createTabStorageContext(sharedIDB, sharedLS);
+  const state1 = await tab1.hydrate("rep-app");
+  const state2 = await tab2.hydrate("rep-app");
+
+  // 3. Tab 1 changes weight to 55
+  state1.logs["Bench Press"].sets[0].weight = "55";
+  tab1.persist("rep-app", state1);
+  await tab1.flush();
+
+  // 4. Tab 2 changes reps to 6
+  state2.logs["Bench Press"].sets[0].reps = "6";
+  tab2.persist("rep-app", state2);
+  await tab2.flush();
+
+  // 5. Durable state must contain one set with both independent field changes, not two duplicate sets
+  const records = sharedStores.get("records");
+  const durableLogs = records.get("state:logs");
+  const sets = durableLogs["Bench Press"].sets;
+
+  assert.equal(sets.length, 1, "Must contain exactly one set, not duplicate sets");
+  assert.equal(sets[0].weight, "55", "Independent weight change from Tab 1 merged");
+  assert.equal(sets[0].reps, "6", "Independent reps change from Tab 2 merged");
+
+  // 6. Fresh reload sees the merged set
+  const tab3 = createTabStorageContext(sharedIDB, sharedLS);
+  const state3 = await tab3.hydrate("rep-app");
+  assert.equal(state3.logs["Bench Press"].sets.length, 1);
+  assert.equal(state3.logs["Bench Press"].sets[0].weight, "55");
+  assert.equal(state3.logs["Bench Press"].sets[0].reps, "6");
+
+  // 7. Verify multiple distinct anonymous sets maintain their individual identities
+  state3.logs["Bench Press"].sets = [
+    { weight: "55", reps: "6" },
+    { weight: "55", reps: "6" }
+  ];
+  tab3.persist("rep-app", state3);
+  await tab3.flush();
+
+  const tab4 = createTabStorageContext(sharedIDB, sharedLS);
+  const tab5 = createTabStorageContext(sharedIDB, sharedLS);
+  const state4 = await tab4.hydrate("rep-app");
+  const state5 = await tab5.hydrate("rep-app");
+
+  // Tab 4 updates set 0 note
+  state4.logs["Bench Press"].sets[0].note = "felt easy";
+  tab4.persist("rep-app", state4);
+  await tab4.flush();
+
+  // Tab 5 updates set 1 reps
+  state5.logs["Bench Press"].sets[1].reps = "8";
+  tab5.persist("rep-app", state5);
+  await tab5.flush();
+
+  const setsAfter = records.get("state:logs")["Bench Press"].sets;
+  assert.equal(setsAfter.length, 2, "Genuinely distinct anonymous sets are preserved as distinct");
+  assert.equal(setsAfter[0].note, "felt easy");
+  assert.equal(setsAfter[0].reps, "6");
+  assert.equal(setsAfter[1].reps, "8");
+});
+
+test("Regression 1: Non-outbox versioned array retains generic merge semantics and does not receive outbox acknowledgement/deletion semantics", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  // 1. Seed base state with versioned items in a non-outbox LARGE_KEYS collection (customExperiments)
+  const tabInit = createTabStorageContext(sharedIDB, sharedLS);
+  const stateInit = await tabInit.hydrate("rep-app");
+  stateInit.customExperiments = [
+    { id: "exp:1", revision: 1, version: 1, title: "Experiment 1", notes: "base notes", status: "active" }
+  ];
+  tabInit.persist("rep-app", stateInit);
+  await tabInit.flush();
+
+  const records = sharedStores.get("records");
+  assert.equal(records.get("state:customExperiments").length, 1);
+
+  // 2. Tab A and Tab B hydrate base state
+  const tabA = createTabStorageContext(sharedIDB, sharedLS);
+  const tabB = createTabStorageContext(sharedIDB, sharedLS);
+  const stateA = await tabA.hydrate("rep-app");
+  const stateB = await tabB.hydrate("rep-app");
+
+  // 3. Tab B modifies the item (e.g. updates notes without bumping revision, so dRev <= bRev)
+  stateB.customExperiments[0].notes = "Tab B updated notes";
+  tabB.persist("rep-app", stateB);
+  await tabB.flush();
+
+  // 4. Tab A deletes the item (stateA.customExperiments = [], observing only base revision 1)
+  stateA.customExperiments = [];
+  tabA.persist("rep-app", stateA);
+  await tabA.flush();
+
+  // 5. In outbox semantics, Tab A's deletion would be treated as an acknowledgement of revision 1 (since dRev <= bRev),
+  // causing durable store to delete the item and drop Tab B's edits.
+  // In generic merge semantics, Tab B's modification in durable store must be preserved against Tab A's deletion!
+  const durableExperiments = records.get("state:customExperiments");
+  assert.equal(durableExperiments.length, 1, "Non-outbox array preserves modified durable item against concurrent deletion");
+  assert.equal(durableExperiments[0].id, "exp:1");
+  assert.equal(durableExperiments[0].notes, "Tab B updated notes");
+
+  // A conflict must be recorded under generic merge semantics (item modified in durable but deleted in local)
+  const tabAConflicts = tabA.getConflicts();
+  assert.ok(tabAConflicts.length > 0, "Conflict was recorded under generic merge semantics");
+  assert.equal(tabAConflicts[0].key, "customExperiments");
+
+  // 6. Furthermore, verify generic property-level merge semantics on versioned items:
+  // Tab C updates title and bumps revision to 2
+  const tabC = createTabStorageContext(sharedIDB, sharedLS);
+  const tabD = createTabStorageContext(sharedIDB, sharedLS);
+  const stateC = await tabC.hydrate("rep-app");
+  const stateD = await tabD.hydrate("rep-app");
+
+  stateC.customExperiments[0].title = "Updated Title";
+  stateC.customExperiments[0].revision = 2;
+  tabC.persist("rep-app", stateC);
+  await tabC.flush();
+
+  // Tab D concurrently updates status (at revision 1)
+  stateD.customExperiments[0].status = "paused";
+  tabD.persist("rep-app", stateD);
+  await tabD.flush();
+
+  // In generic merge semantics, independent fields merge (title: "Updated Title", status: "paused")
+  // rather than revision 2 clobbering revision 1 entirely
+  const afterMerge = records.get("state:customExperiments");
+  assert.equal(afterMerge.length, 1);
+  assert.equal(afterMerge[0].title, "Updated Title", "Tab C title update merged");
+  assert.equal(afterMerge[0].status, "paused", "Tab D status update merged without outbox clobber");
+});
+
+test("Regression 2: Concurrent legacy body-weight additions and updates remain keyed by their dates without positional set collapsing or rebinding", async () => {
+  const sharedStores = new Map();
+  const sharedLSMap = new Map();
+  const sharedIDB = createMockIndexedDB(sharedStores);
+  const sharedLS = createMockLocalStorage(sharedLSMap);
+
+  // 1. Seed base state with legacy bodyWeights rows (date + weight, without week or set fields)
+  const tabInit = createTabStorageContext(sharedIDB, sharedLS);
+  const stateInit = await tabInit.hydrate("rep-app");
+  stateInit.bodyWeights = [
+    { date: "2026-08-01", weight: 80.0 },
+    { date: "2026-07-25", weight: 80.5 }
+  ];
+  tabInit.persist("rep-app", stateInit);
+  await tabInit.flush();
+
+  const records = sharedStores.get("records");
+  assert.equal(records.get("state:bodyWeights").length, 2);
+
+  // 2. Concurrent additions at index 0 from Tab 1 and Tab 2
+  const tab1 = createTabStorageContext(sharedIDB, sharedLS);
+  const tab2 = createTabStorageContext(sharedIDB, sharedLS);
+  const state1 = await tab1.hydrate("rep-app");
+  const state2 = await tab2.hydrate("rep-app");
+
+  // Tab 1 prepends a new weigh-in for 2026-08-08 at index 0
+  state1.bodyWeights = [
+    { date: "2026-08-08", weight: 79.8 },
+    { date: "2026-08-01", weight: 80.0 },
+    { date: "2026-07-25", weight: 80.5 }
+  ];
+  tab1.persist("rep-app", state1);
+
+  // Tab 2 concurrently prepends a different weigh-in for 2026-08-15 at index 0
+  state2.bodyWeights = [
+    { date: "2026-08-15", weight: 79.2 },
+    { date: "2026-08-01", weight: 80.0 },
+    { date: "2026-07-25", weight: 80.5 }
+  ];
+  tab2.persist("rep-app", state2);
+
+  // Flush Tab 1 then Tab 2
+  await tab1.flush();
+  await tab2.flush();
+
+  // 3. Both additions must be preserved and keyed by date, NOT collapsed by positional set:0
+  const durableWeights = records.get("state:bodyWeights");
+  assert.equal(durableWeights.length, 4, "Must contain all 4 records without positional collapsing");
+  const dates = durableWeights.map(w => w.date);
+  assert.ok(dates.includes("2026-08-15"), "Tab 2 addition preserved");
+  assert.ok(dates.includes("2026-08-08"), "Tab 1 addition preserved");
+  assert.ok(dates.includes("2026-08-01"), "Base record 1 preserved");
+  assert.ok(dates.includes("2026-07-25"), "Base record 2 preserved");
+
+  const w15 = durableWeights.find(w => w.date === "2026-08-15");
+  const w08 = durableWeights.find(w => w.date === "2026-08-08");
+  assert.equal(w15.weight, 79.2);
+  assert.equal(w08.weight, 79.8);
+
+  // 4. Concurrent update to an existing date while another tab prepends an addition
+  const tab3 = createTabStorageContext(sharedIDB, sharedLS);
+  const tab4 = createTabStorageContext(sharedIDB, sharedLS);
+  const state3 = await tab3.hydrate("rep-app");
+  const state4 = await tab4.hydrate("rep-app");
+
+  // Tab 3 updates weight for 2026-08-01 (which is at index 2 in state3)
+  const target = state3.bodyWeights.find(w => w.date === "2026-08-01");
+  target.weight = 80.2;
+  tab3.persist("rep-app", state3);
+
+  // Tab 4 prepends another entry for 2026-08-22 (shifting all indices)
+  state4.bodyWeights = [
+    { date: "2026-08-22", weight: 78.5 },
+    ...state4.bodyWeights
+  ];
+  tab4.persist("rep-app", state4);
+
+  await tab3.flush();
+  await tab4.flush();
+
+  // 5. The update must remain bound to date 2026-08-01 and not rebound by position
+  const weightsAfter = records.get("state:bodyWeights");
+  assert.equal(weightsAfter.length, 5, "Contains 5 records total");
+
+  const updatedRec = weightsAfter.find(w => w.date === "2026-08-01");
+  assert.equal(updatedRec.weight, 80.2, "Date 2026-08-01 received the updated weight");
+
+  const newRec = weightsAfter.find(w => w.date === "2026-08-22");
+  assert.equal(newRec.weight, 78.5, "New date 2026-08-22 addition preserved");
+
+  // 6. Fresh reload sees all 5 records correctly
+  const tabReload = createTabStorageContext(sharedIDB, sharedLS);
+  const stateReload = await tabReload.hydrate("rep-app");
+  assert.equal(stateReload.bodyWeights.length, 5);
+  assert.equal(stateReload.bodyWeights.find(w => w.date === "2026-08-01").weight, 80.2);
+  assert.equal(stateReload.bodyWeights.find(w => w.date === "2026-08-22").weight, 78.5);
+});
