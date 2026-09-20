@@ -479,19 +479,13 @@ function shiftLocalDay(days){const date=new Date();date.setHours(12,0,0,0);date.
 function shiftDateKey(key,days){const [year,month,date]=String(key).slice(0,10).split("-").map(Number),value=new Date(year,month-1,date,12);value.setDate(value.getDate()+days);return localDay(value);}
 function recordDateKey(record){
   if(!record) return "";
-  if(record.dateKey && /^\d{4}-\d{2}-\d{2}$/.test(String(record.dateKey))) return String(record.dateKey);
-  if(record.createdAt){
-    const d = new Date(record.createdAt);
-    if(!isNaN(d.getTime())) return localDay(d);
-  }
-  const dateVal = String(record.date || "");
-  if(/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
-  if(dateVal){
-    const d = new Date(dateVal);
-    if(!isNaN(d.getTime())) return localDay(d);
-    return dateVal.slice(0, 10);
-  }
-  return "";
+  const raw = record.dateKey || record.date || record.createdAt;
+  if(!raw) return "";
+  const str = String(raw);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if(!isNaN(d.getTime())) return localDay(d);
+  return str.slice(0, 10);
 }
 const storageKey = "rep-gym-companion-v1";
 const saved = window.REP_HYDRATED_STATE || JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -647,13 +641,13 @@ function todayPlan(day) {
 function isoDay(){return localDay();}
 function latestRecovery(){return state.recoveryCheckins[0]||null;}
 function recoveryFlags(c){return c?(Number(c.soreness)>=4?1:0)+(Number(c.energy)<=2?1:0)+(Number(c.sleep)<REP_HEALTH_GUIDE.rules.minimumSleepHours?1:0)+(c.pain?1:0)+(c.illness?1:0):0;}
-function recoveryGate(){const c=latestRecovery();if(!c)return {flags:0,hold:false,stale:true};const age=(Date.now()-new Date(c.createdAt||c.date).getTime())/86400000;const flags=recoveryFlags(c);return {flags,hold:age<=10&&(flags>=REP_HEALTH_GUIDE.rules.redFlagThreshold||Boolean(c.illness)),stale:age>10};}
+function recoveryGate(){const c=latestRecovery();if(!c)return {flags:0,hold:false,pause:false,illness:false,stale:true};const age=(Date.now()-new Date(c.createdAt||c.date).getTime())/86400000;const flags=recoveryFlags(c);const active=age<=10;const illness=active&&Boolean(c.illness);const pause=illness;const hold=active&&(flags>=REP_HEALTH_GUIDE.rules.redFlagThreshold||illness);return {flags,hold,pause,illness,stale:age>10};}
 function programStatus(){
   const week=Math.max(1,Math.floor((Date.now()-new Date(state.programStart).getTime())/604800000)+1),gym=state.history.filter(h=>h.session==="gym").slice(0,2),stalled=[];
   if(gym.length===2){const names=["Leg Press","Back Extension","Hip Thrust Machine","Chest Press","Seated Cable Row","Lat Pulldown"];for(const name of names){const score=h=>Math.max(0,...setsFromLog(h.loads?.[name]).map(s=>(Number(s.weight)||0)*(Number(s.reps)||0)));if(score(gym[0])&&score(gym[0])<=score(gym[1]))stalled.push(name);}}
   return {week,stalled,review:week>=REP_HEALTH_GUIDE.rules.reviewWeek||stalled.length>=2};
 }
-function healthStatusStrip(){const gate=recoveryGate(),program=programStatus();let label="Progress available",tone="good";if(gate.hold){label=`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label="Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
+function healthStatusStrip(){const gate=recoveryGate(),program=programStatus();let label="Progress available",tone="good";if(gate.pause||gate.illness){label="Illness reported · pause training";tone="hold";}else if(gate.hold){label=`${gate.flags} red flags · hold load`;tone="hold";}else if(program.review){label="Program review due";tone="review";}return `<section class="health-status ${tone}"><div><small>${"TODAY'S GATE"}</small><strong>${label}</strong></div><span>${`Week ${program.week}`} · v${REP_HEALTH_GUIDE.version}</span></section>`;}
 
 function hasMeaningfulData(){return state.history.length>0||state.foodEntries.length>0||state.recoveryCheckins.length>0||state.bodyWeights.length>0||state.mealTemplates.length>0||state.sleepLogs.length>0||Object.keys(state.logs||{}).length>0||Object.keys(state.daily?.hygiene||{}).length>0||Object.keys(state.daily?.habits||{}).length>0;}
 function notionProtected(){return Boolean(localStorage.getItem(syncKeyStorage))&&!["failed","auth"].includes(state.syncState);}
@@ -1953,13 +1947,13 @@ function updateCheckin(){
   const form=new FormData(document.querySelector("#checkin")); const c={soreness:Number(form.get("soreness")),energy:Number(form.get("energy")),sleep:Number(form.get("sleep")),pain:form.get("pain")==="on",illness:form.get("illness")==="on",notes:String(form.get("notes")||"")};
   const flags=recoveryFlags(c);
   document.querySelector("#checkResult").textContent=c.illness
-    ? (flags>=2 ? `${flags} red flags (illness reported) — take an extra light day or hold progression flat.` : "Illness reported — hold progression and prioritize recovery.")
+    ? (flags>=2 ? `${flags} red flags (illness reported) — pause training and recover.` : "Illness reported — pause training and recover.")
     : (flags>=2 ? `${flags} red flags — take an extra light day or hold progression flat.` : flags===1 ? "1 red flag — keep an eye on it and prioritize recovery." : "No red flags — stay consistent and progress as planned.");
   saved.checkin=c; persistDebounced();
 }
-function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),decision=gate.hold?("Extra light day · hold progression"):("Proceed as planned");return `<section class="decision-card ${gate.hold?"hold":""}"><div><small>${"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${gate.stale?("Log a fresh check-in to activate progression gating."):(`${gate.flags} red flags in the latest check-in.`)}</p></div><div><strong>${`WEEK ${p.week}`}</strong><span>${p.review?("Review due"):("Review at week 8")}</span>${p.stalled.length>=2?`<em>${`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
+function recoveryDecisionCard(){const gate=recoveryGate(),p=programStatus(),decision=(gate.pause||gate.illness)?("Pause training and recover"):gate.hold?("Extra light day · hold progression"):("Proceed as planned");const detail=gate.stale?("Log a fresh check-in to activate progression gating."):(gate.pause||gate.illness)?("Illness symptoms reported. Skip training and prioritize rest."):(`${gate.flags} red flags in the latest check-in.`);return `<section class="decision-card ${(gate.pause||gate.hold)?"hold":""}"><div><small>${"RECOVERY DECISION"}</small><h2>${decision}</h2><p>${detail}</p></div><div><strong>${`WEEK ${p.week}`}</strong><span>${p.review?("Review due"):("Review at week 8")}</span>${p.stalled.length>=2?`<em>${`${p.stalled.length} lifts stalled`}</em>`:""}</div></section>`;}
 function bindRecoveryTools(){const form=document.querySelector("#checkin");form.addEventListener("input",updateCheckin);updateCheckin();document.querySelector("[data-save-checkin]").onclick=saveRecoveryCheckin;document.querySelectorAll("[data-guide-timer]").forEach(b=>b.onclick=()=>startGuideTimer(b.dataset.guideLabel,Number(b.dataset.guideTimer)));const gotoVitals=document.querySelector("[data-goto-vitals]");gotoVitals?.addEventListener("click",()=>setPrimaryTab("vitals"));gotoVitals?.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setPrimaryTab("vitals");}});}
-function saveRecoveryCheckin(){updateCheckin();const now=new Date(),today=isoDay(),nowIso=now.toISOString();const c={...saved.checkin,date:today,dateKey:today,createdAt:nowIso};const flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.pain?"Stop and assess":flags>=2?"Extra light day":(flags===1||c.illness)?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>recordDateKey(x)!==today);state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,400);queueHealth("recovery",c);persist();renderRecovery();}
+function saveRecoveryCheckin(){updateCheckin();const now=new Date(),today=isoDay(),nowIso=now.toISOString();const c={...saved.checkin,date:today,dateKey:today,createdAt:nowIso};const flags=recoveryFlags(c);c.flags=flags;c.recommendation=c.illness?"Pause and recover":c.pain?"Stop and assess":flags>=2?"Extra light day":flags===1?"Hold":"Progress";state.recoveryCheckins=state.recoveryCheckins.filter(x=>recordDateKey(x)!==today);state.recoveryCheckins.unshift(c);state.recoveryCheckins=state.recoveryCheckins.slice(0,400);queueHealth("recovery",c);persist();renderRecovery();}
 
 function nutritionPlanKey(){const d=currentDay();return ["Sunday","Tuesday","Thursday"].includes(d)?"gym":["Monday","Wednesday"].includes(d)?"cardio":"rest";}
 function dailyBucket(kind){state.daily[kind]=state.daily[kind]||{};state.daily[kind][isoDay()]=state.daily[kind][isoDay()]||{checked:{},notes:""};return state.daily[kind][isoDay()];}

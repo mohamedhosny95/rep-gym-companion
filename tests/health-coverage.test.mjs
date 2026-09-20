@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 await import("../src/client/health-coverage.js");
 const coverage=globalThis.REP_HEALTH_COVERAGE;
 
@@ -142,5 +143,82 @@ test("Cairo post-midnight local-day checkin and weights are correctly matched by
 
   val.recoveryCheckins=[{date:"2026-08-12",energy:5,soreness:1,stress:1,pain:false}];
   assert.ok(coverage.checkinFor(val,"2026-08-12"));
+});
+
+test("Cairo post-midnight legacy illness record with only date timestamp maps to August 12 and workoutGuard pauses", () => {
+  const isCairo = (new Intl.DateTimeFormat("en-CA").resolvedOptions().timeZone === "Africa/Cairo") || process.env.TZ === "Africa/Cairo";
+
+  const runAssertions = () => {
+    assert.equal(coverage.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+    assert.equal(coverage.dateKey("2026-08-11"), "2026-08-11");
+    assert.equal(coverage.dateKey({ date: "2026-08-11" }), "2026-08-11");
+
+    const val = state();
+    val.recoveryCheckins = [
+      { date: "2026-08-11T22:15:00Z", illness: true }
+    ];
+
+    const c = coverage.checkinFor(val, "2026-08-12");
+    assert.ok(c, "Check-in must match August 12");
+    assert.equal(c.illness, true);
+
+    const cov = coverage.coverage(val, "2026-08-12");
+    assert.ok(!cov.missing.includes("Morning check-in"));
+
+    const guard = coverage.workoutGuard(val, "2026-08-12");
+    assert.equal(guard.ready, false);
+    assert.equal(guard.illness, true);
+    assert.match(guard.message, /Illness was reported/);
+  };
+
+  if (isCairo) {
+    runAssertions();
+  } else {
+    execFileSync(process.execPath, [
+      "--input-type=module",
+      "-e",
+      `
+      import assert from "node:assert/strict";
+      await import("./src/client/health-coverage.js");
+      const coverage = globalThis.REP_HEALTH_COVERAGE;
+      function state(days=28){
+        const healthMetrics={},sleepLogs=[],recoveryCheckins=[],bodyWeights=[];
+        for(let offset=days-1;offset>=0;offset--){
+          const date=coverage.shift("2026-08-12",-offset);
+          healthMetrics[date]={steps:8000,active_energy_kcal:520,coverage_minutes:1320,heart_rate_samples:640,workout_hr_samples:80,watch_battery_pct:58,vo2_max:41};
+          sleepLogs.push({date,hours:7.5,hrv:52+offset/10,rhr:57,resp:14});
+          recoveryCheckins.push({date:\`\${date}T05:00:00Z\`,energy:4,soreness:2,stress:2,pain:false});
+          bodyWeights.push({date,weight:84-offset/100});
+        }
+        return {healthMetrics,sleepLogs,recoveryCheckins,bodyWeights,activeEnergy:{},lastVitalsImportAt:new Date().toISOString()};
+      }
+
+      assert.equal(coverage.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+      assert.equal(coverage.dateKey("2026-08-11"), "2026-08-11");
+      assert.equal(coverage.dateKey({ date: "2026-08-11" }), "2026-08-11");
+
+      const val = state();
+      val.recoveryCheckins = [
+        { date: "2026-08-11T22:15:00Z", illness: true }
+      ];
+
+      const c = coverage.checkinFor(val, "2026-08-12");
+      assert.ok(c, "Check-in must match August 12");
+      assert.equal(c.illness, true);
+
+      const cov = coverage.coverage(val, "2026-08-12");
+      assert.ok(!cov.missing.includes("Morning check-in"));
+
+      const guard = coverage.workoutGuard(val, "2026-08-12");
+      assert.equal(guard.ready, false);
+      assert.equal(guard.illness, true);
+      assert.match(guard.message, /Illness was reported/);
+      `
+    ], {
+      env: { ...process.env, TZ: "Africa/Cairo" },
+      cwd: process.cwd(),
+      stdio: "pipe"
+    });
+  }
 });
 

@@ -357,42 +357,53 @@ test("Legacy recovery UI: illness triggers hold gate, counts in recoveryFlags, a
   const multiFlagCheckin = { soreness: 4, energy: 2, sleep: 6, pain: false, illness: true };
   assert.equal(app.recoveryFlags(multiFlagCheckin), 4);
 
-  // 2. recoveryGate: illness forces hold even if flags < 2 (only illness is true)
+  // 2. recoveryGate: illness forces hold and reports pause/illness state even if flags < 2 (only illness is true)
   app.window.state.recoveryCheckins = [
     { date: app.isoDay(), dateKey: app.isoDay(), createdAt: new Date().toISOString(), ...illnessOnlyCheckin }
   ];
   const gate = app.recoveryGate();
   assert.equal(gate.flags, 1);
   assert.equal(gate.hold, true, "Illness must trigger hold gate");
+  assert.equal(gate.pause, true, "Illness must report pause state in recovery gate");
+  assert.equal(gate.illness, true, "Illness property must be reported");
 
-  // 3. Decision card and status strip: never 'Proceed as planned' or 'Progress available'
+  // 3. Decision card and status strip: displayed decision must pause training and recover; never 'Proceed as planned', 'Hold', or 'Extra light day'
   const decisionHtml = app.recoveryDecisionCard();
-  assert.match(decisionHtml, /Extra light day · hold progression/);
-  assert.doesNotMatch(decisionHtml, /Proceed as planned/);
+  assert.match(decisionHtml, /pause training and recover/i);
+  assert.doesNotMatch(decisionHtml, /Proceed as planned/i);
+  assert.doesNotMatch(decisionHtml, /Extra light day/i);
+  assert.doesNotMatch(decisionHtml, /hold progression/i);
 
   const statusHtml = app.healthStatusStrip();
-  assert.match(statusHtml, /hold load/);
-  assert.doesNotMatch(statusHtml, /Progress available/);
+  assert.match(statusHtml, /pause training/i);
+  assert.doesNotMatch(statusHtml, /Progress available/i);
+  assert.doesNotMatch(statusHtml, /hold load/i);
 
-  // 4. Immediate recommendation text in updateCheckin: never 'progress as planned'
+  // 4. Immediate recommendation text in updateCheckin: never 'progress as planned', 'hold', or 'extra light'
   app.__mockFormData = { soreness: "2", energy: "4", sleep: "8", pain: "off", illness: "on", notes: "" };
   app.updateCheckin();
   const checkResultEl = app.document.querySelector("#checkResult");
-  assert.match(checkResultEl.textContent, /Illness reported — hold progression and prioritize recovery/);
+  assert.match(checkResultEl.textContent, /Illness reported — pause training and recover/i);
   assert.doesNotMatch(checkResultEl.textContent, /progress as planned/i);
+  assert.doesNotMatch(checkResultEl.textContent, /hold progression/i);
+  assert.doesNotMatch(checkResultEl.textContent, /extra light day/i);
 
   // Multi-flag with illness
   app.__mockFormData = { soreness: "4", energy: "2", sleep: "6", pain: "off", illness: "on", notes: "" };
   app.updateCheckin();
-  assert.match(checkResultEl.textContent, /illness reported/);
-  assert.match(checkResultEl.textContent, /take an extra light day or hold progression/);
+  assert.match(checkResultEl.textContent, /illness reported/i);
+  assert.match(checkResultEl.textContent, /pause training and recover/i);
+  assert.doesNotMatch(checkResultEl.textContent, /take an extra light day/i);
+  assert.doesNotMatch(checkResultEl.textContent, /hold progression/i);
 
-  // 5. saveRecoveryCheckin: recommendation must be 'Hold' or 'Extra light day', never 'Progress'
+  // 5. saveRecoveryCheckin: recommendation must be 'Pause and recover', never 'Hold', 'Extra light day', or 'Progress'
   app.__mockFormData = { soreness: "2", energy: "4", sleep: "8", pain: "off", illness: "on", notes: "" };
   app.saveRecoveryCheckin();
   const saved = app.window.state.recoveryCheckins[0];
   assert.equal(saved.illness, true);
-  assert.equal(saved.recommendation, "Hold");
+  assert.equal(saved.recommendation, "Pause and recover");
+  assert.notEqual(saved.recommendation, "Hold");
+  assert.notEqual(saved.recommendation, "Extra light day");
   assert.notEqual(saved.recommendation, "Progress");
 });
 

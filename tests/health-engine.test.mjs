@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 await import("../src/client/health-engine.js");
+await import("../src/client/health-coverage.js");
 const health=globalThis.REP_HEALTH_ENGINE;
+const coverage=globalThis.REP_HEALTH_COVERAGE;
 const profile={wakeTime:"06:30",baseSleepHours:7.5,baselineDays:28};
 const date=(offset=0)=>new Date(Date.UTC(2026,7,11+offset,12)).toISOString().slice(0,10);
 function matureState(){
@@ -75,6 +78,101 @@ test("Cairo post-midnight local-day check-in is matched by dateKey while preserv
   const legacyReady=health.readiness(legacyState,"2026-08-12",profile);
   const legacyComp=legacyReady.components.find(c=>c.id==="checkin");
   assert.equal(legacyComp.available,true);
+});
+
+test("legacy illness record with only date timestamp under Africa/Cairo maps to August 12 and pauses", () => {
+  const isCairo = (new Intl.DateTimeFormat("en-CA").resolvedOptions().timeZone === "Africa/Cairo") || process.env.TZ === "Africa/Cairo";
+
+  const runAssertions = () => {
+    assert.equal(health.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+    assert.equal(coverage.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+    assert.equal(health.dateKey("2026-08-11"), "2026-08-11");
+    assert.equal(coverage.dateKey("2026-08-11"), "2026-08-11");
+    assert.equal(health.dateKey({ date: "2026-08-11" }), "2026-08-11");
+    assert.equal(coverage.dateKey({ date: "2026-08-11" }), "2026-08-11");
+
+    const legacyIllnessRecord = { date: "2026-08-11T22:15:00Z", illness: true };
+    assert.equal(health.dateKey(legacyIllnessRecord), "2026-08-12");
+    assert.equal(coverage.dateKey(legacyIllnessRecord), "2026-08-12");
+
+    const state = matureState();
+    state.recoveryCheckins = [legacyIllnessRecord];
+
+    const ready = health.readiness(state, "2026-08-12", profile);
+    assert.equal(ready.band, "red");
+    const checkinComp = ready.components.find(c => c.id === "checkin");
+    assert.ok(checkinComp);
+    assert.equal(checkinComp.available, true);
+    assert.equal(checkinComp.detail, "Illness reported");
+    assert.ok(ready.reasons.some(r => r.includes("Illness reported")));
+
+    const rec = health.trainingRecommendation(state, "2026-08-12", profile);
+    assert.equal(rec.mode, "pause");
+    assert.equal(rec.volumeFactor, 0);
+    assert.equal(rec.intensityFactor, 0);
+    assert.equal(rec.title, "Pause and recover");
+
+    const guard = coverage.workoutGuard(state, "2026-08-12");
+    assert.equal(guard.ready, false);
+    assert.equal(guard.illness, true);
+    assert.match(guard.message, /Illness was reported/);
+  };
+
+  if (isCairo) {
+    runAssertions();
+  } else {
+    execFileSync(process.execPath, [
+      "--input-type=module",
+      "-e",
+      `
+      import assert from "node:assert/strict";
+      await import("./src/client/health-engine.js");
+      await import("./src/client/health-coverage.js");
+      const health = globalThis.REP_HEALTH_ENGINE;
+      const coverage = globalThis.REP_HEALTH_COVERAGE;
+      const profile = { wakeTime: "06:30", baseSleepHours: 7.5, baselineDays: 28 };
+      function matureState() {
+        const date = (offset = 0) => new Date(Date.UTC(2026, 7, 11 + offset, 12)).toISOString().slice(0, 10);
+        const sleepLogs = Array.from({ length: 18 }, (_, index) => ({ date: date(index - 18), hours: 7.5 + (index % 3 - .5) * .1, hrv: 60 + (index % 3 - 1) * 2, rhr: 55 + (index % 3 - 1), resp: 14 + (index % 3 - 1) * .2 }));
+        return { sleepLogs: [...sleepLogs, { date: "2026-08-12", hours: 8, hrv: 64, rhr: 53, resp: 14 }], history: [], activeEnergy: {}, recoveryCheckins: [], daily: { journal: {} } };
+      }
+
+      assert.equal(health.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+      assert.equal(coverage.dateKey("2026-08-11T22:15:00Z"), "2026-08-12");
+      assert.equal(health.dateKey("2026-08-11"), "2026-08-11");
+      assert.equal(coverage.dateKey("2026-08-11"), "2026-08-11");
+
+      const legacyIllnessRecord = { date: "2026-08-11T22:15:00Z", illness: true };
+      assert.equal(health.dateKey(legacyIllnessRecord), "2026-08-12");
+      assert.equal(coverage.dateKey(legacyIllnessRecord), "2026-08-12");
+
+      const state = matureState();
+      state.recoveryCheckins = [legacyIllnessRecord];
+
+      const ready = health.readiness(state, "2026-08-12", profile);
+      assert.equal(ready.band, "red");
+      const checkinComp = ready.components.find(c => c.id === "checkin");
+      assert.ok(checkinComp);
+      assert.equal(checkinComp.available, true);
+      assert.equal(checkinComp.detail, "Illness reported");
+
+      const rec = health.trainingRecommendation(state, "2026-08-12", profile);
+      assert.equal(rec.mode, "pause");
+      assert.equal(rec.volumeFactor, 0);
+      assert.equal(rec.intensityFactor, 0);
+      assert.equal(rec.title, "Pause and recover");
+
+      const guard = coverage.workoutGuard(state, "2026-08-12");
+      assert.equal(guard.ready, false);
+      assert.equal(guard.illness, true);
+      assert.match(guard.message, /Illness was reported/);
+      `
+    ], {
+      env: { ...process.env, TZ: "Africa/Cairo" },
+      cwd: process.cwd(),
+      stdio: "pipe"
+    });
+  }
 });
 
 test("sleep coaching includes personal need, debt, and prior-day demand",()=>{
