@@ -159,7 +159,7 @@ test("offline versions, local dates, durable storage, and accessibility stay ali
   ]);
   assert.match(bootstrap,/REP_BUILD_VERSION/);assert.match(sw,/BUILD_VERSION/);assert.doesNotMatch(enhancements,/\?v=6[0-9]/);
   assert.doesNotMatch(html,/id="app" aria-live/);assert.match(enhancements,/role","dialog"/);assert.match(css,/font-size:16px/);
-  assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/date\.getFullYear\(\)/);
+  assert.match(app,/function localDay/);assert.doesNotMatch(app,/function isoDay\(\)\{return new Date\(\)\.toISOString/);assert.match(engine,/\.getFullYear\(\)/);
   assert.match(storage,/state:\$\{key\}/);assert.match(storage,/JSON\.stringify\(legacy\.local\)/);assert.match(features,/minimumInterval=6\*60\*60\*1000/);
   assert.doesNotMatch(sw,/catch\(\(\) => caches\.match\("\.\/index\.html"\)\)/);
   assert.match(worker,/Health export is too large/);assert.match(worker,/entries\.length\s*>\s*120/);assert.match(worker,/coverage_minutes/);assert.match(worker,/version:\s*"71"/);assert.match(worker,/sync:\s*\{\s*mode:\s*"verified-outbox",\s*queued:\s*true/);
