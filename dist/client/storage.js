@@ -3,6 +3,7 @@
   const serialized=new Map();
   const baseSnapshots=new Map();
   const recordedConflicts=[];
+  let currentGeneration=0;
   let pendingTimer=null,pendingWrite=null;
   let writeChain=Promise.resolve();
 
@@ -42,21 +43,80 @@
     if(item===null||item===undefined)return null;
     if(typeof item!=="object")return `primitive:${JSON.stringify(item)}`;
     if(item.id!==undefined&&item.id!==null&&item.id!=="")return `id:${item.id}`;
+    if(item.item?.id!==undefined&&item.item.id!==null&&item.item.id!=="")return `id:${item.item.id}`;
     if(item.uuid!==undefined&&item.uuid!==null&&item.uuid!=="")return `uuid:${item.uuid}`;
     if(item.notionPageId!==undefined&&item.notionPageId!==null&&item.notionPageId!=="")return `notion:${item.notionPageId}`;
     if(item.week!==undefined&&item.week!==null&&item.week!=="")return `week:${item.week}`;
     if(item.session!==undefined&&item.date!==undefined)return `session:${item.session}@${item.date}`;
     if(item.date!==undefined&&item.date!==null&&item.date!=="")return `date:${item.date}`;
+    if(item.dateKey!==undefined&&item.dateKey!==null&&item.dateKey!=="")return `date:${item.dateKey}`;
+    if(item.day!==undefined&&item.day!==null&&item.day!=="")return `date:${item.day}`;
     if(item.key!==undefined&&item.key!==null&&item.key!=="")return `key:${item.key}`;
     if(item.name!==undefined&&item.name!==null&&item.name!=="")return `name:${item.name}`;
     return `json:${JSON.stringify(item)}`;
   }
 
-  function indexArray(arr){
+  function getItemRevision(item){
+    if(!item||typeof item!=="object")return null;
+    const r=item.revision??item.version??item.rev??item.item?.revision??item.item?.version;
+    if(r!==undefined&&r!==null&&r!==""){
+      const num=Number(r);
+      if(Number.isFinite(num))return num;
+    }
+    return null;
+  }
+
+  function isOutboxPath(path){
+    if(!path)return false;
+    return /(?:^|[.[\]:])(?:outbox|syncQueue)(?:$|[.[\]:])/i.test(path);
+  }
+
+  function isSetArrayPath(path){
+    if(!path)return false;
+    return /(?:^|[.[\]:])(?:sets|previousSets)(?:$|[.[\]:])/i.test(path);
+  }
+
+  function isDatedOrWeekRecord(item){
+    if(!item||typeof item!=="object")return false;
+    if(item.date!==undefined&&item.date!==null&&item.date!=="")return true;
+    if(item.dateKey!==undefined&&item.dateKey!==null&&item.dateKey!=="")return true;
+    if(item.week!==undefined&&item.week!==null&&item.week!=="")return true;
+    if(item.day!==undefined&&item.day!==null&&item.day!=="")return true;
+    if(item.session!==undefined&&item.session!==null&&item.session!=="")return true;
+    return false;
+  }
+
+  function isAnonymousSetObject(item,isExplicitPath=false){
+    if(!item||typeof item!=="object"||Array.isArray(item))return false;
+    if(isDatedOrWeekRecord(item))return false;
+    if(item.id!==undefined&&item.id!==null&&item.id!=="")return false;
+    if(item.uuid!==undefined&&item.uuid!==null&&item.uuid!=="")return false;
+    if(item.notionPageId!==undefined&&item.notionPageId!==null&&item.notionPageId!=="")return false;
+    if(item.key!==undefined&&item.key!==null&&item.key!=="")return false;
+    if(item.name!==undefined&&item.name!==null&&item.name!=="")return false;
+    if(isExplicitPath){
+      return ("weight" in item || "reps" in item || "rpe" in item || "set" in item || "repsCompleted" in item || "note" in item || Object.keys(item).length===0);
+    }
+    return ("reps" in item || "rpe" in item || "set" in item || "repsCompleted" in item);
+  }
+
+  function isAnonymousSetArray(base,local,durable,path){
+    const isExplicit=isSetArrayPath(path);
+    const all=[...(Array.isArray(base)?base:[]),...(Array.isArray(local)?local:[]),...(Array.isArray(durable)?durable:[])];
+    if(!all.length)return isExplicit;
+    return all.every(item=>isAnonymousSetObject(item,isExplicit));
+  }
+
+  function indexArray(arr,isSets=false){
     const map=new Map(),counts=new Map();
     for(let i=0;i<arr.length;i++){
       const item=arr[i];
-      const rawKey=getEntityKey(item)||`idx:${i}`;
+      let rawKey;
+      if(isSets&&isAnonymousSetObject(item,isSets)){
+        rawKey=(item.set!==undefined&&item.set!==null&&item.set!=="")?`set:${item.set}`:`set:${i}`;
+      }else{
+        rawKey=getEntityKey(item)||`idx:${i}`;
+      }
       const count=counts.get(rawKey)||0;
       counts.set(rawKey,count+1);
       const key=`${rawKey}#${count}`;
@@ -203,9 +263,11 @@
     const local=Array.isArray(localArr)?localArr:[];
     const durable=Array.isArray(durableArr)?durableArr:[];
 
-    const baseIndexed=indexArray(base);
-    const localIndexed=indexArray(local);
-    const durableIndexed=indexArray(durable);
+    const isOutbox=isOutboxPath(path);
+    const isSets=isAnonymousSetArray(base,local,durable,path);
+    const baseIndexed=indexArray(base,isSets);
+    const localIndexed=indexArray(local,isSets);
+    const durableIndexed=indexArray(durable,isSets);
 
     const keptItemsMap=new Map();
     const conflicts=[];
@@ -220,12 +282,20 @@
       const dItem=durableIndexed.get(k)?.item;
       const itemPath=path?`${path}[${k}]`:k;
 
+      const lRev=getItemRevision(lItem);
+      const dRev=getItemRevision(dItem);
+      const bRev=getItemRevision(bItem);
+
       if(hasL&&!hasD){
         if(!hasB){
           keptItemsMap.set(k,clone(lItem));
         }else{
-          if(deepEqual(bItem,lItem)){
-            // Local didn't modify; durable deleted it -> keep deleted
+          if(isOutbox&&lRev!==null&&bRev!==null&&lRev>bRev){
+            // Schema-aware outbox merge: durable deleted/acknowledged older revision,
+            // but local tab has concurrently newer revision. Newer revision survives.
+            keptItemsMap.set(k,clone(lItem));
+          }else if(deepEqual(bItem,lItem)||(isOutbox&&lRev!==null&&bRev!==null&&lRev<=bRev)){
+            // Local didn't modify or deletion observed local revision -> keep deleted
           }else{
             // Conflict: durable deleted, local modified -> preserve durable deletion
             conflicts.push({
@@ -241,8 +311,12 @@
         if(!hasB){
           keptItemsMap.set(k,clone(dItem));
         }else{
-          if(deepEqual(bItem,dItem)){
-            // Durable didn't modify; local intentionally deleted -> keep deleted
+          if(isOutbox&&dRev!==null&&bRev!==null&&dRev>bRev){
+            // Schema-aware outbox merge: local tab deleted/acknowledged older revision,
+            // but durable store has concurrently newer revision. Newer revision survives.
+            keptItemsMap.set(k,clone(dItem));
+          }else if(deepEqual(bItem,dItem)||(isOutbox&&dRev!==null&&bRev!==null&&dRev<=bRev)){
+            // Local intentionally deleted observed revision -> keep deleted
           }else{
             // Conflict: local deleted, durable modified -> preserve durable item
             keptItemsMap.set(k,clone(dItem));
@@ -256,7 +330,23 @@
           }
         }
       }else if(hasL&&hasD){
-        if(!hasB){
+        if(isOutbox&&lRev!==null&&dRev!==null){
+          if(lRev>dRev){
+            keptItemsMap.set(k,clone(lItem));
+          }else if(dRev>lRev){
+            keptItemsMap.set(k,clone(dItem));
+          }else{
+            if(deepEqual(lItem,dItem)){
+              keptItemsMap.set(k,clone(dItem));
+            }else if(isPlainObject(lItem)&&isPlainObject(dItem)){
+              const sub=mergeObject(bItem||{},lItem,dItem,itemPath);
+              keptItemsMap.set(k,sub.merged);
+              conflicts.push(...sub.conflicts);
+            }else{
+              keptItemsMap.set(k,clone(dItem));
+            }
+          }
+        }else if(!hasB){
           if(deepEqual(lItem,dItem)){
             keptItemsMap.set(k,clone(dItem));
           }else if(isPlainObject(lItem)&&isPlainObject(dItem)){
@@ -419,13 +509,17 @@
     });
   }
 
-  function writeDurable(values){
-    const run=()=>executeWriteDurable(values);
+  function writeDurable(values,gen=currentGeneration){
+    const run=async()=>{
+      if(gen!==currentGeneration)return;
+      await executeWriteDurable(values,gen);
+    };
     writeChain=writeChain.then(run,run);
     return writeChain;
   }
 
-  async function executeWriteDurable(values){
+  async function executeWriteDurable(values,gen){
+    if(gen!==currentGeneration)return;
     const changed=[];
     for(const [key,value] of Object.entries(values||{})){
       const next=JSON.stringify(value);
@@ -433,9 +527,17 @@
     }
     if(!changed.length)return;
     const db=await open();
+    if(gen!==currentGeneration){
+      db.close();
+      return;
+    }
     const successfulWrites=new Map();
     try{
       await new Promise((resolve,reject)=>{
+        if(gen!==currentGeneration){
+          resolve();
+          return;
+        }
         const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
         let hasError=false;
 
@@ -451,7 +553,7 @@
           const req=store.get(`state:${key}`);
           req.onerror=()=>fail(req.error);
           req.onsuccess=()=>{
-            if(hasError)return;
+            if(hasError||gen!==currentGeneration)return;
             const durableVal=req.result;
             const baseVal=baseSnapshots.get(key);
             const {merged,conflicts}=mergeValues(key,baseVal,localVal,durableVal);
@@ -474,6 +576,8 @@
     }finally{
       db.close();
     }
+
+    if(gen!==currentGeneration)return;
 
     for(const [key,{localVal,next}] of successfulWrites){
       baseSnapshots.set(key,clone(localVal));
@@ -505,10 +609,15 @@
 
   function scheduleWrite(){
     clearTimeout(pendingTimer);
+    const scheduledGen=currentGeneration;
     pendingTimer=setTimeout(async()=>{
+      if(scheduledGen!==currentGeneration){
+        pendingWrite=null;
+        return;
+      }
       const next=pendingWrite;
       pendingWrite=null;
-      if(next)await writeDurable(next).catch(()=>{});
+      if(next)await writeDurable(next,scheduledGen).catch(()=>{});
     },0);
   }
 
@@ -521,52 +630,76 @@
 
   async function flush(){
     clearTimeout(pendingTimer);
+    const flushGen=currentGeneration;
     const next=pendingWrite;
     pendingWrite=null;
-    if(next)await writeDurable(next).catch(()=>{});
+    if(next)await writeDurable(next,flushGen).catch(()=>{});
     await writeChain.catch(()=>{});
   }
 
   async function replace(storageKey,payload){
     const {local,durable}=split(payload);
     localStorage.setItem(storageKey,JSON.stringify(local));
-    pendingWrite=null;
     clearTimeout(pendingTimer);
+    pendingWrite=null;
+    const opGen=++currentGeneration;
+
     serialized.clear();
     baseSnapshots.clear();
-    const db=await open();
-    try{
-      await new Promise((resolve,reject)=>{
-        const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
-        for(const [key,value] of Object.entries(durable))store.put(value,`state:${key}`);
-        tx.oncomplete=resolve;
-        tx.onerror=()=>reject(tx.error);
-      });
-    }finally{
-      db.close();
-    }
-    for(const [key,value] of Object.entries(durable)){
-      baseSnapshots.set(key,clone(value));
-      serialized.set(key,JSON.stringify(value));
-    }
+
+    const run=async()=>{
+      if(opGen!==currentGeneration)return;
+      const db=await open();
+      try{
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
+          store.clear();
+          for(const [key,value] of Object.entries(durable))store.put(value,`state:${key}`);
+          tx.oncomplete=resolve;
+          tx.onerror=()=>reject(tx.error);
+        });
+      }finally{
+        db.close();
+      }
+      if(opGen!==currentGeneration)return;
+      for(const [key,value] of Object.entries(durable)){
+        baseSnapshots.set(key,clone(value));
+        serialized.set(key,JSON.stringify(value));
+      }
+    };
+
+    writeChain=writeChain.then(run,run);
+    await writeChain.catch(()=>{});
   }
 
-  async function clear(){
+  async function clear(storageKey){
     clearTimeout(pendingTimer);
     pendingWrite=null;
-    const db=await open();
-    try{
-      await new Promise(resolve=>{
-        const tx=db.transaction(STORE,"readwrite");
-        tx.objectStore(STORE).clear();
-        tx.oncomplete=tx.onerror=resolve;
-      });
-    }finally{
-      db.close();
-    }
+    const opGen=++currentGeneration;
+
     serialized.clear();
     baseSnapshots.clear();
     recordedConflicts.length=0;
+    if(storageKey&&typeof localStorage!=="undefined"&&localStorage.removeItem){
+      try{localStorage.removeItem(storageKey);}catch{}
+    }
+
+    const run=async()=>{
+      if(opGen!==currentGeneration)return;
+      const db=await open();
+      try{
+        await new Promise(resolve=>{
+          const tx=db.transaction(STORE,"readwrite");
+          tx.objectStore(STORE).clear();
+          tx.oncomplete=tx.onerror=resolve;
+        });
+      }finally{
+        db.close();
+      }
+    };
+
+    writeChain=writeChain.then(run,run);
+    await writeChain.catch(()=>{});
   }
 
   window.REP_STORE={

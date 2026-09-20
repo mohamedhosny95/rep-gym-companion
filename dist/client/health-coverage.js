@@ -20,8 +20,8 @@ globalThis.REP_HEALTH_COVERAGE=(()=>{
     }
     const str=String(value);
     if(/^\d{4}-\d{2}-\d{2}$/.test(str))return str;
-    if(timeZone&&!isNaN(Date.parse(str))){
-      return new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(str));
+    if(!isNaN(Date.parse(str))){
+      return dateKey(new Date(str),timeZone);
     }
     return str.slice(0,10);
   };
