@@ -48,7 +48,7 @@ test("parseAppleHealthXml extracts body weights, sleep, and heart metrics", () =
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
   <Record type="HKQuantityTypeIdentifierBodyMass" value="82.4" unit="kg" startDate="2026-08-01 07:00:00 +0200"/>
-  <Record type="HKCategoryTypeIdentifierSleepAnalysis" startDate="2026-08-01 22:00:00 +0200" endDate="2026-08-02 06:00:00 +0200"/>
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis" value="HKCategoryValueSleepAnalysisAsleep" startDate="2026-08-01 22:00:00 +0200" endDate="2026-08-02 06:00:00 +0200"/>
   <Record type="HKQuantityTypeIdentifierHeartRateVariabilitySDNN" value="65.2" unit="ms" startDate="2026-08-02 06:05:00 +0200"/>
 </HealthData>`;
 

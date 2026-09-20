@@ -142,7 +142,7 @@
 
   function parseAppleHealthXml(xmlText){
     const weights = [];
-    const sleepLogs = [];
+    const rawSleep = [];
     const healthMetrics = {};
     const text = String(xmlText||"");
 
@@ -164,14 +164,31 @@
         const unit = getAttr("unit") || "kg";
         let kg = Number(value);
         if(unit.includes("lb")) kg = Math.round((kg / 2.2046226) * 10) / 10;
-        weights.push({ week: date, date, kg: Math.round(kg*10)/10 });
+        weights.push({ week: date, date, dateKey: date, createdAt: new Date(startDate).toISOString(), kg: Math.round(kg*10)/10 });
       } else if(type === "HKCategoryTypeIdentifierSleepAnalysis"){
+        const val = value ? String(value).trim() : "";
+        const isAsleep = (
+          val === "HKCategoryValueSleepAnalysisAsleep" ||
+          val === "HKCategoryValueSleepAnalysisAsleepUnspecified" ||
+          val === "HKCategoryValueSleepAnalysisAsleepCore" ||
+          val === "HKCategoryValueSleepAnalysisAsleepDeep" ||
+          val === "HKCategoryValueSleepAnalysisAsleepREM" ||
+          val === "Asleep" ||
+          val === "AsleepUnspecified" ||
+          val === "AsleepCore" ||
+          val === "AsleepDeep" ||
+          val === "AsleepREM" ||
+          val === "1" ||
+          val === "3" ||
+          val === "4" ||
+          val === "5"
+        );
+        if(!isAsleep) continue;
         const endDate = getAttr("endDate") || "";
         if(startDate && endDate){
           const t1 = new Date(startDate).getTime(), t2 = new Date(endDate).getTime();
-          const hours = Math.round(((t2 - t1) / (1000 * 60 * 60)) * 10) / 10;
-          if(hours >= 3 && hours <= 16){
-            sleepLogs.push({ date, hours, bedtime: startDate, wake: endDate });
+          if(!isNaN(t1) && !isNaN(t2) && t2 > t1){
+            rawSleep.push({ startMs: t1, endMs: t2, startDate, endDate });
           }
         }
       } else if(type === "HKQuantityTypeIdentifierHeartRateVariabilitySDNN" && value){
@@ -182,6 +199,64 @@
         healthMetrics[date].restingHeartRate = Math.round(Number(value));
       }
     }
+
+    rawSleep.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+    const unionedSleep = [];
+    for(const item of rawSleep){
+      if(!unionedSleep.length){
+        unionedSleep.push({ ...item });
+        continue;
+      }
+      const prev = unionedSleep[unionedSleep.length - 1];
+      if(item.startMs <= prev.endMs){
+        if(item.endMs > prev.endMs){
+          prev.endMs = item.endMs;
+          prev.endDate = item.endDate;
+        }
+      } else {
+        unionedSleep.push({ ...item });
+      }
+    }
+
+    const byWakeDate = new Map();
+    for(const inv of unionedSleep){
+      const endPart = inv.endDate.includes("T") ? inv.endDate.split("T")[0] : (inv.endDate.split(" ")[0] || "");
+      let wakeDate = "";
+      if(/^\d{4}-\d{2}-\d{2}$/.test(endPart) && !inv.endDate.endsWith("Z")){
+        wakeDate = endPart;
+      } else {
+        const d = new Date(inv.endMs);
+        if(!isNaN(d.getTime())){
+          wakeDate = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+        } else {
+          wakeDate = endPart;
+        }
+      }
+      if(!wakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(wakeDate)) continue;
+      if(!byWakeDate.has(wakeDate)) byWakeDate.set(wakeDate, []);
+      byWakeDate.get(wakeDate).push(inv);
+    }
+
+    const sleepLogs = [];
+    for(const [wakeDate, intervals] of byWakeDate.entries()){
+      const totalMs = intervals.reduce((sum, inv) => sum + (inv.endMs - inv.startMs), 0);
+      const hours = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
+      if(hours > 0 && hours <= 24){
+        let earliest = intervals[0], latest = intervals[0];
+        for(const inv of intervals){
+          if(inv.startMs < earliest.startMs) earliest = inv;
+          if(inv.endMs > latest.endMs) latest = inv;
+        }
+        sleepLogs.push({
+          date: wakeDate,
+          hours,
+          bedtime: earliest.startDate,
+          wake: latest.endDate
+        });
+      }
+    }
+    sleepLogs.sort((a, b) => b.date.localeCompare(a.date));
+
     return { weights, sleepLogs, healthMetrics };
   }
 

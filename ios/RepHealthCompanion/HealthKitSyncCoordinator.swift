@@ -190,18 +190,63 @@ final class HealthKitSyncCoordinator: ObservableObject {
         return count
     }
 
+    private func unionIntervals(_ intervals: [DateInterval]) -> [DateInterval] {
+        guard !intervals.isEmpty else { return [] }
+        let sorted = intervals.sorted { $0.start < $1.start }
+        var merged: [DateInterval] = []
+        for interval in sorted {
+            guard let last = merged.last else {
+                merged.append(interval)
+                continue
+            }
+            if interval.start <= last.end {
+                let newEnd = max(last.end, interval.end)
+                merged[merged.count - 1] = DateInterval(start: last.start, end: newEnd)
+            } else {
+                merged.append(interval)
+            }
+        }
+        return merged
+    }
+
     private func sleepSummary(_ interval: DateInterval) async throws -> (total: Double?, deep: Double?, rem: Double?, start: String?, end: String?) {
         guard let type = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else { return (nil,nil,nil,nil,nil) }
+        let sleepPredicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end, options: [.strictEndDate])
         let samples: [HKCategorySample] = try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(sampleType: type, predicate: predicate(interval), limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, values, error in
+            let query = HKSampleQuery(sampleType: type, predicate: sleepPredicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, values, error in
                 if let error { continuation.resume(throwing: error) } else { continuation.resume(returning: (values as? [HKCategorySample]) ?? []) }
             }
             store.execute(query)
         }
-        let asleep = samples.filter { [HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue, HKCategoryValueSleepAnalysis.asleepCore.rawValue, HKCategoryValueSleepAnalysis.asleepDeep.rawValue, HKCategoryValueSleepAnalysis.asleepREM.rawValue].contains($0.value) }
-        let hours: (HKCategorySample) -> Double = { $0.endDate.timeIntervalSince($0.startDate) / 3600 }
-        let format = DateFormatter(); format.dateFormat = "HH:mm"
-        return (asleep.map(hours).reduce(0,+), asleep.filter{$0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue}.map(hours).reduce(0,+), asleep.filter{$0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue}.map(hours).reduce(0,+), asleep.map{$0.startDate}.min().map(format.string), asleep.map{$0.endDate}.max().map(format.string))
+        let asleepValues: Set<Int> = [
+            HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+            HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+            HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+            HKCategoryValueSleepAnalysis.asleepREM.rawValue
+        ]
+        let asleep = samples.filter { asleepValues.contains($0.value) }
+        guard !asleep.isEmpty else { return (nil, nil, nil, nil, nil) }
+
+        let totalIntervals = unionIntervals(asleep.map { DateInterval(start: $0.startDate, end: $0.endDate) })
+        let totalSeconds = totalIntervals.reduce(0.0) { $0 + $1.duration }
+        let totalHours: Double? = totalSeconds > 0 ? (totalSeconds / 3600.0) : nil
+
+        let deepSamples = asleep.filter { $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue }
+        let deepIntervals = unionIntervals(deepSamples.map { DateInterval(start: $0.startDate, end: $0.endDate) })
+        let deepSeconds = deepIntervals.reduce(0.0) { $0 + $1.duration }
+        let deepHours: Double? = !deepSamples.isEmpty ? (deepSeconds / 3600.0) : nil
+
+        let remSamples = asleep.filter { $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue }
+        let remIntervals = unionIntervals(remSamples.map { DateInterval(start: $0.startDate, end: $0.endDate) })
+        let remSeconds = remIntervals.reduce(0.0) { $0 + $1.duration }
+        let remHours: Double? = !remSamples.isEmpty ? (remSeconds / 3600.0) : nil
+
+        let format = DateFormatter()
+        format.dateFormat = "HH:mm"
+        let bedtime = asleep.map { $0.startDate }.min().map(format.string)
+        let wake = asleep.map { $0.endDate }.max().map(format.string)
+
+        return (total: totalHours, deep: deepHours, rem: remHours, start: bedtime, end: wake)
     }
 }
 
