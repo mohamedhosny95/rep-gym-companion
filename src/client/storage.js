@@ -437,7 +437,6 @@
     try{
       await new Promise((resolve,reject)=>{
         const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
-        let remaining=changed.length;
         let hasError=false;
 
         function fail(err){
@@ -465,8 +464,6 @@
 
             store.put(merged,`state:${key}`);
             successfulWrites.set(key,{localVal,next});
-
-            remaining--;
           };
         }
 
