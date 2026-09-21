@@ -49,6 +49,6 @@
     "wrangler": "^4.125.0"
   },
   "dependencies": {
-    "dompurify": "^3.4.14"
+    "dompurify": "^3.4.15"
   }
 }
