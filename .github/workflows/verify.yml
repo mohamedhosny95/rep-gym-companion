@@ -42,6 +42,8 @@ jobs:
       - name: Validate JSON files parse
         run: |
           set -e
+          node -e "JSON.parse(require('fs').readFileSync('data/health-plan.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('data/health-plan.schema.json','utf8'))"
           node -e "JSON.parse(require('fs').readFileSync('dist/client/manifest.webmanifest','utf8'))"
           node -e "JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))"
 
@@ -72,7 +74,7 @@ jobs:
       - name: Check generated client copies (run npm run sync if this fails)
         run: |
           npm run sync
-          git diff --exit-code -- dist/client
+          git diff --exit-code -- dist/client src/client/health-data.js
 
   e2e:
     runs-on: ubuntu-latest

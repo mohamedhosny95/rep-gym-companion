@@ -430,3 +430,20 @@ test("Recovery check-in persistence: keeps legacy date as local YYYY-MM-DD while
   assert.equal(app.recordDateKey(record), today);
 });
 
+test("Health plan context: REP_HEALTH_GUIDE loads frozen with canonical provenance and operational rules", () => {
+  const app = createAppContext();
+  assert.ok(app.window.REP_HEALTH_GUIDE, "REP_HEALTH_GUIDE is loaded on window");
+  assert.equal(app.window.REP_HEALTH_GUIDE.version, "2026.09.15");
+  assert.equal(app.window.REP_HEALTH_GUIDE.updatedAt, "2026-09-15");
+  assert.equal(app.window.REP_HEALTH_GUIDE.provenance?.canonicalPath, "data/health-plan.json");
+  assert.match(app.window.REP_HEALTH_GUIDE.provenance?.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(app.window.REP_HEALTH_GUIDE.rules.minimumSleepHours, 7);
+  assert.equal(app.window.REP_HEALTH_GUIDE.rules.redFlagThreshold, 2);
+  assert.equal(app.window.REP_HEALTH_GUIDE.provenance?.sourceDocuments?.length, 5);
+  for (const doc of app.window.REP_HEALTH_GUIDE.provenance.sourceDocuments) {
+    assert.equal(doc.contentSha256, null);
+    assert.ok(doc.fileName && doc.role && doc.status);
+  }
+  assert.ok(Object.isFrozen(app.window.REP_HEALTH_GUIDE), "REP_HEALTH_GUIDE must be frozen");
+});
+

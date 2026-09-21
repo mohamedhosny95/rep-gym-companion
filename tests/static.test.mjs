@@ -54,14 +54,177 @@ test("the state migration preserves health data and adds coaching preferences",a
   const js=await read("dist/client/enhancements.js"); for(const field of ["sleepLogs","activeEnergy","lastVitalsImportDate","mealTemplates","savedMeals","habitOrder","connectionCapabilities","lastSyncedAt","healthProfile","healthMetrics","healthSummarySignatures","bodyMeasurements","chargingPlan","workoutChecks","analyticsGoal","insightControls","analyticsQuestions","onboarding","activeWorkoutPlan","progressionProposals","trainingTargets","nutritionView","trainingView","systemHealth","syncActivity","settingsSection","weekOverrides","scheduleAdjustments","launchEvents","customExperiments","experimentCheckins","exerciseSubstitutions","smartReminders","restTimer"])assert.match(js,new RegExp(field)); assert.match(js,/APP_SCHEMA=21/);
 });
 
-test("the September 15 health plan is the app's versioned source of truth",async()=>{
-  const [guide,app,enhancements]=await Promise.all([read("dist/client/health-data.js"),read("dist/client/app.js"),read("dist/client/enhancements.js")]);
+test("the September 15 health plan is the app's versioned source of truth and generated from canonical JSON",async()=>{
+  const [guide,app,enhancements,canonicalRaw,schemaRaw]=await Promise.all([
+    read("dist/client/health-data.js"),
+    read("dist/client/app.js"),
+    read("dist/client/enhancements.js"),
+    read("data/health-plan.json"),
+    read("data/health-plan.schema.json")
+  ]);
+
+  // Canonical JSON parses and is valid JSON
+  const plan = JSON.parse(canonicalRaw);
+  assert.equal(plan.version, "2026.09.15");
+  assert.equal(plan.updatedAt, "2026-09-15");
+  assert.ok(plan.sources && plan.rules && plan.nutrition && plan.hygiene && plan.provenance);
+
+  // Schema parses and defines top-level structure
+  const schema = JSON.parse(schemaRaw);
+  assert.ok(schema && Array.isArray(schema.required));
+  for (const field of ["version", "updatedAt", "sources", "rules", "nutrition", "hygiene", "provenance"]) {
+    assert.ok(schema.required.includes(field));
+  }
+
+  // Provenance and version markers in dist/client/health-data.js
+  assert.match(guide, /Canonical source:\s*data\/health-plan\.json/);
+  assert.match(guide, /Canonical SHA-256:\s*[0-9a-f]{64}/);
+  assert.match(guide, /canonicalPath:\s*"data\/health-plan\.json"/);
+  assert.match(guide, /sha256:\s*"[0-9a-f]{64}"/);
+
   for(const marker of ["2026.09.15","calories: 2250","calories: 2075","calories: 2150","calorieCeiling: 2480","Creatine monohydrate · 5 g daily","Balance Protein Crackers · half pack","Kerella Monday and Friday only as prescribed"])assert.match(guide,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
   for(const marker of ["Sun–Thu · Home · 7–10 min","RPE 7–8","Football Warm-up Jog\", \"2 min","Padel Shoulder Prep\", \"2 min","Skip optional step","Jacuzzi</span><strong>10–15","d===\"Mon\"?\"PDL\":d===\"Wed\"?\"FB\""])assert.ok(app.includes(marker),marker);
   assert.match(enhancements,/LEGACY_TARGETS/);
   assert.match(enhancements,/calories:2250,protein:185/);
   assert.match(enhancements,/calories:2075,protein:175/);
   assert.match(enhancements,/calories:2150,protein:175/);
+});
+
+test("health-data generator validates and matches canonical data deterministically", async () => {
+  const { validateHealthPlan, renderHealthData, normalizeLineEndings } = await import("../scripts/generate-health-data.mjs");
+  const canonicalRaw = await readFile(join(root, "data/health-plan.json"), "utf8");
+  const normalizedCanonical = normalizeLineEndings(canonicalRaw);
+  const plan = JSON.parse(normalizedCanonical);
+  assert.doesNotThrow(() => validateHealthPlan(plan));
+
+  const { createHash } = await import("node:crypto");
+  const sha256 = createHash("sha256").update(Buffer.from(normalizedCanonical, "utf8")).digest("hex");
+  const rendered = renderHealthData(plan, sha256);
+  const srcGuide = await read("src/client/health-data.js");
+  assert.equal(srcGuide, rendered, "src/client/health-data.js must match deterministic rendered output");
+});
+
+test("health-data check path validates CRLF resilience and rejects mutations with end-to-end temp files", async () => {
+  const { generateHealthData, renderHealthData, normalizeLineEndings } = await import("../scripts/generate-health-data.mjs");
+  const { mkdtemp, mkdir, writeFile, rm, readFile: rf } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+
+  const canonicalRaw = await rf(join(root, "data/health-plan.json"), "utf8");
+  const lfCanonical = canonicalRaw.replace(/\r\n|\r/g, "\n");
+  const crlfCanonical = lfCanonical.replace(/\n/g, "\r\n");
+
+  const plan = JSON.parse(lfCanonical);
+  const { createHash } = await import("node:crypto");
+  const sha256 = createHash("sha256").update(Buffer.from(lfCanonical, "utf8")).digest("hex");
+  const lfGenerated = normalizeLineEndings(renderHealthData(plan, sha256));
+  const crlfGenerated = lfGenerated.replace(/\n/g, "\r\n");
+
+  const tempRoot = await mkdtemp(join(tmpdir(), "health-data-test-"));
+  try {
+    await mkdir(join(tempRoot, "data"), { recursive: true });
+    await mkdir(join(tempRoot, "src/client"), { recursive: true });
+
+    // 1. Prove LF canonical + CRLF generated passes
+    await writeFile(join(tempRoot, "data/health-plan.json"), lfCanonical);
+    await writeFile(join(tempRoot, "src/client/health-data.js"), crlfGenerated);
+    assert.doesNotThrow(
+      () => generateHealthData({ root: tempRoot, check: true }),
+      "LF canonical + CRLF generated must pass"
+    );
+
+    // 2. CRLF canonical + LF generated yields the same provenance hash and passes
+    await writeFile(join(tempRoot, "data/health-plan.json"), crlfCanonical);
+    await writeFile(join(tempRoot, "src/client/health-data.js"), lfGenerated);
+    const result = generateHealthData({ root: tempRoot, check: true });
+    assert.equal(result.sha256, sha256, "CRLF canonical must yield the same hash");
+
+    // 3. Substantive one-character mutation throws
+    const mutatedGenerated = lfGenerated.replace("2250", "2251");
+    await writeFile(join(tempRoot, "src/client/health-data.js"), mutatedGenerated);
+    assert.throws(
+      () => generateHealthData({ root: tempRoot, check: true }),
+      /stale or differs/,
+      "Check must reject a substantive one-character mutation"
+    );
+
+    // 4. Missing generated file throws
+    await rm(join(tempRoot, "src/client/health-data.js"));
+    assert.throws(
+      () => generateHealthData({ root: tempRoot, check: true }),
+      /does not exist/,
+      "Check must reject missing generated file"
+    );
+
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("health-data validator rejects fractional integers, invalid calories, four-column meals, and empty supplements", async () => {
+  const { validateHealthPlan, normalizeLineEndings } = await import("../scripts/generate-health-data.mjs");
+  const canonicalRaw = await readFile(join(root, "data/health-plan.json"), "utf8");
+  const basePlan = JSON.parse(normalizeLineEndings(canonicalRaw));
+
+  // 1. Fractional integer rule
+  const planWithFractional = structuredClone(basePlan);
+  planWithFractional.rules.redFlagThreshold = 2.5;
+  assert.throws(
+    () => validateHealthPlan(planWithFractional),
+    /rules\.redFlagThreshold/,
+    "Must reject fractional integer rule"
+  );
+
+  // 2. Calories below 500
+  const planWithLowCalories = structuredClone(basePlan);
+  planWithLowCalories.nutrition.targets.gym.calories = 499;
+  assert.throws(
+    () => validateHealthPlan(planWithLowCalories),
+    /calories/i,
+    "Must reject calories below 500"
+  );
+
+  // 3. Four-column meal row
+  const planWithFourColMeal = structuredClone(basePlan);
+  planWithFourColMeal.nutrition.meals.gym[0] = ["06:30", "Omelette", "~530 kcal", "Extra Fourth Column"];
+  assert.throws(
+    () => validateHealthPlan(planWithFourColMeal),
+    /Invalid meal entry/i,
+    "Must reject meal row with four items"
+  );
+
+  // 4. Empty supplement list
+  const planWithEmptySupplements = structuredClone(basePlan);
+  planWithEmptySupplements.nutrition.supplements = [];
+  assert.throws(
+    () => validateHealthPlan(planWithEmptySupplements),
+    /nutrition\.supplements/i,
+    "Must reject empty supplement list"
+  );
+});
+
+test("canonical health plan records all five upstream source files with explicitly unrecorded hashes", async () => {
+  const canonicalRaw = await readFile(join(root, "data/health-plan.json"), "utf8");
+  const plan = JSON.parse(canonicalRaw);
+
+  assert.ok(plan.provenance && Array.isArray(plan.provenance.sourceDocuments));
+  assert.equal(plan.provenance.sourceDocuments.length, 5);
+
+  const expectedSources = [
+    { fileName: "Training-Recovery-Guide.pdf", role: "training" },
+    { fileName: "hygiene-routine-daily.pdf", role: "hygiene" },
+    { fileName: "Mohamed_Nutrition_Plan.pdf", role: "nutrition" },
+    { fileName: "Master-Health-Plan.md", role: "master" },
+    { fileName: "exercises.json", role: "training structure" }
+  ];
+
+  for (const expected of expectedSources) {
+    const doc = plan.provenance.sourceDocuments.find(d => d.fileName === expected.fileName);
+    assert.ok(doc, `Source document ${expected.fileName} must be present`);
+    assert.equal(doc.role, expected.role);
+    assert.equal(doc.contentSha256, null, `Original hash for ${expected.fileName} must be null (unrecorded)`);
+    assert.ok(typeof doc.status === "string" && doc.status.length > 0, "Must include concise status/reason");
+  }
 });
 
 test("health navigation stays in document flow and synchronization uses a verified durable outbox",async()=>{

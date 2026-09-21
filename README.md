@@ -138,27 +138,22 @@ Open `dist/client/index.html` in a browser. For reliable service-worker and offl
 
 ## Project folders
 
-- `src/client/` — the only editable browser application source
+- `data/health-plan.json` — the canonical, versioned health plan data source of truth
+- `data/health-plan.schema.json` — schema documenting health plan structure and invariants
+- `scripts/generate-health-data.mjs` — validates canonical plan and deterministically generates client health data
+- `src/client/` — editable browser application source (`src/client/health-data.js` is generated from `data/health-plan.json`)
 - `src/server/` — the editable Cloudflare Worker source
 - `dist/client/` — generated deployment files served by Cloudflare
 - `dist/server/` — generated Worker deployment artifact
 - `ios/RepHealthCompanion/` — the optional native HealthKit companion starter
 
-`src/` is the only application source of truth. `dist/` is generated
-and must not be hand-edited. Downloadable client builds are produced as CI artifacts
-instead of being committed as a second application copy and ZIP. **After editing anything under
-`src/`, run:**
+`data/health-plan.json` is the canonical source of truth for the health plan, and `src/` is the application source of truth. Maintainers must edit `data/health-plan.json` directly and run `npm run sync`. Never hand-edit the generated `src/client/health-data.js` or files under `dist/`. Downloadable client builds are produced as CI artifacts instead of being committed as a second application copy and ZIP. **After editing anything under `data/` or `src/`, run:**
 
 ```sh
-node scripts/sync-static.mjs
+npm run sync
 ```
 
-This rebuilds `dist/client/` and `dist/server/`. A GitHub Actions workflow
-(`.github/workflows/verify.yml`) checks on every push that source and deployment
-files match, uploads the deployable client from `main` as a short-lived artifact,
-syntax-checks all JS, and runs a headless end-to-end
-smoke test — it does not deploy anything; Cloudflare's own GitHub
-integration still owns deployment (see below).
+This validates `data/health-plan.json`, regenerates `src/client/health-data.js`, and rebuilds `dist/client/` and `dist/server/`. A GitHub Actions workflow (`.github/workflows/verify.yml`) checks on every push that canonical data and generated files match (`npm run check:health-data`), that source and deployment files match, uploads the deployable client from `main` as a short-lived artifact, syntax-checks all JS, and runs a headless end-to-end smoke test. The gated `deploy-production` job in GitHub Actions is the normal sole production deployer; Cloudflare direct Git integration remains disabled (see below).
 
 ## Testing
 
@@ -190,9 +185,7 @@ The production release gate, including Worker bundling and a production Wrangler
 npm run verify:production
 ```
 
-GitHub Actions configuration is intentionally unchanged while the account's
-monthly Actions quota is exhausted. Use the production gate in
-`docs/OPERATIONS.md` until the quota is available again.
+GitHub Actions (`deploy-production`) after `verify` and `e2e` pass on `main` is the normal sole production deployer. Manual deployment following the production gate in `docs/OPERATIONS.md` is a documented contingency only while GitHub Actions is actually unavailable.
 
 To run the optional real Notion contract check against a dedicated test copy of
 the Food Entries schema:
@@ -482,9 +475,9 @@ To audit staging or a preview instead, set `REP_DEVICE_AUDIT_URL` to that deploy
 GitHub `main` is the source of truth, and the `rep-gym-companion` Cloudflare Worker is the sole production runtime. The application has no runtime dependency on ChatGPT Sites or OpenAI Apps hosting.
 
 The normal production path is the gated `deploy-production` GitHub Actions
-job after `verify` and `e2e` pass on `main`. While the monthly Actions quota is
-exhausted, follow the manual local + isolated-staging gate in
-`docs/OPERATIONS.md`; do not edit the workflow to work around the quota.
+job after `verify` and `e2e` pass on `main`. Manual deployment following the local +
+isolated-staging gate in `docs/OPERATIONS.md` is a documented contingency only while GitHub Actions
+is actually unavailable; do not edit the workflow to work around temporary outages.
 Keep the protected GitHub `production` environment configured and Cloudflare's direct branch deployment disabled.
 See [`docs/RELEASE_SAFETY.md`](docs/RELEASE_SAFETY.md).
 
@@ -492,9 +485,9 @@ Before the first v60 deployment, set `CANONICAL_ORIGIN`, create
 `VITALS_IMPORT_KEY`, and deploy once with the Durable Object migration in
 `wrangler.jsonc`. In GitHub, protect `main` and require both `verify` and `e2e`.
 
-The earlier direct Cloudflare Git integration must remain disabled: it was
+The direct Cloudflare Git integration must remain disabled: it was
 observed deploying a feature-branch commit to the production environment.
-When Actions capacity is available, pull requests produce a per-commit deployable
-artifact and production waits for the gated `main` workflow.
+Pull requests produce a per-commit deployable artifact and production releases
+wait for the gated `main` workflow.
 
 Never commit secret values. Environment files are ignored by Git.
