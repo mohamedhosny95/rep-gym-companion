@@ -5,8 +5,10 @@ import { createHash } from "node:crypto";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { generateHealthData } from "./generate-health-data.mjs";
 
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
+generateHealthData({ root });
 const source=join(root,"src","client"),target=join(root,"dist","client");
 const serverSource=join(root,"src","server","index.js"),serverTarget=join(root,"dist","server","index.js"),serverNodeTarget=join(root,"dist","server","index.node.js");
 const domPurifySource=join(root,"node_modules","dompurify","dist","purify.min.js");

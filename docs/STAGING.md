@@ -31,4 +31,4 @@ REP_STAGING_SYNC_KEY=... NOTION_TEST_TOKEN=... npm run test:staging
 
 The script refuses a Worker that does not report `environment: staging`. It creates one labelled food row through the Worker, requires its verified receipt, reads the page directly from Notion, and archives it in `finally`.
 
-Promotion is manual while the GitHub Actions quota is unavailable: verify locally, run the staging contract, inspect Cloudflare logs, and only then use `npx wrangler deploy`. Record the deployed version and prior version before promotion so `npm run rollback:production` has an unambiguous target.
+The normal production path is the gated GitHub Actions `deploy-production` job running on `main` after `verify` and `e2e` pass; Cloudflare direct Git integration remains disabled. Manual promotion (`npx wrangler deploy`) is a documented contingency only while GitHub Actions is actually unavailable. In that contingency: verify locally, run the staging contract, inspect Cloudflare logs, and only then deploy manually. Record the deployed version and prior version before promotion so `npm run rollback:production` has an unambiguous target.

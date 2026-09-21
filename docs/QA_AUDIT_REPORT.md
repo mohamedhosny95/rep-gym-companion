@@ -2,6 +2,9 @@
 **Target Application:** Health OS / Gym Rep & Recomp Companion (`rep-gym-companion`)  
 **Audit Scope:** Full static analysis, logic tracing, and simulated execution across all 14 target architectural areas.
 
+> [!NOTE]
+> **Historical Audit Snapshot:** This document is a historical audit snapshot, not a live issue tracker. Findings and line numbers reflect the state of the codebase at the time of the audit and must be reverified against current `main` and automated test suites before acting on them. Individual findings are not claimed to be resolved without verified test evidence.
+
 ---
 
 ## 1. Summary of Findings

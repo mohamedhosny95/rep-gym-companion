@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mohamedhosny95/rep-gym-companion/data/health-plan.schema.json",
+  "title": "RepGymHealthPlan",
+  "description": "Canonical schema for the Rep Gym Companion versioned health plan data artifact.",
+  "type": "object",
+  "required": [
+    "version",
+    "updatedAt",
+    "sources",
+    "rules",
+    "nutrition",
+    "hygiene",
+    "provenance"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d{4}\\.\\d{2}\\.\\d{2}$",
+      "description": "Health plan release version in YYYY.MM.DD format."
+    },
+    "updatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO date of the latest substantive update."
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["sourceDocuments"],
+      "description": "Top-level provenance metadata recording known imported source filenames, roles, and content hashes.",
+      "properties": {
+        "sourceDocuments": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "description": "Known imported upstream source files with explicit nullable content hashes.",
+          "items": {
+            "type": "object",
+            "required": ["fileName", "role", "contentSha256", "status"],
+            "properties": {
+              "fileName": { "type": "string", "minLength": 1 },
+              "role": { "type": "string", "minLength": 1 },
+              "contentSha256": {
+                "oneOf": [
+                  { "type": "null" },
+                  { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                ],
+                "description": "SHA-256 hash of the original imported document if recorded, or null when not recorded during import."
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Provenance recording status or reason if hash is unrecorded."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "object",
+      "required": ["training", "nutrition", "hygiene", "master", "drive"],
+      "description": "Authoritative upstream Google Docs/Drive sources.",
+      "properties": {
+        "training": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "nutrition": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "hygiene": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "master": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "drive": { "type": "string", "format": "uri", "pattern": "^https://" }
+      },
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "object",
+      "required": [
+        "minimumSleepHours",
+        "wakeTime",
+        "targetBedtime",
+        "redFlagThreshold",
+        "reviewWeek",
+        "stallSessions",
+        "cardioEasySessions",
+        "cardioMinimumWeeks"
+      ],
+      "description": "Operational recovery, sleep, and review rules.",
+      "properties": {
+        "minimumSleepHours": { "type": "number", "minimum": 1, "maximum": 24 },
+        "wakeTime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+        "targetBedtime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+        "redFlagThreshold": { "type": "integer", "minimum": 1 },
+        "reviewWeek": { "type": "integer", "minimum": 1 },
+        "stallSessions": { "type": "integer", "minimum": 1 },
+        "cardioEasySessions": { "type": "integer", "minimum": 1 },
+        "cardioMinimumWeeks": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "nutrition": {
+      "type": "object",
+      "required": ["targets", "meals", "rules", "supplements", "milk"],
+      "description": "Macro targets, meal schedules, rules, and supplement guidance.",
+      "properties": {
+        "targets": {
+          "type": "object",
+          "required": ["gym", "cardio", "rest", "fasting"],
+          "additionalProperties": false,
+          "patternProperties": {
+            "^(gym|cardio|rest|fasting)$": {
+              "type": "object",
+              "required": ["label", "calories", "protein", "carbs", "fat", "fiber", "water"],
+              "properties": {
+                "label": { "type": "string", "minLength": 1 },
+                "calories": { "type": "number", "minimum": 500, "maximum": 5000 },
+                "protein": { "type": "number", "minimum": 0 },
+                "carbs": { "type": "number", "minimum": 0 },
+                "fat": { "type": "number", "minimum": 0 },
+                "fiber": { "type": "number", "minimum": 0 },
+                "water": { "type": "number", "minimum": 0 },
+                "calorieCeiling": { "type": "number", "minimum": 500, "maximum": 5000 }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "meals": {
+          "type": "object",
+          "required": ["gym", "cardio", "rest", "fasting"],
+          "properties": {
+            "gym": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "minItems": 2,
+                "maxItems": 3
+              }
+            },
+            "cardio": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "minItems": 2,
+                "maxItems": 3
+              }
+            },
+            "rest": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "minItems": 2,
+                "maxItems": 3
+              }
+            },
+            "fasting": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "minItems": 2,
+                "maxItems": 3
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "rules": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "supplements": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "milk": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "hygiene": {
+      "type": "object",
+      "required": [
+        "nonNegotiables",
+        "morning",
+        "evening",
+        "afterWork",
+        "postWorkout",
+        "hair",
+        "strictHairRules",
+        "weekly",
+        "monthly"
+      ],
+      "properties": {
+        "nonNegotiables": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "morning": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "evening": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "afterWork": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "postWorkout": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "hair": {
+          "type": "object",
+          "required": [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday"
+          ],
+          "properties": {
+            "Sunday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Monday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Tuesday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Wednesday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Thursday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Friday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "Saturday": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+          },
+          "additionalProperties": false
+        },
+        "strictHairRules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "weekly": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "monthly": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
