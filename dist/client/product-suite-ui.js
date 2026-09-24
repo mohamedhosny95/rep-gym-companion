@@ -3,13 +3,30 @@
   const suite=window.REP_PRODUCT_SUITE,features=window.REP_FEATURES,reportCard=window.REP_REPORT_CARD;
   if(!suite||!window.state)return;
   const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-  const defaults=[{id:"workout",label:"Training day",time:"07:30",enabled:false},{id:"bedtime",label:"Bedtime wind-down",time:"22:30",enabled:false},{id:"unfinished",label:"Resume unfinished workout",time:"18:00",enabled:false},{id:"weekly",label:"Weekly review",time:"18:00",enabled:false,days:[6]}];
+  const defaults=[{id:"workout",label:"Training day",time:"09:30",enabled:false},{id:"bedtime",label:"Bedtime wind-down",time:"21:00",enabled:false},{id:"unfinished",label:"Resume unfinished workout",time:"18:00",enabled:false},{id:"weekly",label:"Weekly review",time:"18:00",enabled:false,days:[6]}];
+  const weekdays=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const trainingFocus=new Set(["gym","padel","football","cardio"]);
   let mounting=false,photoUrls=[];
   function toast(message){if(typeof window.showToast==="function")window.showToast(message);}
   function save(){window.persist?.();}
   addEventListener("error",event=>{suite.trackEvent(state,"error",{source:"window",kind:event.error?.name||"Error"});save();});
   addEventListener("unhandledrejection",event=>{suite.trackEvent(state,"error",{source:"promise",kind:event.reason?.name||"Error"});save();});
-  function currentReminders(){const saved=new Map((state.smartReminders||[]).map(row=>[row.id,row]));return defaults.map(row=>({...row,...saved.get(row.id)}));}
+  function trainingDays(){return weekdays.flatMap((day,index)=>trainingFocus.has(state.preferences?.schedule?.[day]?.focus)?[index]:[]);}
+  function suggestedWindDown(){
+    const bedtime=window.REP_HEALTH_ENGINE?.bedtime(state,suite.dateKey(),state.healthProfile)?.time||"21:30";
+    const parts=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(bedtime),bedtimeMinutes=parts?Number(parts[1])*60+Number(parts[2]):1290;
+    const minutes=(bedtimeMinutes-30+1440)%1440;
+    return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+  }
+  function currentReminders(){
+    const saved=new Map((state.smartReminders||[]).map(row=>[row.id,row])),days=trainingDays(),onlyEveningSports=days.length&&!days.some(index=>state.preferences.schedule[weekdays[index]]?.focus==="gym");
+    return defaults.map(row=>{
+      const suggestion=row.id==="bedtime"?suggestedWindDown():row.id==="workout"&&onlyEveningSports?"18:00":row.time;
+      const reminder={...row,time:suggestion,...saved.get(row.id)};
+      if(row.id==="workout")reminder.days=days;
+      return reminder;
+    });
+  }
 
   async function handlePrivateLink(){
     const match=location.hash.match(/^#weekly=(.+)$/);if(!match)return false;
@@ -17,7 +34,9 @@
   }
   function weeklyCard(){
     const summary=suite.weeklySummary(state,undefined,window.REP_PERFORMANCE_INSIGHTS);
-    return `<section class="product-card weekly-product-card" data-product-weekly><div class="product-card-head"><div><small>WEEKLY COACHING REPORT</small><h2>${summary.adherence}% adherence · ${summary.completed}/${summary.planned} workouts</h2></div><strong>${summary.avgReadiness===null?"—":`${summary.avgReadiness}%`}</strong></div><p>${esc(summary.nextAction)}</p><div class="product-actions"><button class="settings-primary" data-weekly-pdf>Save PDF</button><button class="quiet-setting" data-weekly-link>Copy private 7-day link</button></div><small class="privacy-copy">The PDF is built locally. The private link is end-to-end encrypted; its decryption key stays in the URL fragment and is never sent to the server.</small></section>`;
+    const headline=!summary.planned?"No workouts planned this week":summary.completed?`${summary.adherence}% adherence · ${summary.completed}/${summary.planned} planned sessions`:`No planned sessions completed · 0/${summary.planned}`;
+    const extra=Math.max(0,(summary.totalWorkouts||0)-summary.completed);
+    return `<section class="product-card weekly-product-card" data-product-weekly><div class="product-card-head"><div><small>WEEKLY COACHING REPORT</small><h2>${headline}</h2></div><strong>${summary.avgReadiness===null?"—":`${summary.avgReadiness}%`}</strong></div><p>${extra?`${extra} other workout${extra===1?"":"s"} logged. `:""}${esc(summary.nextAction)}</p><div class="product-actions"><button class="settings-primary" data-weekly-pdf>Save PDF</button><button class="quiet-setting" data-weekly-link>Copy private 7-day link</button></div><small class="privacy-copy">The PDF is built locally. The private link is end-to-end encrypted; its decryption key stays in the URL fragment and is never sent to the server.</small></section>`;
   }
   function experimentsCard(){
     const rows=suite.analyzeExperiments(state),today=suite.dateKey(),checks=state.experimentCheckins[today]||{};
@@ -25,7 +44,8 @@
   }
   function remindersCard(){
     const reminders=currentReminders(),pulse=suite.launchPulse(state);
-    return `<section class="product-card smart-reminders" data-product-reminders><div class="product-card-head"><div><small>SMART REMINDERS</small><h2>Quiet until you opt in</h2></div><span>${state.pushEndpoint?"Enabled":"Off"}</span></div><p>Choose only the moments that help. Health OS will schedule training, wind-down, unfinished-workout, and weekly-review prompts independently.</p><form data-smart-reminders>${reminders.map(row=>`<label><input type="checkbox" data-reminder-enabled="${row.id}" ${row.enabled?"checked":""}><span>${esc(row.label)}</span><input type="time" data-reminder-time="${row.id}" value="${esc(row.time)}"></label>`).join("")}<button class="settings-primary">${state.pushEndpoint?"Update reminders":"Enable selected reminders"}</button></form><div class="launch-pulse"><small>FIRST-WEEK PULSE · LOCAL ONLY</small><span>${pulse.counts.onboarding_completed||0} setup</span><span>${pulse.counts.today_plan_applied||0} plans used</span><span>${pulse.counts.workout_completed||0} workouts</span><span>${pulse.abandoned} abandoned</span><span>${pulse.errors} errors</span></div></section>`;
+    const days=trainingDays().map(index=>weekdays[index].slice(0,3)).join(", ");
+    return `<section class="product-card smart-reminders" data-product-reminders><div class="product-card-head"><div><small>SMART REMINDERS</small><h2>Quiet until you opt in</h2></div><span>${state.pushEndpoint?"Enabled":"Off"}</span></div><p>Choose only the moments that help. Health OS will schedule training, wind-down, unfinished-workout, and weekly-review prompts independently.</p><form data-smart-reminders>${reminders.map(row=>`<label><input type="checkbox" data-reminder-enabled="${row.id}" ${row.enabled&&!(row.id==="workout"&&!days)?"checked":""} ${row.id==="workout"&&!days?"disabled":""}><span>${esc(row.label)}</span><input type="time" data-reminder-time="${row.id}" value="${esc(row.time)}"></label>`).join("")}<p class="reminder-schedule-note">Training: ${days||"no scheduled training days"}. One shared reminder time applies to those days; adjust it for evening sessions. Wind-down is suggested 30 minutes before your calculated bedtime. Saved times stay yours until you change them. After changing Schedule, tap Update reminders to apply the new days.</p><button class="settings-primary">${state.pushEndpoint?"Update reminders":"Enable selected reminders"}</button>${state.pushEndpoint?'<button class="quiet-setting" type="button" data-reminders-disable>Disable all reminders</button>':""}</form><div class="launch-pulse"><small>FIRST-WEEK PULSE · LOCAL ONLY</small><span>${pulse.counts.onboarding_completed||0} setup</span><span>${pulse.counts.today_plan_applied||0} plans used</span><span>${pulse.counts.workout_completed||0} workouts</span><span>${pulse.abandoned} abandoned</span><span>${pulse.errors} errors</span></div></section>`;
   }
   function progressCard(){return `<details class="product-card progress-vault" data-product-photos><summary class="product-card-head"><div><small>ENCRYPTED PROGRESS VAULT</small><h2>Photos + measurements</h2></div><span>Local only · open</span></summary><p>Images are resized on this device, encrypted with the device key, and never uploaded. Encrypted manual backups can include them.</p><form data-photo-add><label class="file-action">Choose photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" data-photo-file aria-label="Progress photo file"></label><input type="date" data-photo-date value="${suite.dateKey()}" aria-label="Progress photo date"><input maxlength="80" data-photo-label placeholder="Front, side, check-in…" aria-label="Progress photo label"><button class="settings-primary">Encrypt & save</button></form><div class="progress-photo-grid" data-photo-grid><p class="product-empty">Decrypting the local vault…</p></div><div class="photo-compare" data-photo-compare hidden><img data-compare-a alt="Earlier progress"><img data-compare-b alt="Later progress"></div></details>`;}
 
@@ -46,7 +66,18 @@
     const reg=await navigator.serviceWorker.ready,decode=value=>{const padding="=".repeat((4-value.length%4)%4),raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));},subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decode(keyData.key)}),first=reminders.find(row=>row.enabled);
     const response=await window.REP_AUTH.fetch("/api/push/subscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscription:subscription.toJSON(),time:first.time,reminders:reminders.filter(row=>row.enabled).map(row=>({id:row.id,time:row.time,days:row.days||[0,1,2,3,4,5,6],enabled:true})),timezoneOffsetMinutes:new Date().getTimezoneOffset(),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||"Could not save reminders.");state.pushEndpoint=subscription.endpoint;
   }
-  function bindReminders(card){card.querySelector("[data-smart-reminders]").onsubmit=async event=>{event.preventDefault();const reminders=currentReminders().map(row=>({...row,enabled:card.querySelector(`[data-reminder-enabled="${row.id}"]`).checked,time:card.querySelector(`[data-reminder-time="${row.id}"]`).value||row.time}));try{await enableSmartReminders(reminders);state.smartReminders=reminders;save();toast("Smart reminders updated.");mount(true);}catch(error){toast(String(error.message||error));}};}
+  async function disableSmartReminders(){
+    const reg=await navigator.serviceWorker.ready,subscription=await reg.pushManager.getSubscription(),endpoint=subscription?.endpoint||state.pushEndpoint;
+    const response=await window.REP_AUTH.fetch("/api/push/unsubscribe",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({endpoint})}),data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.ok)throw Error(data.error||"Could not disable reminders.");
+    if(subscription)await subscription.unsubscribe().catch(()=>false);
+    state.pushEndpoint=null;
+  }
+  function bindReminders(card){
+    const disable=async()=>{try{await disableSmartReminders();state.smartReminders=currentReminders().map(row=>({...row,enabled:false}));save();toast("Reminders disabled.");mount(true);}catch(error){toast(String(error.message||error));}};
+    card.querySelector("[data-reminders-disable]")?.addEventListener("click",disable);
+    card.querySelector("[data-smart-reminders]").onsubmit=async event=>{event.preventDefault();const reminders=currentReminders().map(row=>({...row,enabled:card.querySelector(`[data-reminder-enabled="${row.id}"]`).checked,time:card.querySelector(`[data-reminder-time="${row.id}"]`).value||row.time}));if(!reminders.some(row=>row.enabled)){if(state.pushEndpoint)await disable();else toast("Select at least one reminder first.");return;}try{await enableSmartReminders(reminders);state.smartReminders=reminders;save();toast("Smart reminders updated.");mount(true);}catch(error){toast(String(error.message||error));}};
+  }
   function measurementFor(date){const candidates=[...(state.bodyMeasurements||[])].filter(row=>suite.dateKey(row.date)<=date).sort((a,b)=>String(b.date).localeCompare(String(a.date))),weight=[...(state.bodyWeights||[])].filter(row=>suite.dateKey(row.date)<=date).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];return {waist:candidates[0]?.waistCm||candidates[0]?.waist||null,weight:weight?.kg||candidates[0]?.weightKg||null};}
   async function processImage(file){const bitmap=await createImageBitmap(file),scale=Math.min(1,1280/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement("canvas");canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.82));return new Uint8Array(await blob.arrayBuffer());}
   async function loadPhotos(card){
@@ -61,7 +92,7 @@
     if(mounting)return;mounting=true;try{
       if(force)document.querySelectorAll("[data-product-weekly],[data-product-experiments],[data-product-reminders],[data-product-photos]").forEach(node=>node.remove());
       const app=document.querySelector("#app");if(!app)return;
-      const insights=state.view==="insights";if(insights){const anchor=app.querySelector(".weekly-health-review,.health-subnav,.module-head");if(anchor&&!app.querySelector("[data-product-weekly]")){anchor.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyCard()+experimentsCard()));bindWeekly(app.querySelector("[data-product-weekly]"));bindExperiments(app.querySelector("[data-product-experiments]"));}}
+      const insights=state.view==="insights";if(insights){const anchor=app.querySelector(".weekly-health-review")||app.querySelector(".trends-grid")||app.querySelector(".module-head");if(anchor&&!app.querySelector("[data-product-weekly]")){anchor.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(weeklyCard()+experimentsCard()));bindWeekly(app.querySelector("[data-product-weekly]"));bindExperiments(app.querySelector("[data-product-experiments]"));}}
       const vitals=state.view==="vitals";if(vitals){const anchor=app.querySelector(".health-subnav,.module-head");if(anchor&&!app.querySelector("[data-product-photos]")){anchor.insertAdjacentHTML("afterend",REP_SAFE_DOM.sanitize(progressCard()));bindPhotos(app.querySelector("[data-product-photos]"));}}
       if(state.view==="settings"&&state.settingsSection==="general"){const anchor=app.querySelector(".push-card")||app.querySelector(".settings-card");if(anchor&&!app.querySelector("[data-product-reminders]")){const host=document.createElement("div");host.innerHTML=REP_SAFE_DOM.sanitize(remindersCard());const card=host.firstElementChild;if(anchor.classList.contains("push-card"))anchor.replaceWith(card);else anchor.insertAdjacentElement("afterend",card);bindReminders(card);}}
       if(state.timer&&!state.timer.interval&&state.sessionStartedAt)window.resumePersistedRestTimer?.();

@@ -33,15 +33,28 @@
     return average(parts);
   };
 
+  function fulfillsPlannedFocus(record,focus){
+    const session=String(record?.session||"").toLowerCase(),activity=String(record?.activityType||"").toLowerCase();
+    if(focus==="gym")return session==="gym"||session==="gymlite"||(session.startsWith("custom-")&&(Number(record?.sets)>0||record?.entries?.some(entry=>Number(entry.reps)>0)));
+    if(focus==="padel"||focus==="football")return session===focus||(session==="activity"&&activity===focus);
+    if(focus==="cardio")return session==="cardio"||(session==="activity"&&["padel","football","basketball","swimming","cycling","tennis"].includes(activity));
+    return false;
+  }
+  function occupiesRecoveryDay(record){
+    const session=String(record?.session||"").toLowerCase(),activity=String(record?.activityType||"").toLowerCase();
+    if(session==="activity")return ["padel","football","basketball","swimming","cycling","tennis"].includes(activity);
+    return ["gym","gymlite","padel","football","cardio","general"].includes(session)||(session.startsWith("custom-")&&(Number(record?.sets)>0||record?.entries?.some(entry=>Number(entry.reps)>0)));
+  }
+
   function reconcileSchedule(state,now=dateKey()){
-    const schedule=state?.preferences?.schedule||{},historyDates=new Set((state?.history||[]).map(row=>dateKey(row.date)).filter(Boolean));
+    const schedule=state?.preferences?.schedule||{},history=state?.history||[];
     const onboarding=dateKey(state?.onboarding?.completedAt),overrides={...(state?.weekOverrides||{})},processed=new Set(state?.scheduleAdjustments||[]),today=atNoon(now),weekStart=new Date(today);weekStart.setDate(today.getDate()-today.getDay());
     for(let offset=0;offset<today.getDay();offset++){
       const source=dateKey(new Date(weekStart.getFullYear(),weekStart.getMonth(),weekStart.getDate()+offset,12)),plan=overrides[source]||schedule[dayName(source)];
-      if(!plan||!TRAINING_FOCUS.has(plan.focus)||historyDates.has(source)||processed.has(source)||(onboarding&&source<onboarding))continue;
+      if(!plan||!TRAINING_FOCUS.has(plan.focus)||history.some(row=>dateKey(row.date)===source&&fulfillsPlannedFocus(row,plan.focus))||processed.has(source)||(onboarding&&source<onboarding))continue;
       for(let targetOffset=today.getDay();targetOffset<7;targetOffset++){
         const target=dateKey(new Date(weekStart.getFullYear(),weekStart.getMonth(),weekStart.getDate()+targetOffset,12)),targetName=dayName(target),targetPlan=overrides[target]||schedule[targetName];
-        if(targetName==="Friday"||!targetPlan||!RECOVERY_FOCUS.has(targetPlan.focus)||historyDates.has(target))continue;
+        if(targetName==="Friday"||!targetPlan||!RECOVERY_FOCUS.has(targetPlan.focus)||history.some(row=>dateKey(row.date)===target&&occupiesRecoveryDay(row)))continue;
         overrides[target]={...plan,sourceDate:source,reason:"Missed workout moved to the next available recovery day"};processed.add(source);break;
       }
     }
@@ -66,12 +79,20 @@
 
   function weeklySummary(state,now=dateKey(),performanceApi=null){
     const start=shiftDay(now,-6),history=(state.history||[]).filter(row=>{const key=dateKey(row.date);return key>=start&&key<=now;}),schedule=state.preferences?.schedule||{};
-    let planned=0;for(let i=0;i<7;i++){const key=shiftDay(now,i-6),plan=state.weekOverrides?.[key]||schedule[dayName(key)];if(TRAINING_FOCUS.has(plan?.focus))planned++;}
-    const completed=history.length,adherence=planned?Math.min(100,Math.round(completed/planned*100)):completed?100:0;
+    let planned=0;const matched=[],movedSources=new Set(Object.values(state.weekOverrides||{}).map(row=>row.sourceDate).filter(Boolean));
+    for(let i=0;i<7;i++){
+      const key=shiftDay(now,i-6),plan=state.weekOverrides?.[key]||schedule[dayName(key)];
+      if(!TRAINING_FOCUS.has(plan?.focus)||movedSources.has(key))continue;
+      planned++;
+      const record=history.find(row=>dateKey(row.date)===key&&fulfillsPlannedFocus(row,plan.focus));
+      if(record)matched.push(record);
+    }
+    const completed=matched.length,adherence=planned?Math.round(completed/planned*100):0;
+    const matchedActivities=new Set(matched.filter(row=>row.session==="activity")),completedWorkouts=history.filter(row=>(row.session&&row.session!=="activity")||matchedActivities.has(row));
     const insight=performanceApi?.analyze?.(state,{now})||{},prs=insight.strength?.prs||[],readiness=[];
     for(let i=0;i<7;i++){const score=localReadiness(state,shiftDay(now,i-6));if(Number.isFinite(score))readiness.push(score);}
     const avgReadiness=average(readiness),moved=Object.values(state.weekOverrides||{}).filter(row=>row.sourceDate&&row.sourceDate>=start).length,nextAction=completed<planned?(moved?"Complete the next rescheduled session; keep Friday as full rest.":"Complete the next planned session; keep Friday as full rest."):readiness.length<5?"Log recovery on five days next week before changing the plan.":prs.length?"Repeat the PR loads once with clean form before progressing again.":"Keep the current plan for another week and build one clean rep per main lift.";
-    return {period:{start,end:now},planned,completed,adherence,prs:prs.slice(0,8).map(row=>({exercise:row.exercise,value:row.currentE1rm,unit:"kg e1RM",date:row.bestDate})),avgReadiness:avgReadiness===null?null:Math.round(avgReadiness),readinessDays:readiness.length,rescheduled:moved,nextAction,workouts:history.map(row=>({date:dateKey(row.date),session:row.session||row.name||"Workout",durationMinutes:row.durationMinutes||null}))};
+    return {period:{start,end:now},planned,completed,totalWorkouts:completedWorkouts.length,adherence,prs:prs.slice(0,8).map(row=>({exercise:row.exercise,value:row.currentE1rm,unit:"kg e1RM",date:row.bestDate})),avgReadiness:avgReadiness===null?null:Math.round(avgReadiness),readinessDays:readiness.length,rescheduled:moved,nextAction,workouts:completedWorkouts.map(row=>({date:dateKey(row.date),session:row.session==="activity"?(row.activityLabel||row.activityType||"Activity"):(row.session||row.name||"Workout"),durationMinutes:row.durationMinutes||null}))};
   }
 
   function trackEvent(state,name,metadata={}){

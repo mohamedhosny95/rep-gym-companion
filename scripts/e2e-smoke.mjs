@@ -389,6 +389,16 @@ try {
   await assertAccessibleView(page,"Performance Insights");
 
   await page.click("#settingsButton");
+  const reminderSuggestion=await page.evaluate(()=>({
+    windDown:document.querySelector('[data-reminder-time="bedtime"]')?.value,
+    bedtime:window.REP_HEALTH_ENGINE.bedtime(state,isoDay(),state.healthProfile).time,
+    workoutDays:document.querySelector(".reminder-schedule-note")?.textContent,
+    enabled:[...document.querySelectorAll("[data-reminder-enabled]")].some(input=>input.checked)
+  }));
+  const [bedHour,bedMinute]=reminderSuggestion.bedtime.split(":").map(Number);
+  const expectedWindDown=(bedHour*60+bedMinute-30+1440)%1440;
+  assertTrue(reminderSuggestion.windDown===`${String(Math.floor(expectedWindDown/60)).padStart(2,"0")}:${String(expectedWindDown%60).padStart(2,"0")}`,"Wind-down suggestion precedes the calculated bedtime by 30 minutes");
+  assertTrue(reminderSuggestion.workoutDays?.includes("Training:")&&!reminderSuggestion.enabled,"Reminders use the saved training schedule and remain opt-in");
   await page.click('[data-settings-tab="sync"]');
   await page.waitForTimeout(200);
   assertTrue(await page.locator(".sync-center").count() === 1, "Unified Sync Center opens from Settings");
@@ -510,7 +520,11 @@ try {
     renderOverview();
   });
   assertTrue(await page.locator(".adaptive-adjustments").count()===1,"Adaptive Today Plan explains its concrete workout changes");
-  await page.click("[data-apply-adaptive]");
+  const todayAction=page.locator("[data-goto-train]");
+  const actionBox=await todayAction.boundingBox();
+  assertTrue(Boolean(actionBox)&&actionBox.y+actionBox.height<844,"Today's main workout action stays in the first phone viewport");
+  assertTrue(await page.locator("#app [data-apply-adaptive]").count()===0,"Today has one primary workout action");
+  await todayAction.click();
   const appliedPlan=await page.evaluate(()=>state.activeWorkoutPlan);
   assertTrue(appliedPlan?.mode==="reduced"&&appliedPlan?.targetSession==="gymLite","One tap applies reduced sets, exercise selection, and load policy");
   await page.evaluate(()=>{
