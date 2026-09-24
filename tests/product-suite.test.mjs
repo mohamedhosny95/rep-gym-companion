@@ -27,6 +27,50 @@ test("weekly summary returns adherence, PRs, readiness, and one next action",()=
   assert.equal(result.completed,1);assert.equal(result.planned,2);assert.equal(result.adherence,50);assert.equal(result.prs[0].exercise,"Chest Press");assert.ok(result.nextAction.length>20);
 });
 
+test("an unrelated activity neither fulfills gym nor prevents its reschedule",()=>{
+  const schedule={Sunday:{focus:"rest"},Monday:{focus:"rest"},Tuesday:{focus:"gym"},Wednesday:{focus:"recovery"},Thursday:{focus:"recovery"},Friday:{focus:"rest"},Saturday:{focus:"rest"}};
+  const state={history:[{date:"2026-09-01T10:00:00Z",session:"activity",activityType:"other",activityLabel:"Walk"}],preferences:{schedule},onboarding:{completedAt:"2026-08-30T08:00:00Z"},weekOverrides:{},scheduleAdjustments:[],sleepLogs:[],recoveryCheckins:[]};
+  const adjustment=suite.reconcileSchedule(state,"2026-09-02");
+  assert.equal(adjustment.weekOverrides["2026-09-02"].focus,"gym");
+  const report=suite.weeklySummary(state,"2026-09-02");
+  assert.equal(report.completed,0);assert.equal(report.planned,1);assert.equal(report.adherence,0);assert.deepEqual(report.workouts,[]);
+});
+
+test("matching sport activity fulfills its day and duplicate sessions cannot inflate adherence",()=>{
+  const schedule={Sunday:{focus:"rest"},Monday:{focus:"padel"},Tuesday:{focus:"gym"},Wednesday:{focus:"recovery"},Thursday:{focus:"recovery"},Friday:{focus:"rest"},Saturday:{focus:"rest"}};
+  const state={history:[{date:"2026-08-31T10:00:00Z",session:"activity",activityType:"padel",activityLabel:"Padel"},{date:"2026-08-31T11:00:00Z",session:"padel"},{date:"2026-09-01T10:00:00Z",session:"gym"},{date:"2026-09-01T12:00:00Z",session:"gym"}],preferences:{schedule},onboarding:{completedAt:"2026-08-30T08:00:00Z"},weekOverrides:{},scheduleAdjustments:[],sleepLogs:[],recoveryCheckins:[]};
+  const adjustment=suite.reconcileSchedule(state,"2026-09-02");
+  assert.deepEqual(adjustment.weekOverrides,{});
+  const report=suite.weeklySummary(state,"2026-09-02");
+  assert.equal(report.completed,2);assert.equal(report.planned,2);assert.equal(report.adherence,100);assert.equal(report.workouts.length,4);
+});
+
+test("a completed rescheduled workout counts once and clears the next action",()=>{
+  const schedule={Sunday:{focus:"rest"},Monday:{focus:"rest"},Tuesday:{focus:"gym"},Wednesday:{focus:"recovery"},Thursday:{focus:"recovery"},Friday:{focus:"rest"},Saturday:{focus:"rest"}};
+  const base={preferences:{schedule},onboarding:{completedAt:"2026-08-30T08:00:00Z"},weekOverrides:{},scheduleAdjustments:[],sleepLogs:[],recoveryCheckins:[]};
+  const walk={date:"2026-09-02T08:00:00Z",session:"activity",activityType:"other",activityLabel:"Walk"};
+  const adjustment=suite.reconcileSchedule({...base,history:[walk]},"2026-09-02");
+  assert.equal(adjustment.weekOverrides["2026-09-02"].sourceDate,"2026-09-01");
+  const report=suite.weeklySummary({...base,weekOverrides:adjustment.weekOverrides,history:[walk,{date:"2026-09-02T10:00:00Z",session:"gym"}]},"2026-09-02");
+  assert.equal(report.planned,1);assert.equal(report.completed,1);assert.equal(report.adherence,100);
+  assert.doesNotMatch(report.nextAction,/Complete the next/);
+});
+
+test("an extra workout appears in the report without inflating planned adherence",()=>{
+  const schedule={Sunday:{focus:"rest"},Monday:{focus:"rest"},Tuesday:{focus:"gym"},Wednesday:{focus:"recovery"},Thursday:{focus:"recovery"},Friday:{focus:"rest"},Saturday:{focus:"rest"}};
+  const history=[{date:"2026-09-01T10:00:00Z",session:"gym"},{date:"2026-09-02T10:00:00Z",session:"gym"}];
+  const report=suite.weeklySummary({preferences:{schedule},history,weekOverrides:{},sleepLogs:[],recoveryCheckins:[]},"2026-09-02");
+  assert.equal(report.completed,1);assert.equal(report.adherence,100);assert.equal(report.totalWorkouts,2);assert.equal(report.workouts.length,2);
+});
+
+test("a completed custom lifting routine can fulfill a planned gym day",()=>{
+  const schedule={Sunday:{focus:"rest"},Monday:{focus:"rest"},Tuesday:{focus:"gym"},Wednesday:{focus:"recovery"},Thursday:{focus:"recovery"},Friday:{focus:"rest"},Saturday:{focus:"rest"}};
+  const history=[{date:"2026-09-01T10:00:00Z",session:"custom-upper",sets:3,entries:[{exercise:"Chest Press",reps:10}]}];
+  const state={preferences:{schedule},history,weekOverrides:{},sleepLogs:[],recoveryCheckins:[]};
+  const report=suite.weeklySummary(state,"2026-09-02");
+  assert.equal(report.completed,1);assert.equal(report.adherence,100);
+});
+
 test("equipment-aware substitutions only return configured equipment",()=>{
   assert.deepEqual(suite.availableSubstitutions("Chest Press",["bodyweight"]).map(row=>row.name),["Push-Up"]);
 });

@@ -85,9 +85,7 @@
   }
 
   function thisWeekExecutivePanel(model){
-    const weekAgo=Date.now()-7*86400000;
-    const history7=state.history.filter(h=>new Date(h.date).getTime()>=weekAgo);
-    const ready=window.health?.readiness ? window.health.readiness(state, (window.REP_HEALTH_COVERAGE?.dayKey()||new Date().toISOString().slice(0,10)), state.healthProfile) : {score:null,confidence:"medium"};
+    const weekly=window.REP_PRODUCT_SUITE?.weeklySummary(state),ready=window.REP_HEALTH_ENGINE?.readiness(state,window.REP_HEALTH_ENGINE.dateKey(),state.healthProfile)||{score:null,confidence:"low"};
     const n7=model.nutrition?.adherence7||{protein:null};
     const slope=model.nutrition?.weightSlopePerWeek;
     const slopeText=slope===null?"—":`${slope>0?"+":""}${slope} kg/${"wk"}`;
@@ -100,23 +98,23 @@
       <div class="this-week-grid">
         <div>
           <small>${"TRAINING"}</small>
-          <strong>${history7.length} ${"done"}</strong>
-          <span>${"Target: 3/wk"}</span>
+          <strong>${weekly?.totalWorkouts||0} ${"done"}</strong>
+          <span>${weekly?.planned?`Target: ${weekly.planned} planned`:("No sessions planned")}</span>
         </div>
         <div>
           <small>${"READINESS"}</small>
           <strong style="color:var(--acid);">${ready.score!==null?`${ready.score}%`:"—"}</strong>
-          <span>${confidence(ready.confidence)}</span>
+          <span>${ready.score===null?("Building baseline"):confidence(ready.confidence)}</span>
         </div>
         <div>
           <small>${"PROTEIN"}</small>
           <strong>${n7.protein!==null?`${Math.round(n7.protein)}%`:"—"}</strong>
-          <span>${"Target hit"}</span>
+          <span>${n7.protein===null?("Needs food logs"):("Logged-day adherence")}</span>
         </div>
         <div>
           <small>${"WEIGHT RATE"}</small>
           <strong>${slopeText}</strong>
-          <span>${"Robust slope"}</span>
+          <span>${slope===null?("Needs weigh-ins"):("Robust slope")}</span>
         </div>
       </div>
     </section>`;

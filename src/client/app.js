@@ -1005,15 +1005,20 @@ function renderOverview(){
   const day=currentDay(),streak=computeStreak(),recovery=computeRecoveryScore(),bedtime=computeBedtimeSuggestion();
   const items=buildInsights(),note=items[0];
   const resume=REP_TRAINING_SESSION.isResumableWorkout(state,sessions);
+  const importAge=daysSinceVitalsImport();
+  const vitalsImportText=state.vitalsImportError?`Apple Health check needs attention: ${state.vitalsImportStatus}`:
+    importAge===null?"No Apple Health data imported yet":
+    importAge>2?`Apple Health import needs attention · last ${state.lastVitalsImportDate}`:
+    `Apple Health last imported ${state.lastVitalsImportDate}`;
   app.innerHTML=REP_SAFE_DOM.sanitize(`<section class="hero home-hero"><p class="eyebrow">${"TODAY"}${day==="Friday"?(" · Surat Al-Kahf Day"):""}</p><h1>${greetingLine()}</h1><p>${recovery?(recovery.calibrating?("Recovery is still calibrating — keep logging daily."):recovery.band==="green"?("Recovery looks good. Today's a day to push."):recovery.band==="yellow"?("Recovery is moderate — adjust load accordingly."):("Recovery is low — prioritize rest today.")):("Log sleep to see today's readiness.")}</p></section>
     ${streak>=1?`<div class="streak-badge"><i>${ICONS.flame}</i><strong>${streak}</strong><span>${"day streak"}</span></div>`:""}
+    <section class="today-strip home-today-card"><div><span>${day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?("Resume session →"):("Review today's plan →")}</button></section>
     ${strainRecoveryCard()}
     <div class="today-vitals-sync-bar" style="display:flex;align-items:center;justify-content:space-between;margin:-6px 0 12px;padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.03);font-size:11px;">
-      <span style="color:var(--muted);">${state.vitalsImportStatus?esc(state.vitalsImportStatus):("Apple Watch sync ready")}</span>
+      <span style="color:var(--muted);">${esc(vitalsImportText)}</span>
       <button data-check-watch-vitals type="button" style="border:0;background:transparent;color:var(--acid);font-size:11px;font-weight:850;cursor:pointer;">↻ ${"Check sync"}</button>
     </div>
     <section class="bedtime-card"><div class="bedtime-row"><span>${"BEDTIME TONIGHT"}</span><strong>${bedtime.time}</strong></div><small>${`For your ${bedtime.wakeTime} wake-up · ${bedtime.need}h needed`}</small></section>
-    <section class="today-strip home-today-card"><div><span>${day}</span><strong>${todayPlan(day)}</strong></div><button data-goto-train type="button">${resume?("Resume session →"):("Start today's plan →")}</button></section>
     <div class="today-secondary-actions" style="display:flex;gap:8px;margin:-4px 0 14px;">
       <button data-today-bad-day type="button" style="flex:1;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(217,179,255,.08);color:#d9b3ff;font-size:11px;font-weight:850;cursor:pointer;">⚡ ${"Low Energy? Fallback (15m)"}</button>
       <button data-today-log-act type="button" style="min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:11px;font-weight:850;cursor:pointer;">+ ${"Log Activity"}</button>
@@ -1021,7 +1026,10 @@ function renderOverview(){
     ${todayFuelSnippet()}
     ${note?`<section class="insights-card home-note"><div class="insights-head"><small>${"TODAY'S NOTE"}</small></div><p class="insight insight-${note.tone}">${esc(note.text)}</p></section>`:""}`);
   document.querySelector("[data-check-watch-vitals]")?.addEventListener("click",()=>fetchPendingVitals(true));
-  document.querySelector("[data-goto-train]")?.addEventListener("click",()=>setPrimaryTab("train"));
+  document.querySelector("[data-goto-train]")?.addEventListener("click",()=>{
+    if(resume||!window.REP_APPLY_ADAPTIVE_TODAY)setPrimaryTab("train");
+    else window.REP_APPLY_ADAPTIVE_TODAY();
+  });
   document.querySelector("[data-goto-fuel]")?.addEventListener("click",()=>setPrimaryTab("food"));
   document.querySelector("[data-today-bad-day]")?.addEventListener("click",()=>renderBadDay());
   document.querySelector("[data-today-log-act]")?.addEventListener("click",()=>showLogActivity());

@@ -1,6 +1,13 @@
 # Operations and recovery
 
-## Production release gate without GitHub Actions
+## Production release paths
+
+The normal production path is the protected `main` branch followed by the gated
+`deploy-production` GitHub Actions job. Use the manual sequence below only while
+GitHub Actions is unavailable. Do not start a manual deploy while that job is
+running or queued for the same commit.
+
+### Manual contingency when GitHub Actions is unavailable
 
 1. `npm ci`
 2. `npm run verify:production`
@@ -18,7 +25,10 @@ passphrase or user data.
 Staging commands remain available for targeted diagnostics, but staging is not
 part of this production-directed release gate.
 
-Do not modify or depend on GitHub Actions until the monthly quota is available again.
+Before returning to the normal path after an Actions outage, confirm the quota or
+billing issue is resolved and that `verify`, `e2e`, and `deploy-production` can run
+successfully. Record the production deployment ID and verify the served assets
+match the merged `main` commit.
 
 ## Notion outage or schema drift
 
