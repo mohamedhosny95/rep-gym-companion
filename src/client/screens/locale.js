@@ -1,5 +1,15 @@
 /* Explicit translation pass after a screen mounts; no DOM observer or record rewriting. */
 const arabic={
+  'Dark':'داكن','Light':'فاتح','Recovery':'التعافي','Strain':'الجهد','Breathing':'التنفس','Resting HR':'نبض الراحة',
+  'Your health and daily practices.':'صحتك وعاداتك اليومية.','Daily health':'الصحة اليومية','Core vitals':'المؤشرات الحيوية','No data':'لا توجد بيانات',
+  'No health import yet':'لم تُستورد بيانات صحية بعد','Nutrition logged':'التغذية المسجلة','Water logged':'الماء المسجل','Logged today':'المسجل اليوم','Energy logged':'الطاقة المسجلة','Protein logged':'البروتين المسجل',
+  'AWJ estimate':'تقدير أوج','Partial data':'بيانات جزئية','Limited data':'بيانات محدودة','Calibrating':'جارٍ بناء خط الأساس','Building your baseline':'جارٍ بناء خط الأساس',
+  'Data completeness':'اكتمال البيانات','All daily inputs available.':'كل مدخلات اليوم متاحة.','Recovery confidence':'الثقة في تقدير التعافي','High confidence':'ثقة عالية',
+  'Completeness describes your available inputs. Recovery confidence also depends on your personal baseline.':'يعكس الاكتمال المدخلات المتاحة. وتعتمد الثقة في تقدير التعافي أيضًا على خط أساسك الشخصي.',
+  'Ready to train':'جاهز للتمرين','Take it steady':'تدرّب بهدوء','Prioritize recovery':'أعطِ التعافي الأولوية','Workout estimate':'تقدير من التمارين المسجلة',
+  'Build your daily picture':'أكمل صورة يومك','No data for this day. Add a log or connect your health source.':'لا توجد بيانات لهذا اليوم. أضف سجلًا أو اربط مصدر بياناتك الصحية.',
+  'Connections, imports & setup':'الاتصالات والاستيراد والإعداد','TODAY’S GUIDANCE':'توجيه اليوم','Health details':'تفاصيل الصحة','Previous reading':'قراءة سابقة',
+
   'Today':'اليوم','Train':'التمرين','Nutrition':'التغذية','Wellbeing':'العافية','Progress':'التقدم','Settings':'الإعدادات',
   'Daily practices':'العادات اليومية','Habits, hygiene and journal':'العادات والعناية اليومية والملاحظات','Recovery & health':'التعافي والصحة','Sleep, check-ins and measurements':'النوم والمتابعة والقياسات',
   'Today’s focus':'تركيز اليوم',"Today's workout":'تمرين اليوم','In progress':'قيد التنفيذ','Recovery day':'يوم للتعافي',

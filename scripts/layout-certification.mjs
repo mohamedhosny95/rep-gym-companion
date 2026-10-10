@@ -13,4 +13,4 @@ const server=http.createServer((request,response)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 process.env.AWJ_DEVICE_AUDIT_URL=`http://127.0.0.1:${server.address().port}`;
-try{await import('./deployed-device-audit.mjs');}finally{server.close();}
+try{await import('./deployed-device-audit.mjs');await import('./redesign-certification.mjs');}finally{server.close();}

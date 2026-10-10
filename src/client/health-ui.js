@@ -4,13 +4,13 @@
   if(!coverage)return;
   const shell=window.AWJ_UI_SHELL,uiState=window.AWJ_UI_STATE;
   const today=()=>(coverage.dateKey?coverage.dateKey():coverage.dayKey());
-  const num=(value,digits=0)=>value===null||value===undefined||!Number.isFinite(Number(value))?"—":Number(value).toFixed(digits);
+  const num=(value,digits=0)=>AWJ_HEALTH_SUMMARY.number(value)===null?"—":Number(value).toFixed(digits);
   const labels={sleep:["Sleep","h",1],hrv:["HRV","ms",0],rhr:["Resting HR","bpm",0],resp:["Breathing","/min",1],vo2:["VO₂ max","",1]};
 
   function coverageCard(){
     const data=coverage.coverage(state,today()),missing=data.missing.length?data.missing.join(", "):"None",tone=data.confidence==="high"?"good":data.confidence==="medium"?"medium":"warning";
     return `<section class="coverage-card ${tone}">
-      <div class="coverage-score" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${data.score}" aria-label="${"Data confidence"}"><strong>${data.score}%</strong><span>${"data confidence"}</span></div>
+      <div class="coverage-score" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${data.score}" aria-label="${"Data completeness"}"><strong>${data.score}%</strong><span>${"data completeness"}</span></div>
       <div><small>${"MEASUREMENT COVERAGE"}</small><h2>${data.confidence==="high"?("Ready to interpret"):"Treat the score cautiously"}</h2>
       <p>${"This measures data completeness, separately from physical readiness."}</p>
       <details><summary>${"Coverage details"}</summary><ul>${data.items.map(item=>`<li class="${item.available?"is-present":"is-missing"}"><span>${item.label}</span><b>${item.available?"✓":"Missing"}</b></li>`).join("")}</ul><p><b>${"Missing"}:</b> ${esc(missing)}</p></details></div>
@@ -53,7 +53,7 @@
     const report=coverage.longTerm(state,today());
     return `<section class="long-term-card"><div><small>${"PERSONAL BASELINE"}</small><h2>${"7 · 28 · 90 day trends"}</h2><p>${"Your body is compared with its own history, not a population grade. Trends matter more than one reading."}</p></div>
       <div class="trend-table" role="table" tabindex="0" aria-label="${"Long-term health trends"}"><div class="trend-row trend-head" role="row"><span role="columnheader">${"Metric"}</span><span role="columnheader">${"Now"}</span><span role="columnheader">7d</span><span role="columnheader">28d</span><span role="columnheader">90d</span></div>
-      ${report.metrics.map(metric=>{const [label,unit,digits]=(labels)[metric.name];return `<div class="trend-row" role="row"><strong role="rowheader">${label}</strong><span role="cell">${num(metric.current,digits)} ${unit}</span><span role="cell">${num(metric.average7,digits)}</span><span role="cell">${num(metric.average28,digits)}</span><span role="cell">${num(metric.average90,digits)}</span></div>`;}).join("")}</div>
+      ${report.metrics.map(metric=>{const [label,unit,digits]=(labels)[metric.name];return `<div class="trend-row" role="row"><strong role="rowheader">${label}</strong><span role="cell">${num(metric.current,digits)} ${unit}<small>${metric.currentDate||"No data"}</small></span><span role="cell">${num(metric.average7,digits)}</span><span role="cell">${num(metric.average28,digits)}</span><span role="cell">${num(metric.average90,digits)}</span></div>`;}).join("")}</div>
       <div class="measurement-summary"><span><b>${num(report.weight.current,1)} kg</b>${"Latest weight"}</span><span><b>${num(report.waistCm,1)} cm</b>${"Latest waist"}</span></div>
       <form data-body-measurement><label>${"Weight (kg)"}<input name="weight" type="number" min="30" max="300" step=".1"></label><label>${"Waist (cm)"}<input name="waist" type="number" min="40" max="250" step=".1"></label><label>${"Systolic"}<input name="systolic" type="number" min="70" max="250"></label><label>${"Diastolic"}<input name="diastolic" type="number" min="40" max="150"></label><button type="submit">${"Save measurements"}</button><button type="button" class="quiet" data-health-report>${"Export report"}</button><output aria-live="polite"></output></form>
       <p class="medical-boundary">${"For general health trends, not diagnosis or emergency decisions."}</p>
@@ -67,7 +67,8 @@
     });
     document.querySelector("[data-charging-plan]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);state.chargingPlan={time:String(form.get("time")||"20:00"),minutes:Math.max(20,Math.min(120,Number(form.get("minutes"))||45))};persist();event.currentTarget.querySelector("output").textContent="Routine saved.";});
     document.querySelector("[data-workout-check]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);state.workoutChecks={...(state.workoutChecks||{}),[today()]:{watch:form.get("watch")==="on",workout:form.get("workout")==="on",checkedAt:new Date().toISOString()}};persist();document.querySelector(".workout-preflight-panel")?.remove();if(onWorkoutReady)onWorkoutReady();else setPrimaryTab("train");});
-    document.querySelector("[data-body-measurement]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget),date=today(),weight=Number(form.get("weight")),waist=Number(form.get("waist")),systolic=Number(form.get("systolic")),diastolic=Number(form.get("diastolic")),now=new Date(),createdAt=now.toISOString();
+    document.querySelector("[data-body-measurement]")?.addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget),date=today(),number=AWJ_HEALTH_SUMMARY.number,weight=number(form.get("weight"),30,300),waist=number(form.get("waist"),40,250),systolic=number(form.get("systolic"),70,250),diastolic=number(form.get("diastolic"),40,150),now=new Date(),createdAt=now.toISOString();
+      if([weight,waist,systolic,diastolic].every(value=>value===null)){event.currentTarget.querySelector('output').textContent='Enter at least one measurement.';return;}
       if(Number.isFinite(weight)&&weight>=30&&weight<=300){const week=weekKey(now);state.bodyWeights=(state.bodyWeights||[]).filter(row=>row.week!==week&&row.dateKey!==date);state.bodyWeights.unshift({week,dateKey:date,createdAt,date,kg:weight});}
       if([waist,systolic,diastolic].some(Number.isFinite)){state.bodyMeasurements=(state.bodyMeasurements||[]).filter(row=>(row.dateKey||String(row.date||"").slice(0,10))!==date);state.bodyMeasurements.unshift({dateKey:date,createdAt,date,waist_cm:Number.isFinite(waist)?waist:null,systolic:Number.isFinite(systolic)?systolic:null,diastolic:Number.isFinite(diastolic)?diastolic:null});state.bodyMeasurements=state.bodyMeasurements.slice(0,400);}
       coverage.invalidateCache?.(state);window.AWJ_HEALTH_ENGINE?.invalidateCache?.(state);persist();if(onMeasurementSaved)onMeasurementSaved();else renderInsights();
@@ -76,77 +77,8 @@
   }
 
   function domainOverviewGrid(){
-    const longTerm=coverage.longTerm(state,today());
-    const metrics=state.healthMetrics?.[today()]||{};
-    const sleep=(state.sleepLogs||[]).find(s=>String(s.date).slice(0,10)===today())||{};
-    const energy=state.activeEnergy?.[today()]||0;
-    const strain=window.health?.strain?window.health.strain(state,today()):0;
-    const weights=[...(state.bodyWeights||[])].sort((a,b)=>b.week.localeCompare(a.week));
-    const currentWeight=longTerm.weight.current??weights[0]?.kg??null,prevWeight=weights[1]?.kg??null;
-    const weightDelta=(currentWeight&&prevWeight)?Math.round((currentWeight-prevWeight)*10)/10:null;
-
-    const sleepMetric=longTerm.metrics.find(m=>m.name==="sleep");
-    const sleepHours=sleep.hours||sleepMetric?.current||null;
-    const measuredSleepBase=Boolean(sleepMetric?.mature),sleepBase=measuredSleepBase?sleepMetric.average28:(Number(state.healthProfile?.baseSleepHours)||7.5);
-    const sleepDebt=sleepHours?Math.round((sleepBase-sleepHours)*10)/10:null;
-    const sleepStatus=!sleepHours?("Log sleep"):(sleepDebt<=0.3?(measuredSleepBase?"In baseline":"Meets starting target"):(`Debt: ${sleepDebt}h`));
-    const sleepTone=!sleepHours?"neutral":(sleepDebt<=0.3?"good":"warning");
-
-    const hrvMetric=longTerm.metrics.find(m=>m.name==="hrv"),rhrMetric=longTerm.metrics.find(m=>m.name==="rhr");
-    const hrv=sleep.hrv||hrvMetric?.current||null,rhr=sleep.rhr||rhrMetric?.current||null;
-    const hrvBase=hrvMetric?.average28||null,rhrBase=rhrMetric?.average28||null;
-    const heartStatus=(!hrv&&!rhr)?("Awaiting Watch"):((hrv&&hrvBase&&hrv>=hrvBase*0.9)?("Balanced recovery"):("Mild strain"));
-    const heartTone=(!hrv&&!rhr)?"neutral":((hrv&&hrvBase&&hrv>=hrvBase*0.9)?"good":"warning");
-
-    const steps=metrics.steps||null;
-    const activityStatus=strain>=14?("High strain"):strain>=8?("Optimal load"):("Active recovery");
-
-    const waist=longTerm.waistCm||null;
-    const bodyMeasurements=state.bodyMeasurements?.[0]||{};
-    const bp=(bodyMeasurements.systolic&&bodyMeasurements.diastolic)?`${bodyMeasurements.systolic}/${bodyMeasurements.diastolic}`:null;
-
-    return `<section class="domain-cards-grid" aria-label="${"Four physiological domains"}">
-      <article class="domain-card tone-${sleepTone}">
-        <div class="domain-head">
-          <span><small>${"SLEEP & RECOVERY"}</small><h3>🌙 ${sleepHours?`${sleepHours}h`:"—"}</h3></span>
-          <span class="domain-pill ${sleepTone}">${sleepStatus}</span>
-        </div>
-        <div class="domain-stats">
-          <div><small>${measuredSleepBase?"28D BASELINE":"STARTING SLEEP TARGET"}</small><strong>${sleepBase}h</strong></div>
-          <div><small>${"DEEP SLEEP"}</small><strong>${metrics.deepSleepHours?`${metrics.deepSleepHours}h`:(sleep.bedtime?`${sleep.bedtime} → ${sleep.wake}`:"—")}</strong></div>
-        </div>
-      </article>
-      <article class="domain-card tone-${heartTone}">
-        <div class="domain-head">
-          <span><small>${"HEART & AUTONOMIC"}</small><h3>❤️ ${hrv?`${hrv} ms`:"—"} <span class="sub-metric">${rhr?`· ${rhr} bpm`:""}</span></h3></span>
-          <span class="domain-pill ${heartTone}">${heartStatus}</span>
-        </div>
-        <div class="domain-stats">
-          <div><small>${"HRV BASELINE"}</small><strong>${hrvBase?`${Math.round(hrvBase)} ms`:"—"}</strong></div>
-          <div><small>${"RESTING HR"}</small><strong>${rhrBase?`${Math.round(rhrBase)} bpm`:"—"}</strong></div>
-        </div>
-      </article>
-      <article class="domain-card tone-good">
-        <div class="domain-head">
-          <span><small>${"ACTIVITY & STRAIN"}</small><h3>⚡ ${strain?`${strain.toFixed(1)}`:"0.0"} <small>/ 21</small></h3></span>
-          <span class="domain-pill good">${activityStatus}</span>
-        </div>
-        <div class="domain-stats">
-          <div><small>${"ACTIVE KCAL"}</small><strong>${energy?`${energy} kcal`:"—"}</strong></div>
-          <div><small>${"STEPS"}</small><strong>${steps?steps.toLocaleString():"—"}</strong></div>
-        </div>
-      </article>
-      <article class="domain-card tone-neutral">
-        <div class="domain-head">
-          <span><small>${"BODY & COMPOSITION"}</small><h3>⚖️ ${currentWeight?`${currentWeight} kg`:"—"}</h3></span>
-          <span class="domain-pill neutral">${weightDelta!==null?`${weightDelta>0?"+":""}${weightDelta} kg/wk`:("Not enough measurements")}</span>
-        </div>
-        <div class="domain-stats">
-          <div><small>${"WAIST"}</small><strong>${waist?`${waist} cm`:"—"}</strong></div>
-          <div><small>${"BLOOD PRESSURE"}</small><strong>${bp||"—"}</strong></div>
-        </div>
-      </article>
-    </section>`;
+    const data=AWJ_HEALTH_SUMMARY.daily(state,today());
+    return `<section class="domain-cards-grid" aria-label="Health overview">${[['sleep','Sleep',data.sleep.value,'h'],['recovery','Recovery',data.recovery.value,'%'],['strain','Strain',data.strain.value,'/ 21']].map(([id,label,value,unit])=>`<article class="domain-card"><h3>${label}</h3><strong>${num(value,id==='strain'?1:0)} ${unit}</strong><p>${value===null?'No data':data[id].source||'Manual log'}</p></article>`).join('')}</section>`;
   }
 
   function organizeHealthWorkflow(){
@@ -167,7 +99,7 @@
   }
 
   const baseVitals=renderVitals;
-  renderVitals=function(){baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",AWJ_SAFE_DOM.sanitize(`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`));organizeHealthWorkflow();bind();};
-  window.AWJ_HEALTH_UI=Object.freeze({checkinMarkup:morningCard,trendMarkup:trendCard,bind,openWorkoutPreflight});
+  renderVitals=function(){if(window.AWJ_TRAINING_UI)return baseVitals();baseVitals();document.querySelector(".health-subnav")?.insertAdjacentHTML("afterend",AWJ_SAFE_DOM.sanitize(`${domainOverviewGrid()}${coverageCard()}${morningCard()}${chargingCard()}`));organizeHealthWorkflow();bind();};
+  window.AWJ_HEALTH_UI=Object.freeze({checkinMarkup:morningCard,trendMarkup:trendCard,chargingMarkup:chargingCard,bind,openWorkoutPreflight});
   if(state.activeTab==="vitals")renderVitals();
 })();

@@ -35,13 +35,15 @@ globalThis.AWJ_HEALTH_ENGINE=(()=>{
     return [dt.getUTCFullYear(),String(dt.getUTCMonth()+1).padStart(2,"0"),String(dt.getUTCDate()).padStart(2,"0")].join("-");
   };
   const average=values=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
+  const numeric=value=>(typeof value==='number'||typeof value==='string'&&value.trim()!=='')&&Number.isFinite(Number(value));
+  const validMetric=(value,field)=>{const ranges={hours:[.1,16],hrv:[5,300],rhr:[30,120],resp:[5,40]};const [min,max]=ranges[field]||[-Infinity,Infinity];return numeric(value)&&Number(value)>=min&&Number(value)<=max;};
   const median=values=>{const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return null;const middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;};
   const metricRows=(state,field,date,days)=>{
     const endStr=dateKey(date),startStr=shiftDay(endStr,-days);
     return (state.sleepLogs||[]).filter(row=>{
       if(!row)return false;
-      const k=dateKey(row),value=Number(row[field]);
-      return k<endStr&&k>=startStr&&Number.isFinite(value)&&value>0;
+      const k=dateKey(row);
+      return k<endStr&&k>=startStr&&validMetric(row[field],field);
     }).map(row=>Number(row[field]));
   };
   function invalidateCache(state){
@@ -67,7 +69,8 @@ globalThis.AWJ_HEALTH_ENGINE=(()=>{
       const minutes=Math.max(0,Number(item.duration)||0)/60;
       return sum+minutes*clamp(effort,1,10)*.32;
     },0);
-    const active=Number(state.activeEnergy?.[key]);
+    const rawActive=state.activeEnergy?.[key]??state.healthMetrics?.[key]?.active_energy_kcal;
+    const active=numeric(rawActive)?Number(rawActive):NaN;
     let load=Number.isFinite(active)&&active>0?active*.4+sessionRpeLoad:sessionRpeLoad;
     if(!(Number.isFinite(active)&&active>0))load+=sessions.reduce((sum,item)=>sum+(Number(item.calories)||0)*.35,0);
     if(!load)return 0;
@@ -81,25 +84,25 @@ globalThis.AWJ_HEALTH_ENGINE=(()=>{
     return {baseline:round(personal,1),debt:round(debt,1),demand:round(demand,1),need:round(clamp(personal+debt+demand,6,10),1),personalized:prior.length>=7,nights:prior.length};
   }
   function metricScore(value,base,inverse=false){
-    if(!Number.isFinite(Number(value))||!base?.value)return null;
+    if(!numeric(value)||!base?.value)return null;
     const direction=inverse?-1:1,deviation=((Number(value)-base.value)/base.value)*direction;
     return clamp(Math.round(60+deviation*260),0,100);
   }
   function readiness(state,date=dateKey(),profile={}){
-    const key=dateKey(date),sleep=(state.sleepLogs||[]).find(row=>dateKey(row)===key),need=sleepNeed(state,key,profile),components=[];
+    const key=dateKey(date),sleep=globalThis.AWJ_HEALTH_SUMMARY?.rowFor(state.sleepLogs,key)||(state.sleepLogs||[]).find(row=>dateKey(row)===key),need=sleepNeed(state,key,profile),components=[];
     const add=(id,label,weight,value,detail,available=true)=>components.push({id,label,weight,value:available?clamp(Math.round(value),0,100):null,detail,available});
-    if(sleep?.hours)add("sleep","Sleep",30,clamp(Number(sleep.hours)/need.need*100,0,110),`${round(Number(sleep.hours),1)}h of ${need.need}h`);else add("sleep","Sleep",30,0,"No sleep data",false);
+    if(validMetric(sleep?.hours,'hours'))add("sleep","Sleep",30,clamp(Number(sleep.hours)/need.need*100,0,110),`${round(Number(sleep.hours),1)}h of ${need.need}h`);else add("sleep","Sleep",30,0,"No sleep data",false);
     for(const item of [
       ["hrv","HRV",25,"hrv",false,"ms"],
       ["rhr","Resting HR",20,"rhr",true,"bpm"],
       ["resp","Respiratory rate",10,"resp",true,"/min"]
     ]){
-      const [id,label,weight,field,inverse,unit]=item,base=baseline(state,field,key,Number(profile.baselineDays)||28),value=Number(sleep?.[field]),score=metricScore(value,base,inverse);
+      const [id,label,weight,field,inverse,unit]=item,base=baseline(state,field,key,Number(profile.baselineDays)||28),value=validMetric(sleep?.[field],field)?Number(sleep[field]):null,score=metricScore(value,base,inverse);
       add(id,label,weight,score||0,score===null?`Needs 7 prior nights`:`${round(value,1)} ${unit} · baseline ${base.value}`,score!==null&&base.count>=7);
     }
     const checkin=(state.recoveryCheckins||[]).find(row=>dateKey(row)===key);
     if(checkin){
-      const flags=(Number(checkin.soreness)>=4?1:0)+(Number(checkin.energy)<=2?1:0)+(Number(checkin.sleep)<6?1:0)+(checkin.pain?2:0)+(checkin.illness?2:0);
+      const flags=(numeric(checkin.soreness)&&Number(checkin.soreness)>=4?1:0)+(numeric(checkin.energy)&&Number(checkin.energy)<=2?1:0)+(validMetric(checkin.sleep,'hours')&&Number(checkin.sleep)<6?1:0)+(checkin.pain?2:0)+(checkin.illness?2:0);
       const detail=checkin.pain&&checkin.illness?"Pain and illness reported":checkin.pain?"Pain reported":checkin.illness?"Illness reported":"Subjective check-in";
       add("checkin","Check-in",15,100-flags*20,detail);
     }else add("checkin","Check-in",15,0,"No check-in",false);
@@ -160,8 +163,8 @@ globalThis.AWJ_HEALTH_ENGINE=(()=>{
     return {confidence:r.confidence,coverage:r.coverage,lastImportDays:lastImport,needsImport:lastImport===null||lastImport>2,baselineNights:Math.max(...["hours","hrv","rhr","resp"].map(field=>baseline(state,field,date,Number(profile.baselineDays)||28).count)),missing:r.components.filter(item=>!item.available).map(item=>item.label)};
   }
   function weeklyReview(state,date=dateKey(),profile={}){
-    const days=Array.from({length:7},(_,index)=>shiftDay(date,index-6)),scores=days.map(day=>readiness(state,day,profile)).filter(item=>item.score!==null),strains=days.map(day=>strain(state,day)),sleeps=days.map(day=>(state.sleepLogs||[]).find(row=>dateKey(row)===day)?.hours).filter(Number.isFinite),sessions=(state.history||[]).filter(item=>days.includes(dateKey(item))).length;
-    const averageReadiness=scores.length?Math.round(average(scores.map(item=>item.score))):null,averageSleep=sleeps.length?round(average(sleeps),1):null,totalStrain=round(strains.reduce((a,b)=>a+b,0),1),highLoadLowRecovery=days.filter(day=>strain(state,day)>=14&&["red","yellow"].includes(readiness(state,day,profile).band)).length;
+    const days=Array.from({length:7},(_,index)=>shiftDay(date,index-6)),scores=days.map(day=>readiness(state,day,profile)).filter(item=>item.score!==null),strains=days.map(day=>globalThis.AWJ_HEALTH_SUMMARY&&!globalThis.AWJ_HEALTH_SUMMARY.activity(state,day).available?null:strain(state,day)).filter(Number.isFinite),sleeps=days.map(day=>(state.sleepLogs||[]).find(row=>dateKey(row)===day)?.hours).filter(Number.isFinite),sessions=(state.history||[]).filter(item=>days.includes(dateKey(item))).length;
+    const averageReadiness=scores.length?Math.round(average(scores.map(item=>item.score))):null,averageSleep=sleeps.length?round(average(sleeps),1):null,totalStrain=strains.length?round(strains.reduce((a,b)=>a+b,0),1):null,highLoadLowRecovery=days.filter(day=>strain(state,day)>=14&&["red","yellow"].includes(readiness(state,day,profile).band)).length;
     let headline="Keep building your baseline",action="Log sleep and recovery signals on at least five days next week.";
     if(averageReadiness!==null&&averageReadiness<45){headline="Recovery needs priority";action="Protect sleep timing and reduce one hard session next week.";}
     else if(highLoadLowRecovery>=2){headline="Load is outrunning recovery";action="Separate hard days and use one recovery session between them.";}

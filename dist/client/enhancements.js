@@ -23,10 +23,11 @@
   const safeText=(value,max=1800)=>String(value??"").trim().slice(0,max);
   const rawSaved=window.AWJ_HYDRATED_STATE||(()=>{try{return JSON.parse(localStorage.getItem(storageKey)||"{}");}catch{return {};}})();
   function normalizedPreferences(value={}){
+    value=AWJ_APPEARANCE.normalize(value);
     const schedule=clone(DEFAULT_SCHEDULE),targets=clone(DEFAULT_TARGETS);
     for(const day of DAY_NAMES){const incoming=value.schedule?.[day];if(incoming){schedule[day].morning=Boolean(incoming.morning);if(SCHEDULE_FOCUS_OPTIONS.includes(incoming.focus))schedule[day].focus=incoming.focus;}}
     for(const key of Object.keys(targets)){const incoming=value.targets?.[key]||{},isLegacy=LEGACY_TARGETS[key].some(old=>TARGET_FIELDS.every(field=>Number(incoming[field])===old[field]));if(isLegacy)continue;for(const field of TARGET_FIELDS){const n=Number(incoming[field]);if(Number.isFinite(n)&&n>=0)targets[key][field]=n;}}
-    return {weightUnit:value.weightUnit==="lb"?"lb":"kg",waterUnit:value.waterUnit==="oz"?"oz":"ml",themeMode:value.themeMode==="oled"?"oled":"default",themeAccent:["acid","cyan","flame","violet"].includes(value.themeAccent)?value.themeAccent:"acid",soundPack:["digital","click","bell"].includes(value.soundPack)?value.soundPack:"digital",language:value.language==="ar"?"ar":"en",schedule,targets};
+    return {...value,weightUnit:value.weightUnit==="lb"?"lb":"kg",waterUnit:value.waterUnit==="oz"?"oz":"ml",themeMode:value.themeMode==="oled"?"oled":"default",themeAccent:["acid","cyan","flame","violet"].includes(value.themeAccent)?value.themeAccent:"acid",soundPack:["digital","click","bell"].includes(value.soundPack)?value.soundPack:"digital",language:value.language==="ar"?"ar":"en",schedule,targets};
   }
 
   state.preferences=normalizedPreferences(rawSaved.preferences);
@@ -78,6 +79,7 @@
   const scheduleRepair=productSuite.reconcileSchedule(state,productSuite.dateKey());
   if(JSON.stringify(scheduleRepair.weekOverrides)!==JSON.stringify(state.weekOverrides)||JSON.stringify(scheduleRepair.scheduleAdjustments)!==JSON.stringify(state.scheduleAdjustments)){state.weekOverrides=scheduleRepair.weekOverrides;state.scheduleAdjustments=scheduleRepair.scheduleAdjustments;productSuite.trackEvent(state,"missed_workout_rescheduled",{count:Object.keys(state.weekOverrides).length});persist();}
   if((Number(rawSaved.version)||0)<APP_SCHEMA){features?.createDeviceSnapshot(rawSaved).catch(()=>{});persist();}
+  else if(Number(rawSaved.preferences?.appearanceVersion)!==AWJ_APPEARANCE.version)persist();
 
   function clearWorkoutUndo(){const current=state._workoutUndo;if(!current)return;clearTimeout(state.undoTimer);current.bar.remove();state._workoutUndo=null;}
   function mountWorkoutUndo(){
@@ -199,6 +201,7 @@
     return `<section class="health-coach-card tone-${tone} ${compact?"is-compact":""}"><div class="health-coach-head"><div><small>${"ADAPTIVE TODAY PLAN"}</small><h2>${training.title}</h2></div><div class="readiness-score"><strong>${score}</strong><span>${confidenceLabel(ready.confidence)}</span></div></div><p>${training.detail}</p><div class="coach-reasons">${why.map(reason=>`<span>${esc(reason)}</span>`).join("")}</div><div class="adaptive-adjustments">${plan.adjustments.map(item=>`<span>✓ ${esc(item)}</span>`).join("")}</div>${showAction?`<button class="adaptive-apply" data-apply-adaptive type="button">${applied?("Applied · review plan →"):plan.targetSession?("Apply today's plan →"):("Apply recovery day")}</button>`:""}${compact?"":`<div class="coach-grid"><div><small>${"BEDTIME"}</small><strong>${bed.time}</strong><span>${`for ${bed.wakeTime} wake-up`}</span></div><div><small>${"DATA COVERAGE"}</small><strong>${ready.coverage}%</strong><span>${importLabel}</span></div></div><details><summary>${"How this was calculated"}</summary>${ready.components.map(item=>`<div class="component-row ${item.available?"":"is-missing"}"><span>${esc(item.label)}</span><strong>${item.available?`${item.value}%`:"—"}</strong><small>${esc(item.detail)}</small></div>`).join("")}<p class="medical-boundary">${"General wellness guidance, not a diagnosis. Never ignore symptoms because of a score."}</p></details>`}</section>`;
   }
   if(health){
+    computeSleepPerformance=function(date=isoDay()){const data=AWJ_HEALTH_SUMMARY.daily(state,date,state.healthProfile),need=health.sleepNeed(state,date,state.healthProfile);return data.sleep.value===null?null:{actual:data.sleep.value,performance:data.sleep.percent,need:need.need,baseline:need.baseline,estimatedBaseline:!need.personalized,sleepDebt:need.debt,strainDebt:need.demand};};
     computeRecoveryScore=function(date=isoDay()){const result=health.readiness(state,date,state.healthProfile);return result.score===null?null:{score:result.score,band:result.band,calibrating:result.calibrating,confidence:result.confidence,components:result.components};};
     computeStrainScore=function(date=isoDay()){return health.strain(state,date);};
     computeBedtimeSuggestion=function(){return health.bedtime(state,isoDay(),state.healthProfile);};
@@ -233,9 +236,10 @@
   const baseForget=forgetPairingKey;forgetPairingKey=async function(){state.connectionCapabilities=null;state.lastSyncedAt=null;await baseForget();};
 
   function applyThemeSettings(){
-    const mode=state.preferences?.themeMode||"default",accent=state.preferences?.themeAccent||"acid";
+    const mode=state.preferences?.themeMode||"oled",accent=state.preferences?.themeAccent||"acid";
     if(mode==="oled")document.documentElement.setAttribute("data-theme","oled");
-    else document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme","light");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',mode==='oled'?'#0c0f13':'#f4f5f7');
     if(accent&&accent!=="acid")document.documentElement.setAttribute("data-accent",accent);
     else document.documentElement.removeAttribute("data-accent");
   }
@@ -248,7 +252,7 @@
   function pwaInstallCard(){
     const isStandalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
     if(isStandalone)return `<section class="settings-card"><small style="color:var(--acid);font-weight:900;">${"INSTALLED APP"}</small><h2>${"AWJ is running as a Standalone PWA"}</h2><p style="margin:0;color:var(--muted);font-size:11px;">✓ ${"Full screen with fast offline caching and no browser bar."}</p></section>`;
-    return `<section class="settings-card pwa-install-card" style="border-color:rgba(125,201,255,.3);background:linear-gradient(145deg,rgba(125,201,255,.07),var(--panel));"><small style="color:var(--blue);font-weight:900;">${"INSTALL ON IPHONE"}</small><h2>${"Add to Home Screen for Native Experience"}</h2><div style="display:grid;gap:8px;margin:10px 0 12px;font-size:12px;color:var(--text);"><div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);"><b>1</b><span>${"Tap the <b>Share (⎋)</b> icon at the bottom of Safari"}</span></div><div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);"><b>2</b><span>${"Scroll down and tap <b>Add to Home Screen (+)</b>"}</span></div></div><button class="settings-primary" data-install-settings style="background:var(--blue);color:#03202e;">${"Install / Add to Home Screen"}</button></section>`;
+    return `<section class="settings-card pwa-install-card" style="border-color:rgba(125,201,255,.3);background:linear-gradient(145deg,rgba(125,201,255,.07),var(--panel));"><small style="color:var(--blue);font-weight:900;">${"INSTALL ON IPHONE"}</small><h2>${"Add to Home Screen for Native Experience"}</h2><div style="display:grid;gap:8px;margin:10px 0 12px;font-size:12px;color:var(--text);"><div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);"><b>1</b><span>${"Tap the <b>Share (⎋)</b> icon at the bottom of Safari"}</span></div><div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);"><b>2</b><span>${"Scroll down and tap <b>Add to Home Screen (+)</b>"}</span></div></div><button class="settings-primary" data-install-settings>${"Install / Add to Home Screen"}</button></section>`;
   }
   function circadianRemindersCard(){
     return `<section class="settings-card push-card"><small style="color:var(--acid);font-weight:900;">${"CIRCADIAN REMINDERS & NOTIFICATIONS"}</small><h2>${"Smart Readiness & Wind-Down Alarms"}</h2>
@@ -279,7 +283,7 @@
     const themeMode=state.preferences?.themeMode||"default",themeAccent=state.preferences?.themeAccent||"acid",soundPack=state.preferences?.soundPack||"digital";
     return `${pwaInstallCard()}<section class="settings-card"><small>${"YOUR PREFERENCES"}</small><h2>${"Make the app feel familiar"}</h2>
       <div class="segmented-setting"><span>${"Language / اللغة"}</span><div><button data-language="en" class="${state.preferences.language==="en"?"is-active":""}">English</button><button data-language="ar" class="${state.preferences.language==="ar"?"is-active":""}">العربية</button></div></div>
-      <div class="segmented-setting"><span>${"Theme Mode"}</span><div><button data-theme-mode="default" class="${themeMode==="default"?"is-active":""}">${"Emerald & Ivory"}</button><button data-theme-mode="oled" class="${themeMode==="oled"?"is-active":""}">${"Night Emerald"}</button></div></div>
+      <div class="segmented-setting"><span>${"Theme Mode"}</span><div><button data-theme-mode="default" class="${themeMode==="default"?"is-active":""}">${"Light"}</button><button data-theme-mode="oled" class="${themeMode==="oled"?"is-active":""}">${"Dark"}</button></div></div>
       <div class="segmented-setting"><span>${"Sound Pack"}</span><div>
         <button data-sound-pack="digital" class="${soundPack==="digital"?"is-active":""}">${"Digital"}</button>
         <button data-sound-pack="click" class="${soundPack==="click"?"is-active":""}">${"Clicks"}</button>
@@ -362,7 +366,7 @@
     document.querySelector("[data-backup-snooze]")?.addEventListener("click",()=>{snoozeBackupReminder();renderSettings("security");});
     features?.backupHistory().then(dates=>{const status=document.querySelector("[data-backup-status]"),history=document.querySelector("[data-backup-history]");if(status)status.textContent=dates.length?(`Latest: ${new Date(dates[0]).toLocaleString()}`):("A restore point will be created after the next change.");if(history&&dates.length>1){history.innerHTML=AWJ_SAFE_DOM.sanitize(dates.slice(1).map((date,index)=>`<button data-restore-index="${index+1}">${new Date(date).toLocaleString(undefined)}</button>`).join(""));history.querySelectorAll("[data-restore-index]").forEach(button=>button.onclick=()=>restoreSnapshot(Number(button.dataset.restoreIndex)));}});
   }
-  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.AWJ_BUILD_VERSION||"341590906c57"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
+  function loadOptionalScript(src,globalName){if(window[globalName])return Promise.resolve();return new Promise((resolve,reject)=>{const existing=document.querySelector(`script[data-optional="${src}"]`);if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}const script=document.createElement("script");script.src=`${src}?v=${window.AWJ_BUILD_VERSION||"43e781159ae7"}`;script.dataset.optional=src;script.onload=resolve;script.onerror=()=>reject(Error(`Could not load ${src}`));document.head.appendChild(script);});}
   async function createPairHandoff(){if(!awjAuth.isPaired())return;state.pairHandoffBusy=true;renderSettings("security");try{await loadOptionalScript("qrcode.js","qrcode");const response=await awjAuth.fetch("/api/pair/handoff",{method:"POST"}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.error||`Pairing failed (${response.status})`);const qr=qrcode(0,"M");qr.addData(data.url);qr.make();state.pairHandoff={url:data.url,expiresAt:data.expiresAt,qr:qr.createDataURL(6,16)};}catch(error){showToast(String(error.message||error));}finally{state.pairHandoffBusy=false;renderSettings("security");}}
   async function shareHandoff(preferShare){const url=state.pairHandoff?.url;if(!url)return;try{if(preferShare&&navigator.share)await navigator.share({title:"Pair AWJ",url});else await navigator.clipboard.writeText(url);showToast("Pairing link copied.");}catch{showToast("Could not share the link.");}}
   async function exportEncrypted(passphrase){try{if(!passphrase)passphrase=prompt("Enter a backup passphrase (at least 8 characters):");if(passphrase===null)return;persist();const inner={app:"AWJ",schema:APP_SCHEMA,guideVersion:AWJ_HEALTH_GUIDE.version,exportedAt:new Date().toISOString(),data:statePayload(),assets:{progressPhotos:await features.exportProgressPhotos()}} ,payload=await features.encryptExport(inner,passphrase);features.downloadJson(payload,`awj-backup-${isoDay()}.json`);state.lastBackupAt=new Date().toISOString();state.backupSnoozedUntil=null;persist();showToast("Encrypted backup downloaded, including progress photos.");}catch(error){showToast(String(error.message||error));}}

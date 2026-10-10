@@ -16,7 +16,7 @@ import {applyLocale,localizeText} from './screens/locale.js';
   function enter(view,tab){stopExerciseClock();stopSessionClock();document.body.classList.remove('workout-mode','workout-complete-mode','rest-mode-active');timerDock.classList.add('is-hidden');timerDock.setAttribute('inert','');if(state.timer?.interval){clearInterval(state.timer.interval);state.timer.interval=null;}state.view=view;state.activeTab=tab;persistDebounced();updatePrimaryTabs();}
   function heading(title,description=''){return `<header class="page-heading"><h1>${esc(tr(title))}</h1>${description?`<p>${esc(tr(description))}</p>`:''}</header>`;}
   function sheet(title,content,bind=()=>{}){
-    const overlay=document.createElement('div');overlay.className='awj-modal-backdrop';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label',title);
+    const overlay=document.createElement('div');overlay.className='awj-modal-backdrop';overlay.dataset.dialogReady='true';overlay.tabIndex=-1;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label',title);
     overlay.innerHTML=AWJ_SAFE_DOM.sanitize(`<section class="awj-modal-sheet"><header class="sheet-header"><h2>${esc(title)}</h2><button class="sheet-close" aria-label="Close">×</button></header>${content}</section>`);
     const previous=document.activeElement;let closing=false;
     const close=async()=>{if(closing)return;closing=true;await window.AWJ_MOTION.dismiss(overlay);if(previous?.isConnected)previous.focus();};
@@ -29,7 +29,7 @@ import {applyLocale,localizeText} from './screens/locale.js';
     const imported=state.lastVitalsImportDate,age=daysSinceVitalsImport();
     return {value,advice,age,source:imported?`Health data ${age===0?'today':`${age} day${age===1?'':'s'} ago`}`:'No imported health data',confidence:value.confidence||'low'};
   }
-  function readinessMarkup(){const r=readiness();return `<section class="readiness-note"><div><h2>${esc(r.advice.title)}</h2><p>${esc(r.advice.detail||r.advice.message||'Use your warm-up as the final check. You can log manually without a watch.')}</p></div><details><summary>Why this recommendation?</summary><p>${esc(r.source)} · ${esc(r.confidence)} confidence</p><p>${r.value.score===null?'More recovery observations are needed.':`Wellness estimate: ${r.value.score}%`}</p><p>${esc((r.value.reasons||[]).map(x=>typeof x==='string'?x:x.detail||x.label||'').filter(Boolean).join(' '))}</p></details></section>`;}
+  function readinessMarkup(){const r=readiness();return `<section class="readiness-note"><details><summary><span class="eyebrow">TODAY’S GUIDANCE</span><strong>${esc(r.advice.title)}</strong><span class="guidance-prompt" aria-label="Why this recommendation?">↗</span></summary><p>${esc(r.advice.detail||r.advice.message||'Use your warm-up as the final check.')}</p><p>${esc(r.source)} · ${esc(r.confidence)} confidence</p><p>${r.value.score===null?'More recovery observations are needed.':`AWJ estimate: ${r.value.score}%`}</p><p>${esc((r.value.reasons||[]).map(x=>typeof x==='string'?x:x.detail||x.label||'').filter(Boolean).join(' '))}</p></details></section>`;}
   function saveStatus(){const queued=window.AWJ_SYNC_OUTBOX?.summary(state.syncQueue)?.total||0,storage=window.AWJ_STORE?.saveStatus;const label=storage==='failed'?'Save needs attention · open backups':storage==='saving'?'Saving on device…':queued?`Saved on device · ${queued} waiting to sync`:state.lastSyncedAt?'Saved on device · records synced':'Saved on device';return `<button type="button" class="save-status ${queued?'has-pending':''} ${storage==='failed'?'save-failed':''}" data-save-status>${label}</button>`;}
   function bindSaveStatus(){document.querySelector('[data-save-status]')?.addEventListener('click',()=>route(window.AWJ_STORE?.saveStatus==='failed'?'settings-security':'settings-sync'));}
   window.addEventListener('awj:storage-status',event=>{
@@ -51,20 +51,28 @@ import {applyLocale,localizeText} from './screens/locale.js';
     const r=readiness();if(r.advice.mode==='pause'){sheet('Review your recovery warning',`<p>${esc(r.advice.detail||r.advice.message||r.advice.title)}</p><button class="primary-action" data-review-recovery>Review recovery</button><button data-acknowledge-workout>Record a modified workout</button>`,(root,close)=>{root.querySelector('[data-review-recovery]').onclick=()=>{close();route('health-vitals');};root.querySelector('[data-acknowledge-workout]').onclick=()=>{close();proceed();};});return true;}return false;
   }
   const ui={enter,heading,readinessMarkup,saveStatus,bindSaveStatus,route,checkin,core,preferences,sheet,date,tr,readiness};
-  const {today}=createTodayScreen(ui),{train}=createTrainingScreen(ui),{nutrition}=createNutritionScreen(ui),{progress}=createProgressScreen(ui),{wellbeing,recovery,routines}=createWellbeingScreens(ui);
+  const {today}=createTodayScreen(ui),{train}=createTrainingScreen(ui),{nutrition}=createNutritionScreen(ui),{progress}=createProgressScreen(ui),{wellbeing,recovery,sleep,strain,routines}=createWellbeingScreens(ui);
   window.AWJ_LOCALE=Object.freeze({apply:applyLocale,text:localizeText});
   const lifecycle=mount=>({mount(){mount();applyLocale();},update(){mount();applyLocale();},destroy(){document.querySelectorAll('.awj-modal-backdrop').forEach(node=>node.remove());}});
-  const screenRegistry=createScreenRegistry({today:lifecycle(today),train:lifecycle(train),nutrition:lifecycle(nutrition),progress:lifecycle(progress),wellbeing:lifecycle(wellbeing),recovery:lifecycle(recovery),routines:lifecycle(routines),settings:createSettingsScreen()});
+  const screenRegistry=createScreenRegistry({today:lifecycle(today),train:lifecycle(train),nutrition:lifecycle(nutrition),progress:lifecycle(progress),wellbeing:lifecycle(wellbeing),recovery:lifecycle(recovery),sleep:lifecycle(sleep),strain:lifecycle(strain),routines:lifecycle(routines),settings:createSettingsScreen()});
   const show=id=>()=>screenRegistry.show(id);
-  window.AWJ_TRAINING_UI=Object.freeze({today:show('today'),train:show('train'),nutrition:show('nutrition'),progress:show('progress'),wellbeing:show('wellbeing'),more:show('wellbeing'),recovery:show('recovery'),routines:show('routines'),refresh:()=>screenRegistry.update(),checkin,sheet,guardStart});
+  window.AWJ_TRAINING_UI=Object.freeze({today:show('today'),train:show('train'),nutrition:show('nutrition'),progress:show('progress'),wellbeing:show('wellbeing'),more:show('wellbeing'),recovery:()=>['recovery','sleep','strain'].includes(screenRegistry.current())?screenRegistry.update():nav.navigate('health-vitals'),routines:show('routines'),refresh:()=>screenRegistry.update(),checkin,sheet,guardStart});
   document.body.classList.add('training-first-app');
   nav.register([{id:'today',path:'/today',title:'Today',activate:show('today')},{id:'training-program',path:'/train',aliases:['/training/program','/training/today','/program-active'],title:'Train',activate:show('train')},{id:'training-today',path:'/training/today',title:'Today',activate:show('today')},{id:'insights',path:'/progress',aliases:['/insights'],title:'Progress',activate:show('progress')},{id:'training-history',path:'/progress/history',aliases:['/training/history'],title:'History',activate:show('progress')},{id:'wellbeing',path:'/wellbeing',title:'Wellbeing',activate:show('wellbeing')},{id:'more',path:'/more',title:'Wellbeing',activate:show('wellbeing')},{id:'health-vitals',path:'/wellbeing/recovery',aliases:['/more/recovery','/health/vitals'],title:'Recovery',activate:show('recovery')},{id:'health-wellness',path:'/wellbeing/routines',aliases:['/more/routines','/health/wellness'],title:'Daily routines',activate:show('routines')}]);
   nav.register([
+    {id:'health-sleep',path:'/wellbeing/sleep',title:'Sleep',activate:show('sleep')},
+    {id:'health-strain',path:'/wellbeing/strain',title:'Strain',activate:show('strain')},
     ...['today','log','plan'].map(view=>({id:'nutrition-'+view,path:'/nutrition/'+view,title:'Nutrition',activate:()=>{state.nutritionView=view;screenRegistry.show('nutrition');}})),
     ...['general','schedule','targets','coach','sync','security'].map(section=>({id:'settings-'+section,path:'/settings/'+section,title:'Settings',activate:()=>{state.settingsSection=section;screenRegistry.show('settings');}}))
   ]);
   nav.setTabResolver(tab=>({home:'today',train:'training-program',food:'nutrition-today',wellbeing:'wellbeing',insights:'insights',more:'wellbeing',health:'health-vitals',vitals:'health-vitals',care:'health-wellness'}[tab]||tab));
   window.addEventListener('awj:navigation',()=>{updatePrimaryTabs();if(['vitals','care'].includes(state.activeTab)&&!app.querySelector('[data-more-back]')){const back=document.createElement('button');back.dataset.moreBack='true';back.textContent='← Wellbeing';back.onclick=()=>route('wellbeing');app.prepend(back);}});
+  let lastRingRoute='';
+  window.addEventListener('awj:navigation',event=>{
+    if(event.detail.id===lastRingRoute)return;lastRingRoute=event.detail.id;
+    if(window.AWJ_MOTION.reduced())return;
+    app.querySelectorAll('.ring-value').forEach(circle=>circle.animate([{strokeDashoffset:100},{strokeDashoffset:Number(circle.getAttribute('stroke-dashoffset'))}],{duration:360,easing:'ease-out'}));
+  });
   nav.start({fallback:'today'});
   // Both overlay keyboards (iOS) and resized layouts (Android) use the same controls.
   const viewport=window.visualViewport;

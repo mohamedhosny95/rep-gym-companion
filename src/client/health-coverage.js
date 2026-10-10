@@ -32,7 +32,9 @@ globalThis.AWJ_HEALTH_COVERAGE=(()=>{
     value.setUTCDate(value.getUTCDate()+amount);
     return [value.getUTCFullYear(),String(value.getUTCMonth()+1).padStart(2,"0"),String(value.getUTCDate()).padStart(2,"0")].join("-");
   };
-  const finite=value=>Number.isFinite(Number(value));
+  const finite=value=>(typeof value==='number'||typeof value==='string'&&value.trim()!=='')&&Number.isFinite(Number(value));
+  const ranges={sleep:[.1,16],hrv:[5,300],rhr:[30,120],resp:[5,40],vo2:[5,100]};
+  const validMetric=(name,value)=>{const [min,max]=ranges[name]||[-Infinity,Infinity];return finite(value)&&Number(value)>=min&&Number(value)<=max;};
   const getRowTime=r=>{
     if(!r)return 0;
     const t=Date.parse(r.createdAt||r.date||r.dateKey);
@@ -103,10 +105,10 @@ globalThis.AWJ_HEALTH_COVERAGE=(()=>{
   const coverage=(state,key=dayKey())=>{
     const k=dateKey(key),sleep=sleepFor(state,k),metrics=metricsFor(state,k),checkin=checkinFor(state,k);
     const definitions=[
-      ["sleep","Sleep",20,finite(sleep.hours)&&Number(sleep.hours)>0],
-      ["hrv","HRV",15,finite(sleep.hrv)],
-      ["rhr","Resting heart rate",15,finite(sleep.rhr)],
-      ["resp","Respiratory rate",10,finite(sleep.resp)],
+      ["sleep","Sleep",20,validMetric('sleep',sleep.hours)],
+      ["hrv","HRV",15,validMetric('hrv',sleep.hrv)],
+      ["rhr","Resting heart rate",15,validMetric('rhr',sleep.rhr)],
+      ["resp","Respiratory rate",10,validMetric('resp',sleep.resp)],
       ["activity","Activity",10,finite(metrics.steps)||finite(metrics.active_energy_kcal)||finite(state.activeEnergy?.[k])],
       ["checkin","Morning check-in",10,Boolean(checkin)]
     ];
@@ -115,14 +117,14 @@ globalThis.AWJ_HEALTH_COVERAGE=(()=>{
     const earned=items.reduce((sum,item)=>sum+(item.available?item.weight:0),0);
     const score=maxScore?Math.round(earned/maxScore*100):0;
     const missing=items.filter(item=>!item.available).map(item=>item.label);
-    const lastImport=state.lastVitalsImportAt||state.lastSyncedAt||null;
-    const staleHours=lastImport?Math.max(0,(Date.now()-Date.parse(lastImport))/3600000):null;
+    const lastImport=state.lastVitalsImportAt||null;
+    const staleHours=lastImport&&Number.isFinite(Date.parse(lastImport))?Math.max(0,(Date.now()-Date.parse(lastImport))/3600000):null;
     const confidence=score>=85?"high":score>=60?"medium":"low";
     return {date:k,score,confidence,missing,items,lastImport,staleHours,coverageMinutes:finite(metrics.coverage_minutes)?Number(metrics.coverage_minutes):null,sampleCount:finite(metrics.heart_rate_samples)?Number(metrics.heart_rate_samples):null};
   };
   const series=(state,name,key,days)=>{
     const values=[];
-    for(let offset=days-1;offset>=0;offset--){const date=shift(key,-offset),value=metricValue(state,date,name);if(finite(value))values.push({date,value:Number(value)});}
+    for(let offset=days-1;offset>=0;offset--){const date=shift(key,-offset),value=metricValue(state,date,name);if(validMetric(name,value))values.push({date,value:Number(value)});}
     return values;
   };
   const average=values=>values.length?values.reduce((sum,row)=>sum+row.value,0)/values.length:null;
@@ -132,30 +134,30 @@ globalThis.AWJ_HEALTH_COVERAGE=(()=>{
     for(let offset=days-1;offset>=0;offset--){
       const dt=new Date(startTime-offset*dayMs),dateStr=[dt.getUTCFullYear(),String(dt.getUTCMonth()+1).padStart(2,"0"),String(dt.getUTCDate()).padStart(2,"0")].join("-");
       const sleep=sleepMap.get(dateStr)||{},metrics=metricsMap[dateStr]||{};
-      if(finite(sleep.hours))data.sleep.push({date:dateStr,value:Number(sleep.hours)});
-      if(finite(sleep.hrv))data.hrv.push({date:dateStr,value:Number(sleep.hrv)});
-      if(finite(sleep.rhr))data.rhr.push({date:dateStr,value:Number(sleep.rhr)});
-      if(finite(sleep.resp))data.resp.push({date:dateStr,value:Number(sleep.resp)});
-      if(finite(metrics.vo2_max))data.vo2.push({date:dateStr,value:Number(metrics.vo2_max)});
+      if(validMetric('sleep',sleep.hours))data.sleep.push({date:dateStr,value:Number(sleep.hours)});
+      if(validMetric('hrv',sleep.hrv))data.hrv.push({date:dateStr,value:Number(sleep.hrv)});
+      if(validMetric('rhr',sleep.rhr))data.rhr.push({date:dateStr,value:Number(sleep.rhr)});
+      if(validMetric('resp',sleep.resp))data.resp.push({date:dateStr,value:Number(sleep.resp)});
+      if(validMetric('vo2',metrics.vo2_max))data.vo2.push({date:dateStr,value:Number(metrics.vo2_max)});
     }
     return data;
   };
-  const trendFromSeries=(name,ninety)=>{
-    const twentyEight=ninety.slice(-28),seven=ninety.slice(-7);
+  const trendFromSeries=(name,ninety,key)=>{
+    const twentyEight=ninety.filter(row=>row.date>=shift(key,-27)),seven=ninety.filter(row=>row.date>=shift(key,-6));
     const current=seven.length?seven[seven.length-1].value:null,baseline=average(twentyEight.slice(0,-1));
     const delta=current===null||baseline===null?null:current-baseline;
-    return {name,current,delta,average7:average(seven),average28:average(twentyEight),average90:average(ninety),count7:seven.length,count28:twentyEight.length,count90:ninety.length,mature:twentyEight.length>=14};
+    return {name,current,currentDate:seven.at(-1)?.date||null,delta,average7:average(seven),average28:average(twentyEight),average90:average(ninety),count7:seven.length,count28:twentyEight.length,count90:ninety.length,mature:twentyEight.length>=14};
   };
   const trend=(state,name,key=dayKey())=>{
     const ninety=series(state,name,key,90);
-    return trendFromSeries(name,ninety);
+    return trendFromSeries(name,ninety,dateKey(key));
   };
   const longTerm=(state,key=dayKey())=>{
     if(state)delete state._longTermCache;
     const k=dateKey(key);
     const data90=multiSeries(state,k,90);
-    const metrics=["sleep","hrv","rhr","resp","vo2"].map(name=>trendFromSeries(name,data90[name]||[]));
-    const rawWeights=(state.bodyWeights||[]).filter(row=>finite(row.kg??row.weight)&&dateKey(row)<=k);
+    const metrics=["sleep","hrv","rhr","resp","vo2"].map(name=>trendFromSeries(name,data90[name]||[],k));
+    const rawWeights=(state.bodyWeights||[]).filter(row=>finite(row.kg??row.weight)&&Number(row.kg??row.weight)>=30&&Number(row.kg??row.weight)<=300&&dateKey(row)<=k);
     const weightIndices=new Map(rawWeights.map((r,i)=>[r,i]));
     const sortedWeights=rawWeights.slice().sort((a,b)=>{
       const dComp=dateKey(a).localeCompare(dateKey(b));
@@ -165,7 +167,7 @@ globalThis.AWJ_HEALTH_COVERAGE=(()=>{
       return (weightIndices.get(b)||0)-(weightIndices.get(a)||0);
     });
     const weightValues=sortedWeights.slice(-90).map(row=>({date:dateKey(row),value:Number(row.kg??row.weight)}));
-    const rawWaist=(state.bodyMeasurements||[]).filter(row=>finite(row.waist_cm)&&dateKey(row)<=k);
+    const rawWaist=(state.bodyMeasurements||[]).filter(row=>finite(row.waist_cm)&&Number(row.waist_cm)>=40&&Number(row.waist_cm)<=250&&dateKey(row)<=k);
     const waistIndices=new Map(rawWaist.map((r,i)=>[r,i]));
     const sortedWaist=rawWaist.slice().sort((a,b)=>{
       const dComp=dateKey(a).localeCompare(dateKey(b));

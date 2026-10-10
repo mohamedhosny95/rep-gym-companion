@@ -1,6 +1,8 @@
 /* Explicit, cancellable transitions. Logging mutations never trigger page animation. */
 (function(){
-  const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced=()=>motionPreference.matches;
+  motionPreference.addEventListener?.('change',event=>{if(event.matches)document.getAnimations?.().forEach(animation=>animation.cancel());});
   const animations=new WeakMap();
   function cancel(){const root=document.querySelector('#app');animations.get(root)?.cancel();if(root)animations.delete(root);}
   function animate(element,kind='page',direction=1){

@@ -1,5 +1,49 @@
 "use strict";
 (() => {
+  // src/client/screens/health.js
+  var routes = { sleep: "/wellbeing/sleep", recovery: "/wellbeing/recovery", strain: "/wellbeing/strain" };
+  var labels = { sleep: "Sleep", recovery: "Recovery", strain: "Strain", hrv: "HRV", rhr: "Resting HR", resp: "Breathing" };
+  var clean = (value) => esc(String(value ?? ""));
+  var format = (value, digits = 0) => value === null ? "\u2014" : Number(value).toFixed(digits);
+  var hours = (value) => value === null ? "\u2014" : `${Math.floor(Math.round(value * 60) / 60)}h ${String(Math.round(value * 60) % 60).padStart(2, "0")}m`;
+  var dayLabel = (date) => date ? (/* @__PURE__ */ new Date(`${date}T12:00:00`)).toLocaleDateString(document.documentElement.lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short" }) : "No data";
+  var healthSummary = () => AWJ_HEALTH_SUMMARY.daily(state, isoDay());
+  function ringMarkup(data, id, { large = false, linked = true } = {}) {
+    const metric = data[id], value = id === "sleep" ? metric.percent : metric.value, max = id === "strain" ? 21 : 100;
+    const fraction = value === null ? 0 : Math.max(0, Math.min(1, value / max));
+    const tone = id === "recovery" ? `recovery-${metric.band}` : id;
+    const status = value === null ? "No data" : id === "sleep" ? `${hours(metric.value)} / ${hours(metric.target)}` : id === "strain" ? metric.partial ? "Workout estimate" : "AWJ estimate" : metric.confidence === "low" ? "Limited data" : metric.calibrating ? "Calibrating" : { green: "Ready to train", yellow: "Take it steady", red: "Prioritize recovery" }[metric.band] || "AWJ estimate";
+    const numeric = format(value, id === "strain" ? 1 : 0), unit = value === null ? "" : id === "strain" ? "/ 21" : "%";
+    const contents = `<span class="health-ring ${tone} ${large ? "is-large" : ""} ${value === null ? "is-missing" : ""}" style="--ring-progress:${fraction}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="53"/><circle class="ring-value" cx="60" cy="60" r="53" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - fraction * 100}" ${fraction === 0 ? 'visibility="hidden"' : ""}/></svg><span class="ring-copy"><span class="ring-label">${labels[id]}</span><strong data-health-value="${id}">${numeric}<small>${id === "strain" ? "" : unit}</small></strong>${id === "strain" ? '<span class="ring-scale">/ 21</span>' : ""}</span></span><span class="ring-description">${clean(status)}</span>`;
+    return linked ? `<a class="health-ring-link" href="#${routes[id]}" aria-label="${clean(`${labels[id]} ${numeric}${unit} \xB7 ${status}`)}">${contents}</a>` : `<div class="health-ring-detail">${contents}</div>`;
+  }
+  function healthSourceMarkup(data) {
+    const imported = data.coverage.lastImport, valid = imported && Number.isFinite(Date.parse(imported));
+    const sources = [...new Set(data.vitals.filter((metric) => metric.date === data.date && metric.source).map((metric) => metric.source))];
+    const label = valid ? `${data.coverage.staleHours > 24 ? "Last health import" : "Health updated"} ${new Date(imported).toLocaleString(document.documentElement.lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "No health import yet";
+    return `<a class="health-source" href="#/settings/sync"><span class="status-dot ${data.coverage.staleHours !== null && data.coverage.staleHours <= 24 ? "is-current" : ""}" aria-hidden="true"></span><span>${clean(label)}${sources.length ? ` \xB7 ${clean(sources.join(", "))}` : ""}</span><span aria-hidden="true">\u2197</span></a>`;
+  }
+  function vitalsMarkup(data) {
+    const metadata = (metric) => metric.value === null ? "No data" : `${clean(dayLabel(metric.date))} \xB7 ${clean(metric.source)}${metric.date !== data.date ? " \xB7 Previous reading" : ""}`;
+    const common = data.vitals.every((metric) => metadata(metric) === metadata(data.vitals[0]));
+    return `<section class="core-vitals" aria-label="Core vitals">${data.vitals.map((metric) => `<article><h2>${labels[metric.id]}</h2><p><strong>${format(metric.value, metric.id === "resp" ? 1 : 0)}</strong> <span>${clean(metric.unit)}</span></p>${common ? "" : `<small>${metadata(metric)}</small>`}</article>`).join("")}${common ? `<small class="vital-metadata">${metadata(data.vitals[0])}</small>` : ""}</section>`;
+  }
+  function healthOverviewMarkup(data = healthSummary()) {
+    return `<section class="health-overview" aria-label="Daily health"><div class="health-rings">${["sleep", "recovery", "strain"].map((id) => ringMarkup(data, id)).join("")}</div>${healthSourceMarkup(data)}</section>${vitalsMarkup(data)}`;
+  }
+  function healthTrendMarkup(id, data = healthSummary()) {
+    const rows = AWJ_HEALTH_SUMMARY.series(state, id, data.date), mean = AWJ_HEALTH_SUMMARY.average(rows), max = id === "strain" ? 21 : 100;
+    return `<section class="health-trend performance-card"><div class="card-heading"><h2>Last 7 days</h2><span>${mean === null ? "No data" : `Average ${format(mean, id === "strain" ? 1 : 0)}${id === "strain" ? " / 21" : "%"}`}</span></div><div class="health-bars ${id}" role="list" aria-label="${labels[id]} history">${rows.map((row) => `<div role="listitem" class="health-bar ${row.value === null ? "is-missing" : ""}" aria-label="${clean(`${dayLabel(row.date)}: ${row.value === null ? "No data" : `${row.value}${id === "strain" ? " / 21" : "%"}`}`)}"><span class="bar-number">${format(row.value, id === "strain" ? 1 : 0)}</span><div class="bar-track">${row.value === null ? '<span class="bar-gap">\u2014</span>' : `<i style="height:${Math.max(2, Math.min(100, row.value / max * 100))}%" class="${row.value === 0 ? "is-zero" : ""}"></i>`}</div><span>${clean((/* @__PURE__ */ new Date(`${row.date}T12:00:00`)).toLocaleDateString(document.documentElement.lang === "ar" ? "ar-EG" : "en-GB", { weekday: "narrow" }))}</span></div>`).join("")}</div></section>`;
+  }
+  function healthQualityMarkup(data = healthSummary()) {
+    return `<section class="health-quality-summary performance-card"><div class="card-heading"><h2>Data completeness</h2><strong>${data.coverage.score}%</strong></div><p>${data.coverage.missing.length ? `Missing: ${clean(data.coverage.missing.join(", "))}` : "All daily inputs available."}</p><div class="quality-tags"><span>Recovery confidence: ${clean(data.recovery.confidence)}</span>${data.recovery.calibrating ? "<span>Building your baseline</span>" : ""}</div><p class="muted">Completeness describes your available inputs. Recovery confidence also depends on your personal baseline.</p></section>`;
+  }
+  function detailMarkup(id, data = healthSummary()) {
+    const metric = data[id], missing = metric.value === null;
+    const description = id === "sleep" ? `${hours(metric.target)} sleep need \xB7 ${metric.personalized ? "Personal baseline" : "Starting target"}` : id === "strain" ? metric.inputs.length ? metric.inputs.join(" + ") : "Import active energy or log a workout to estimate strain." : data.advice.title;
+    return `<section class="health-detail-hero performance-card">${ringMarkup(data, id, { large: true, linked: false })}<h2>${clean(missing ? "Build your daily picture" : description)}</h2>${id !== "sleep" ? `<span class="estimate-badge">AWJ estimate${metric.partial ? " \xB7 Partial data" : ""}${metric.confidence ? ` \xB7 ${metric.confidence} confidence` : ""}</span>` : ""}${missing ? "<p>No data for this day. Add a log or connect your health source.</p>" : ""}</section>`;
+  }
+
   // src/client/screens/today.js
   function createTodayScreen(ui) {
     const { enter, heading, readinessMarkup, saveStatus, bindSaveStatus, route, checkin, sheet } = ui;
@@ -7,7 +51,8 @@
       enter("home-overview", "home");
       const resume = AWJ_TRAINING_SESSION.isResumableWorkout(state, sessions), plan = window.AWJ_ENHANCEMENTS_UI.adaptiveTodayPlan(), id = resume ? state.session : plan.targetSession, s = sessions[id] || { name: "Recovery day", meta: "No scheduled workout", description: plan.detail, exercises: [] }, ls = sessionText(id, s), duration = id ? s.duration || ls.meta.match(/\d+[–-]\d+ min|\d+ min/)?.[0] || "" : "";
       const sessionDetail = id ? [duration || null, `${s.exercises.length} exercises`, resume ? `Exercise ${state.index + 1}` : null].filter(Boolean).map(esc).join(" \xB7 ") : "A lighter day for rest, gentle movement, and your daily practices.";
-      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading("Today", (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }))}<section class="today-session" data-today-session><div><span class="muted">${resume ? "In progress" : id ? "Today's workout" : "Today\u2019s focus"}</span><h2>${esc(ls.name)}</h2><p>${sessionDetail}</p></div><button class="primary-action" data-today-start>${resume ? "Resume workout" : id ? "Start workout" : "Review recovery"}</button><button class="quiet-action" data-today-preview>${id ? "Review exercises" : "View routines"}</button></section>${readinessMarkup()}<nav class="quick-actions" aria-label="Quick actions"><button data-adjust-today>Adjust today</button><button data-today-activity>Log activity</button><button data-today-food>Meal / water</button><button data-today-checkin>Check-in</button></nav>${saveStatus()}<section data-daily-routines></section>`);
+      const data = healthSummary(), totals = foodTotals(), profile = foodProfile(), water = Number(state.water?.[isoDay()] || 0);
+      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading("Today", (/* @__PURE__ */ new Date()).toLocaleDateString(state.preferences?.language === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" }))}${healthOverviewMarkup(data)}${readinessMarkup()}<div class="today-dashboard"><section class="today-session ${resume ? "is-resuming" : ""}" data-today-session><div><span class="eyebrow">${resume ? "In progress" : id ? "Today's workout" : "Today\u2019s focus"}</span><h2>${esc(ls.name)}</h2><p>${sessionDetail}</p></div><button class="primary-action" data-today-start>${resume ? "Resume workout" : id ? "Start workout" : "Review recovery"}</button><button class="quiet-action" data-today-preview>${id ? "Review exercises" : "View routines"}</button></section><div class="today-support"><nav class="daily-overview" aria-label="Daily overview"><a href="#/nutrition/today"><span>Nutrition logged</span><strong>${Math.round(totals.calories || 0)} <small>/ ${profile.calories} kcal</small></strong><progress max="${profile.calories || 1}" value="${Math.min(profile.calories, totals.calories || 0)}" aria-label="Calories logged"></progress></a><a href="#/nutrition/today"><span>Water logged</span><strong>${esc(window.waterDisplay(water))} <small>/ ${esc(window.waterDisplay(profile.water))}</small></strong><progress max="${profile.water || 1}" value="${Math.min(profile.water, water)}" aria-label="Water logged"></progress></a></nav><nav class="quick-actions" aria-label="Quick actions"><button data-adjust-today>Adjust today</button><button data-today-activity>Log activity</button><button data-today-food>Meal / water</button><button data-today-checkin>Check-in</button></nav></div></div><section data-daily-routines></section>${saveStatus()}`);
       document.querySelector("[data-today-start]").onclick = () => {
         if (!id) {
           route("health-vitals");
@@ -32,11 +77,6 @@
       document.querySelector("[data-today-checkin]").onclick = checkin;
       window.AWJ_HABITS.mount();
       bindSaveStatus();
-      const totals = foodTotals(), water = Number(state.water?.[isoDay()] || 0), overview = document.createElement("nav");
-      overview.className = "daily-overview";
-      overview.setAttribute("aria-label", "Daily overview");
-      overview.innerHTML = AWJ_SAFE_DOM.sanitize(`<a href="#/nutrition/today"><strong>${Math.round(totals.calories || 0)}</strong><span>Calories logged</span></a><a href="#/nutrition/today"><strong>${esc(window.waterDisplay(water))}</strong><span>Water today</span></a><a href="#/wellbeing/recovery"><strong>Check in</strong><span>Recovery & sleep</span></a>`);
-      app.querySelector(".quick-actions")?.before(overview);
     }
     return { today };
   }
@@ -112,7 +152,7 @@
       const summary = document.createElement("section");
       summary.className = "nutrition-summary";
       const totals = foodTotals(todayFoodEntries()), profile = foodProfile(), water = Number(state.water[isoDay()]) || 0;
-      summary.innerHTML = AWJ_SAFE_DOM.sanitize(`<h2>Today so far</h2><dl><div><dt>Energy</dt><dd>${Math.round(totals.calories)}<span>/ ${profile.calories} kcal</span></dd></div><div><dt>Protein</dt><dd>${Math.round(totals.protein_g)}<span>/ ${profile.protein} g</span></dd></div><div><dt>Water</dt><dd>${esc(window.waterDisplay(water))}<span>/ ${esc(window.waterDisplay(profile.water))}</span></dd></div></dl>`);
+      summary.innerHTML = AWJ_SAFE_DOM.sanitize(`<h2>Logged today</h2><dl><div><dt>Energy logged</dt><dd>${Math.round(totals.calories)}<span>/ ${profile.calories} kcal</span></dd></div><div><dt>Protein logged</dt><dd>${Math.round(totals.protein_g)}<span>/ ${profile.protein} g</span></dd></div><div><dt>Water logged</dt><dd>${esc(window.waterDisplay(water))}<span>/ ${esc(window.waterDisplay(profile.water))}</span></dd></div></dl>`);
       head?.after(summary);
       const shortcut = document.createElement("nav");
       shortcut.className = "nutrition-actions";
@@ -218,35 +258,42 @@
     const { enter, heading, readinessMarkup, saveStatus, bindSaveStatus, route, checkin, core } = ui;
     function wellbeing() {
       enter("wellbeing", "wellbeing");
-      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading("Wellbeing", "Daily practices and recovery in one place.")}<section class="more-menu">${[["Daily practices", "Habits, hygiene and journal", "health-wellness"], ["Recovery & health", "Sleep, check-ins and measurements", "health-vitals"]].map(([title, detail, id]) => `<button data-more-route="${id}"><strong>${title}</strong><span>${detail}</span><b aria-hidden="true">\u2192</b></button>`).join("")}</section><section data-daily-routines></section>${readinessMarkup()}${saveStatus()}`);
-      app.querySelectorAll("[data-more-route]").forEach((b) => b.onclick = () => route(b.dataset.moreRoute));
+      const data = healthSummary();
+      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading("Wellbeing", "Your health and daily practices.")}${healthOverviewMarkup(data)}${healthQualityMarkup(data)}<section class="more-menu">${[["Recovery & health", "Sleep, check-ins and measurements", "health-vitals"], ["Daily practices", "Habits, hygiene and journal", "health-wellness"]].map(([title, detail, id]) => `<button data-more-route="${id}"><strong>${title}</strong><span>${detail}</span><b aria-hidden="true">\u2192</b></button>`).join("")}</section><section data-daily-routines></section>${saveStatus()}`);
+      app.querySelectorAll("[data-more-route]").forEach((button) => button.onclick = () => route(button.dataset.moreRoute));
       window.AWJ_HABITS.mount();
       bindSaveStatus();
     }
-    function recovery() {
+    function healthDetail(id) {
       enter("vitals", "vitals");
       core.vitals();
       const old = document.createElement("div");
       while (app.firstChild) old.append(app.firstChild);
-      const sleep = old.querySelector(".sleep-card");
-      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading("Recovery", "Sleep and recovery inputs support your training.")}<button data-more-back>\u2190 Wellbeing</button>${readinessMarkup()}<nav class="quick-actions"><button data-recovery-checkin>Quick check-in</button><button data-recovery-measurements>Measurements</button></nav><details class="recovery-sleep"><summary>Log sleep</summary></details><details class="supporting-details recovery-data"><summary>Health data, baselines and setup</summary>${window.AWJ_HEALTH_UI.trendMarkup()}</details>`);
-      if (sleep) app.querySelector(".recovery-sleep").append(sleep);
-      old.querySelectorAll(".hero,.strain-recovery-card,.recovery-head").forEach((x) => x.remove());
-      app.querySelector(".recovery-data").append(old);
+      const data = healthSummary(), title = { sleep: "Sleep", recovery: "Recovery", strain: "Strain" }[id];
+      app.innerHTML = AWJ_SAFE_DOM.sanitize(`${heading(title, (/* @__PURE__ */ new Date(`${data.date}T12:00:00`)).toLocaleDateString(state.preferences?.language === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" }))}<button class="health-back" data-more-back>\u2190 Wellbeing</button><nav class="health-detail-tabs" aria-label="Health details">${[["sleep", "Sleep"], ["recovery", "Recovery"], ["strain", "Strain"]].map(([key, label]) => `<a href="#/wellbeing/${key}" aria-current="${id === key ? "page" : "false"}">${label}</a>`).join("")}</nav>${detailMarkup(id, data)}${healthSourceMarkup(data)}${vitalsMarkup(data)}<div class="health-detail-grid">${healthTrendMarkup(id, data)}${healthQualityMarkup(data)}</div>${readinessMarkup()}<nav class="quick-actions"><button data-recovery-checkin>Quick check-in</button><button data-recovery-measurements>Measurements</button></nav><section class="health-baselines">${window.AWJ_HEALTH_UI.trendMarkup()}</section><section class="health-extra"></section><details class="recovery-sleep" ${id === "sleep" ? "open" : ""}><summary>Log sleep</summary></details><section class="health-energy-log"></section><details class="supporting-details recovery-data"><summary>Connections, imports & setup</summary><section data-health-tools></section>${window.AWJ_HEALTH_UI.chargingMarkup()}</details><section class="health-journal"></section>${saveStatus()}`);
+      const move = (selector, target) => old.querySelectorAll(selector).forEach((node) => {
+        node.hidden = false;
+        app.querySelector(target).append(node);
+      });
+      move(".sleep-card", ".recovery-sleep");
+      move(".active-energy-card", ".health-energy-log");
+      move(".vitals-import-card", ".recovery-data");
+      move(".recovery-card.wide:not(.sleep-card):not(.journal-card)", ".health-extra");
+      move(".journal-card", ".health-journal");
       app.querySelector("[data-more-back]").onclick = () => route("wellbeing");
       app.querySelector("[data-recovery-checkin]").onclick = checkin;
-      app.querySelector("[data-recovery-measurements]").onclick = () => {
-        app.querySelector(".recovery-data").open = true;
-        app.querySelector("[data-body-measurement]")?.scrollIntoView({ block: "center" });
-      };
+      app.querySelector("[data-recovery-measurements]").onclick = () => app.querySelector("[data-body-measurement]")?.scrollIntoView({ block: "center" });
       window.AWJ_HEALTH_UI.bind({ onMeasurementSaved: () => {
-        recovery();
-        app.querySelector(".recovery-data").open = true;
+        healthDetail(id);
+        app.querySelector("[data-body-measurement]")?.scrollIntoView({ block: "center" });
         showToast("Measurements saved on device.");
       } });
+      if (state.vitalsDraft) app.querySelector(".recovery-data").open = true;
       window.AWJ_PRODUCT_UI.mount();
+      bindSaveStatus();
       updatePrimaryTabs();
     }
+    const recovery = () => healthDetail("recovery"), sleep = () => healthDetail("sleep"), strain = () => healthDetail("strain");
     function routines() {
       enter("care", "care");
       core.wellness();
@@ -261,7 +308,7 @@
       window.AWJ_PRODUCT_UI.mount();
       updatePrimaryTabs();
     }
-    return { wellbeing, recovery, routines };
+    return { wellbeing, recovery, sleep, strain, routines };
   }
 
   // src/client/screens/registry.ts
@@ -296,6 +343,42 @@
 
   // src/client/screens/locale.js
   var arabic = {
+    "Dark": "\u062F\u0627\u0643\u0646",
+    "Light": "\u0641\u0627\u062A\u062D",
+    "Recovery": "\u0627\u0644\u062A\u0639\u0627\u0641\u064A",
+    "Strain": "\u0627\u0644\u062C\u0647\u062F",
+    "Breathing": "\u0627\u0644\u062A\u0646\u0641\u0633",
+    "Resting HR": "\u0646\u0628\u0636 \u0627\u0644\u0631\u0627\u062D\u0629",
+    "Your health and daily practices.": "\u0635\u062D\u062A\u0643 \u0648\u0639\u0627\u062F\u0627\u062A\u0643 \u0627\u0644\u064A\u0648\u0645\u064A\u0629.",
+    "Daily health": "\u0627\u0644\u0635\u062D\u0629 \u0627\u0644\u064A\u0648\u0645\u064A\u0629",
+    "Core vitals": "\u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062A \u0627\u0644\u062D\u064A\u0648\u064A\u0629",
+    "No data": "\u0644\u0627 \u062A\u0648\u062C\u062F \u0628\u064A\u0627\u0646\u0627\u062A",
+    "No health import yet": "\u0644\u0645 \u062A\u064F\u0633\u062A\u0648\u0631\u062F \u0628\u064A\u0627\u0646\u0627\u062A \u0635\u062D\u064A\u0629 \u0628\u0639\u062F",
+    "Nutrition logged": "\u0627\u0644\u062A\u063A\u0630\u064A\u0629 \u0627\u0644\u0645\u0633\u062C\u0644\u0629",
+    "Water logged": "\u0627\u0644\u0645\u0627\u0621 \u0627\u0644\u0645\u0633\u062C\u0644",
+    "Logged today": "\u0627\u0644\u0645\u0633\u062C\u0644 \u0627\u0644\u064A\u0648\u0645",
+    "Energy logged": "\u0627\u0644\u0637\u0627\u0642\u0629 \u0627\u0644\u0645\u0633\u062C\u0644\u0629",
+    "Protein logged": "\u0627\u0644\u0628\u0631\u0648\u062A\u064A\u0646 \u0627\u0644\u0645\u0633\u062C\u0644",
+    "AWJ estimate": "\u062A\u0642\u062F\u064A\u0631 \u0623\u0648\u062C",
+    "Partial data": "\u0628\u064A\u0627\u0646\u0627\u062A \u062C\u0632\u0626\u064A\u0629",
+    "Limited data": "\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u062F\u0648\u062F\u0629",
+    "Calibrating": "\u062C\u0627\u0631\u064D \u0628\u0646\u0627\u0621 \u062E\u0637 \u0627\u0644\u0623\u0633\u0627\u0633",
+    "Building your baseline": "\u062C\u0627\u0631\u064D \u0628\u0646\u0627\u0621 \u062E\u0637 \u0627\u0644\u0623\u0633\u0627\u0633",
+    "Data completeness": "\u0627\u0643\u062A\u0645\u0627\u0644 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A",
+    "All daily inputs available.": "\u0643\u0644 \u0645\u062F\u062E\u0644\u0627\u062A \u0627\u0644\u064A\u0648\u0645 \u0645\u062A\u0627\u062D\u0629.",
+    "Recovery confidence": "\u0627\u0644\u062B\u0642\u0629 \u0641\u064A \u062A\u0642\u062F\u064A\u0631 \u0627\u0644\u062A\u0639\u0627\u0641\u064A",
+    "High confidence": "\u062B\u0642\u0629 \u0639\u0627\u0644\u064A\u0629",
+    "Completeness describes your available inputs. Recovery confidence also depends on your personal baseline.": "\u064A\u0639\u0643\u0633 \u0627\u0644\u0627\u0643\u062A\u0645\u0627\u0644 \u0627\u0644\u0645\u062F\u062E\u0644\u0627\u062A \u0627\u0644\u0645\u062A\u0627\u062D\u0629. \u0648\u062A\u0639\u062A\u0645\u062F \u0627\u0644\u062B\u0642\u0629 \u0641\u064A \u062A\u0642\u062F\u064A\u0631 \u0627\u0644\u062A\u0639\u0627\u0641\u064A \u0623\u064A\u0636\u064B\u0627 \u0639\u0644\u0649 \u062E\u0637 \u0623\u0633\u0627\u0633\u0643 \u0627\u0644\u0634\u062E\u0635\u064A.",
+    "Ready to train": "\u062C\u0627\u0647\u0632 \u0644\u0644\u062A\u0645\u0631\u064A\u0646",
+    "Take it steady": "\u062A\u062F\u0631\u0651\u0628 \u0628\u0647\u062F\u0648\u0621",
+    "Prioritize recovery": "\u0623\u0639\u0637\u0650 \u0627\u0644\u062A\u0639\u0627\u0641\u064A \u0627\u0644\u0623\u0648\u0644\u0648\u064A\u0629",
+    "Workout estimate": "\u062A\u0642\u062F\u064A\u0631 \u0645\u0646 \u0627\u0644\u062A\u0645\u0627\u0631\u064A\u0646 \u0627\u0644\u0645\u0633\u062C\u0644\u0629",
+    "Build your daily picture": "\u0623\u0643\u0645\u0644 \u0635\u0648\u0631\u0629 \u064A\u0648\u0645\u0643",
+    "No data for this day. Add a log or connect your health source.": "\u0644\u0627 \u062A\u0648\u062C\u062F \u0628\u064A\u0627\u0646\u0627\u062A \u0644\u0647\u0630\u0627 \u0627\u0644\u064A\u0648\u0645. \u0623\u0636\u0641 \u0633\u062C\u0644\u064B\u0627 \u0623\u0648 \u0627\u0631\u0628\u0637 \u0645\u0635\u062F\u0631 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0627\u0644\u0635\u062D\u064A\u0629.",
+    "Connections, imports & setup": "\u0627\u0644\u0627\u062A\u0635\u0627\u0644\u0627\u062A \u0648\u0627\u0644\u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0648\u0627\u0644\u0625\u0639\u062F\u0627\u062F",
+    "TODAY\u2019S GUIDANCE": "\u062A\u0648\u062C\u064A\u0647 \u0627\u0644\u064A\u0648\u0645",
+    "Health details": "\u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u0635\u062D\u0629",
+    "Previous reading": "\u0642\u0631\u0627\u0621\u0629 \u0633\u0627\u0628\u0642\u0629",
     "Today": "\u0627\u0644\u064A\u0648\u0645",
     "Train": "\u0627\u0644\u062A\u0645\u0631\u064A\u0646",
     "Nutrition": "\u0627\u0644\u062A\u063A\u0630\u064A\u0629",
@@ -529,6 +612,8 @@
     }) {
       const overlay = document.createElement("div");
       overlay.className = "awj-modal-backdrop";
+      overlay.dataset.dialogReady = "true";
+      overlay.tabIndex = -1;
       overlay.setAttribute("role", "dialog");
       overlay.setAttribute("aria-modal", "true");
       overlay.setAttribute("aria-label", title);
@@ -574,7 +659,7 @@
     }
     function readinessMarkup() {
       const r = readiness();
-      return `<section class="readiness-note"><div><h2>${esc(r.advice.title)}</h2><p>${esc(r.advice.detail || r.advice.message || "Use your warm-up as the final check. You can log manually without a watch.")}</p></div><details><summary>Why this recommendation?</summary><p>${esc(r.source)} \xB7 ${esc(r.confidence)} confidence</p><p>${r.value.score === null ? "More recovery observations are needed." : `Wellness estimate: ${r.value.score}%`}</p><p>${esc((r.value.reasons || []).map((x) => typeof x === "string" ? x : x.detail || x.label || "").filter(Boolean).join(" "))}</p></details></section>`;
+      return `<section class="readiness-note"><details><summary><span class="eyebrow">TODAY\u2019S GUIDANCE</span><strong>${esc(r.advice.title)}</strong><span class="guidance-prompt" aria-label="Why this recommendation?">\u2197</span></summary><p>${esc(r.advice.detail || r.advice.message || "Use your warm-up as the final check.")}</p><p>${esc(r.source)} \xB7 ${esc(r.confidence)} confidence</p><p>${r.value.score === null ? "More recovery observations are needed." : `AWJ estimate: ${r.value.score}%`}</p><p>${esc((r.value.reasons || []).map((x) => typeof x === "string" ? x : x.detail || x.label || "").filter(Boolean).join(" "))}</p></details></section>`;
     }
     function saveStatus() {
       const queued = window.AWJ_SYNC_OUTBOX?.summary(state.syncQueue)?.total || 0, storage = window.AWJ_STORE?.saveStatus;
@@ -639,7 +724,7 @@
       return false;
     }
     const ui = { enter, heading, readinessMarkup, saveStatus, bindSaveStatus, route, checkin, core, preferences, sheet, date, tr, readiness };
-    const { today } = createTodayScreen(ui), { train } = createTrainingScreen(ui), { nutrition } = createNutritionScreen(ui), { progress } = createProgressScreen(ui), { wellbeing, recovery, routines } = createWellbeingScreens(ui);
+    const { today } = createTodayScreen(ui), { train } = createTrainingScreen(ui), { nutrition } = createNutritionScreen(ui), { progress } = createProgressScreen(ui), { wellbeing, recovery, sleep, strain, routines } = createWellbeingScreens(ui);
     window.AWJ_LOCALE = Object.freeze({ apply: applyLocale, text: localizeText });
     const lifecycle = (mount) => ({ mount() {
       mount();
@@ -650,12 +735,14 @@
     }, destroy() {
       document.querySelectorAll(".awj-modal-backdrop").forEach((node) => node.remove());
     } });
-    const screenRegistry = createScreenRegistry({ today: lifecycle(today), train: lifecycle(train), nutrition: lifecycle(nutrition), progress: lifecycle(progress), wellbeing: lifecycle(wellbeing), recovery: lifecycle(recovery), routines: lifecycle(routines), settings: createSettingsScreen() });
+    const screenRegistry = createScreenRegistry({ today: lifecycle(today), train: lifecycle(train), nutrition: lifecycle(nutrition), progress: lifecycle(progress), wellbeing: lifecycle(wellbeing), recovery: lifecycle(recovery), sleep: lifecycle(sleep), strain: lifecycle(strain), routines: lifecycle(routines), settings: createSettingsScreen() });
     const show = (id) => () => screenRegistry.show(id);
-    window.AWJ_TRAINING_UI = Object.freeze({ today: show("today"), train: show("train"), nutrition: show("nutrition"), progress: show("progress"), wellbeing: show("wellbeing"), more: show("wellbeing"), recovery: show("recovery"), routines: show("routines"), refresh: () => screenRegistry.update(), checkin, sheet, guardStart });
+    window.AWJ_TRAINING_UI = Object.freeze({ today: show("today"), train: show("train"), nutrition: show("nutrition"), progress: show("progress"), wellbeing: show("wellbeing"), more: show("wellbeing"), recovery: () => ["recovery", "sleep", "strain"].includes(screenRegistry.current()) ? screenRegistry.update() : nav.navigate("health-vitals"), routines: show("routines"), refresh: () => screenRegistry.update(), checkin, sheet, guardStart });
     document.body.classList.add("training-first-app");
     nav.register([{ id: "today", path: "/today", title: "Today", activate: show("today") }, { id: "training-program", path: "/train", aliases: ["/training/program", "/training/today", "/program-active"], title: "Train", activate: show("train") }, { id: "training-today", path: "/training/today", title: "Today", activate: show("today") }, { id: "insights", path: "/progress", aliases: ["/insights"], title: "Progress", activate: show("progress") }, { id: "training-history", path: "/progress/history", aliases: ["/training/history"], title: "History", activate: show("progress") }, { id: "wellbeing", path: "/wellbeing", title: "Wellbeing", activate: show("wellbeing") }, { id: "more", path: "/more", title: "Wellbeing", activate: show("wellbeing") }, { id: "health-vitals", path: "/wellbeing/recovery", aliases: ["/more/recovery", "/health/vitals"], title: "Recovery", activate: show("recovery") }, { id: "health-wellness", path: "/wellbeing/routines", aliases: ["/more/routines", "/health/wellness"], title: "Daily routines", activate: show("routines") }]);
     nav.register([
+      { id: "health-sleep", path: "/wellbeing/sleep", title: "Sleep", activate: show("sleep") },
+      { id: "health-strain", path: "/wellbeing/strain", title: "Strain", activate: show("strain") },
       ...["today", "log", "plan"].map((view) => ({ id: "nutrition-" + view, path: "/nutrition/" + view, title: "Nutrition", activate: () => {
         state.nutritionView = view;
         screenRegistry.show("nutrition");
@@ -675,6 +762,13 @@
         back.onclick = () => route("wellbeing");
         app.prepend(back);
       }
+    });
+    let lastRingRoute = "";
+    window.addEventListener("awj:navigation", (event) => {
+      if (event.detail.id === lastRingRoute) return;
+      lastRingRoute = event.detail.id;
+      if (window.AWJ_MOTION.reduced()) return;
+      app.querySelectorAll(".ring-value").forEach((circle) => circle.animate([{ strokeDashoffset: 100 }, { strokeDashoffset: Number(circle.getAttribute("stroke-dashoffset")) }], { duration: 360, easing: "ease-out" }));
     });
     nav.start({ fallback: "today" });
     const viewport = window.visualViewport;

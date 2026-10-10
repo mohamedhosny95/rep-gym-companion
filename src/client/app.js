@@ -804,7 +804,7 @@ function updatePrimaryTabs(){
   document.querySelectorAll("[data-app-tab]").forEach(button=>{button.setAttribute("aria-current",button.dataset.appTab===current?"page":"false");const span=button.querySelector("span");if(span)span.textContent=labels[button.dataset.appTab]||button.dataset.appTab;});
 }
 function focusViewHeading({scroll=true}={}){
-  requestAnimationFrame(()=>{const heading=app.querySelector("h1");if(!heading)return;heading.tabIndex=-1;heading.focus({preventScroll:true});if(scroll)scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
+  requestAnimationFrame(()=>{if(document.querySelector('[role="dialog"][aria-modal="true"]'))return;const heading=app.querySelector("h1");if(!heading)return;heading.tabIndex=-1;heading.focus({preventScroll:true});if(scroll)scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
 }
 function vibrateGym(type="set"){
   if(!navigator.vibrate)return;
@@ -2077,9 +2077,8 @@ function saveSleepLog(bedtime,wake,hrv,rhr,resp){
   const hours=computeSleepHours(bedtime,wake);
   if(!hours||hours<=0||hours>16)return false;
   const date=isoDay();
-  const hrvValue=Number(hrv),rhrValue=Number(rhr),respValue=Number(resp);
   state.sleepLogs=state.sleepLogs.filter(s=>s.date!==date);
-  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:Number.isFinite(hrvValue)&&hrvValue>0?hrvValue:null,rhr:Number.isFinite(rhrValue)&&rhrValue>0?rhrValue:null,resp:Number.isFinite(respValue)&&respValue>0?respValue:null});
+  state.sleepLogs.unshift({date,bedtime,wake,hours,hrv:saneVital(hrv,'hrv'),rhr:saneVital(rhr,'rhr'),resp:saneVital(resp,'resp'),source:'Manual log',createdAt:new Date().toISOString()});
   state.sleepLogs=state.sleepLogs.slice(0,400);
   queueHealth("sleep",{date,sleep:hours});
   persist();return true;
@@ -2238,7 +2237,7 @@ function vitalsTeaserStrip(){
   </button>`;
 }
 function sleepTrackerCard(){
-  const today=state.sleepLogs.find(s=>s.date===isoDay()),sorted=[...state.sleepLogs].sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=AWJ_HEALTH_GUIDE.rules.minimumSleepHours;
+  const today=state.sleepLogs.find(s=>s.date===isoDay()&&Number(s.hours)>0),sorted=state.sleepLogs.filter(s=>Number(s.hours)>0).sort((a,b)=>b.date.localeCompare(a.date)),avg=recentSleepAvg(7),minHours=AWJ_HEALTH_GUIDE.rules.minimumSleepHours;
   const perf=computeSleepPerformance();
   const sleepRow=s=>`<div class="sleep-row"><span>${new Date(s.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span><strong>${esc(s.bedtime)} → ${esc(s.wake)}</strong><small class="${s.hours<minHours?"low":""}">${s.hours}h</small><button class="quiet" data-delete-sleep="${s.date}" aria-label="${"Delete"}">×</button></div>`;
   const visibleRows=sorted.slice(0,3).map(sleepRow).join(""),restEntries=sorted.slice(3,7),restRows=restEntries.map(sleepRow).join("");
@@ -2296,9 +2295,9 @@ function importRunStatus(){
 function healthMetricsCard(){
   const dates=Object.keys(state.healthMetrics||{}).sort().reverse(),metric=state.healthMetrics[isoDay()]||state.healthMetrics[dates[0]];
   if(!metric)return '';
-  const values=[['Steps',metric.steps,''],['Exercise',metric.exerciseMinutes,' min'],['Stand',metric.standMinutes,' min'],['VO₂ max',metric.vo2Max,''],['SpO₂',metric.oxygenSaturation,'%'],['Wrist temp',metric.wristTemperature,'°C'],['Deep sleep',metric.deepSleepHours,'h'],['REM',metric.remSleepHours,'h']].filter(([,value])=>value!==null&&value!==undefined);
+  const values=[['Steps',metric.steps,''],['Exercise',metric.exerciseMinutes,' min'],['Stand',metric.standMinutes,' min'],['VO₂ max',metric.vo2Max,''],['SpO₂',metric.oxygenSaturation,'%'],['Wrist temp',metric.wristTemperature,'°C'],['Deep sleep',metric.deepSleepHours,'h'],['REM',metric.remSleepHours,'h']].filter(([,value])=>AWJ_HEALTH_SUMMARY.number(value)!==null);
   if(!values.length)return '';
-  return `<section class='recovery-card wide'><span class='card-kicker'>${'APPLE HEALTH METRICS'}</span><h2>${'Latest daily reading'}</h2><div class='sleep-summary'>${values.map(([label,value,unit])=>`<div><small>${label}</small><strong>${Math.round(Number(value)*10)/10}${unit}</strong></div>`).join('')}</div><p class='sleep-hint'>${'Used for trends and context, not diagnosis.'}</p></section>`;
+  return `<section class='recovery-card wide'><span class='card-kicker'>${'APPLE HEALTH METRICS'}</span><h2>${'Daily reading'} · ${esc(state.healthMetrics[isoDay()]?isoDay():dates[0])}</h2><div class='sleep-summary'>${values.map(([label,value,unit])=>`<div><small>${label}</small><strong>${Math.round(Number(value)*10)/10}${unit}</strong></div>`).join('')}</div><p class='sleep-hint'>${'Used for trends and context, not diagnosis.'}</p></section>`;
 }
 function importCard(){
   const connected=Boolean(localStorage.getItem(syncKeyStorage));
@@ -2393,14 +2392,14 @@ function applyVitalsEntry(entry){
   const hrv=readVital(entry.hrv_ms,'hrv','HRV',existing?.hrv);
   const rhr=readVital(entry.resting_hr_bpm,'rhr','resting HR',existing?.rhr);
   const resp=readVital(entry.respiratory_rate_bpm,'resp','respiratory rate',existing?.resp);
-  if(hours&&hours>0){
+  if(hours&&hours>0||hrv!==null||rhr!==null||resp!==null){
     state.sleepLogs=state.sleepLogs.filter(s=>s.date!==entry.date);
-    state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours,hrv,rhr,resp});
+    state.sleepLogs.unshift({date:entry.date,bedtime,wake,hours:hours>0?hours:null,hrv,rhr,resp,source:entry.source||existing?.source||'Apple Health',importedAt:entry.imported_at||existing?.importedAt||null});
     state.sleepLogs=state.sleepLogs.slice(0,400);
   }
-  const activeEnergyValue=Number(entry.active_energy_kcal);
-  if(Number.isFinite(activeEnergyValue)&&activeEnergyValue>0&&activeEnergyValue<=10000)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
-  const prior=state.healthMetrics[entry.date]||{},number=(value,min,max)=>{const n=Number(value);return Number.isFinite(n)&&n>=min&&n<=max?n:null;};
+  const activeEnergyValue=AWJ_HEALTH_SUMMARY.number(entry.active_energy_kcal,0,10000);
+  if(activeEnergyValue!==null)state.activeEnergy[entry.date]=Math.round(activeEnergyValue);
+  const prior=state.healthMetrics[entry.date]||{},number=AWJ_HEALTH_SUMMARY.number;
   state.healthMetrics[entry.date]={...prior,date:entry.date,source:entry.source||prior.source||'Apple Health',importedAt:entry.imported_at||prior.importedAt||null,steps:number(entry.steps,0,200000)??prior.steps??null,exerciseMinutes:number(entry.exercise_minutes,0,1440)??prior.exerciseMinutes??null,standMinutes:number(entry.stand_minutes,0,1440)??prior.standMinutes??null,vo2Max:number(entry.vo2_max,5,100)??prior.vo2Max??null,oxygenSaturation:number(entry.oxygen_saturation_pct,50,100)??prior.oxygenSaturation??null,wristTemperature:number(entry.wrist_temperature_c,20,45)??prior.wristTemperature??null,deepSleepHours:number(entry.sleep_deep_hours,0,10)??prior.deepSleepHours??null,remSleepHours:number(entry.sleep_rem_hours,0,10)??prior.remSleepHours??null};
   const runs=[...(state.vitalsImportRuns[entry.date]||[]),...(Array.isArray(entry.import_runs)?entry.import_runs:entry.imported_at?[entry.imported_at]:[])];
   state.vitalsImportRuns[entry.date]=[...new Set(runs.filter(Boolean))].sort().slice(-24);
@@ -2456,12 +2455,12 @@ function daysSinceVitalsImport(){
   const diff=Math.floor((new Date(isoDay()).getTime()-new Date(last).getTime())/86400000);
   return Number.isFinite(diff)&&diff>=0?diff:null;
 }
-function saveActiveEnergy(kcal){const value=Math.max(0,Math.round(Number(kcal)||0));if(!value)return;state.activeEnergy[isoDay()]=value;persist();renderVitals();}
+function saveActiveEnergy(kcal){const value=AWJ_HEALTH_SUMMARY.number(kcal,0,10000);if(value===null)return;state.activeEnergy[isoDay()]=Math.round(value);persist();renderVitals();}
 function activeEnergyCard(){
-  const value=state.activeEnergy?.[isoDay()];
-  return `<section class="active-energy-card"><div class="supplement-head"><div><small>${"ACTIVE ENERGY TODAY"}</small><strong>${value?`${value} kcal`:("Not logged yet")}</strong></div></div>
+  const value=AWJ_HEALTH_SUMMARY.number(state.activeEnergy?.[isoDay()],0,10000);
+  return `<section class="active-energy-card"><div class="supplement-head"><div><small>${"ACTIVE ENERGY TODAY"}</small><strong>${value!==null?`${value} kcal`:("Not logged yet")}</strong></div></div>
     <p class="vitals-import-copy">${"From your Watch's Activity rings or the Health app's Active Energy total. Adds your whole day's load — not just logged workouts — to the Strain score."}</p>
-    <form class="active-energy-form" data-active-energy-form><input type="number" min="0" max="10000" step="1" inputmode="numeric" value="${value||""}" placeholder="${"e.g. 620"}" data-active-energy-input aria-label="${"Today's active energy in kilocalories"}"><button type="submit">${"Save"}</button></form></section>`;
+    <form class="active-energy-form" data-active-energy-form><input type="number" min="0" max="10000" step="1" inputmode="numeric" required value="${value??""}" placeholder="${"e.g. 620"}" data-active-energy-input aria-label="${"Today's active energy in kilocalories"}"><button type="submit">${"Save"}</button></form></section>`;
 }
 function bindVitalsTools(){
   document.querySelector("[data-vitals-screenshot]")?.addEventListener("change",e=>analyzeVitalsImage(e.target.files?.[0]));

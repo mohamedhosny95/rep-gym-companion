@@ -103,13 +103,15 @@ try {
   assertTrue(await page.locator('.onboarding-backdrop').count()===1,'Setup opens on a fresh profile');
   await page.click('[data-onboarding-next]');await page.click('[data-onboarding-next]');await page.click('[data-onboarding-next]');
   await page.waitForSelector('.onboarding-backdrop',{state:'detached'});
+  if(process.env.AWJ_E2E_THEME==='light')await page.evaluate(()=>{state.preferences.themeMode='default';applyThemeSettings();persist();});
   await page.evaluate(()=>{state.preferences.schedule[currentDay()]={morning:true,focus:'gym'};renderOverview();});
   assertTrue(await page.locator('main h1').textContent()==='Today','Today has one clear screen title');
   assertTrue(await page.locator('[data-today-start]').textContent()==='Start workout','Today exposes the scheduled workout directly');
-  assertTrue((await page.locator('[data-today-start]').boundingBox()).y<500,'Start workout is in the first phone viewport');
+  assertTrue((await page.locator('.core-vitals').boundingBox()).y<(await page.locator('[data-today-start]').boundingBox()).y,'Home vitals appear before the workout');
   await captureScreen('today');
   assertTrue(await page.locator('.readiness-note').count()===1,'Today has one readiness recommendation');
-  assertTrue(await page.locator('.habit-tracker').evaluate(x=>x.open),'Daily practices are directly accessible on Today');
+  assertTrue(!await page.locator('.habit-tracker').evaluate(x=>x.open),'Daily practices start as a compact summary on Today');
+  await page.locator('.habits-summary').click();
   await page.click('[data-habit-id="sleep"]');
   await page.evaluate(()=>AWJ_STORE.flush());await page.reload();await page.waitForSelector('html[data-app-ready="true"]');
   assertTrue(await page.locator('[data-habit-id="sleep"][aria-pressed="true"]').count()===1,'Habit records survive reload');

@@ -13,11 +13,8 @@ test("the mobile shell exposes five primary tabs",async()=>{
   assert.deepEqual(tabs,["home","train","food","wellbeing","insights"]);
 });
 
-test("primary navigation keeps its active indicator aligned and uses the central URL router",async()=>{
-  const css=await read("dist/client/styles.css"),enhancements=await read("dist/client/enhancements.js"),navigation=await read("dist/client/navigation.js");
-  assert.match(css,/\.app-tabs::before\s*\{[^}]*width:\s*calc\(\(100% - 24px\) \/ 5\)/);
-  assert.match(css,/button:nth-child\(5\)\[aria-current="page"\][^}]*translateX\(calc\(400% \+ 12px\)\)/);
-  assert.match(css,/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.app-tabs::before[^}]*transition:\s*none/);
+test("primary navigation uses the central URL router",async()=>{
+  const enhancements=await read("dist/client/enhancements.js"),navigation=await read("dist/client/navigation.js");
   assert.match(navigation,/history\[replace\?"replaceState":"pushState"\]/);
   assert.match(navigation,/addEventListener\("popstate"/);
   assert.match(navigation,/routeFromLocation/);

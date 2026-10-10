@@ -107,6 +107,7 @@ function createAppContext(initialState = {}) {
   vm.runInContext(compatibilitySource+"\n"+(healthDataCode), context);
   vm.runInContext(compatibilitySource+"\n"+(trainingSessionCode), context);
   vm.runInContext(compatibilitySource+"\n"+(readFileSync("src/client/exercise-catalog.js", "utf8")),context);
+  for(const file of ["health-engine.js","health-coverage.js","health-summary.js"])vm.runInContext(readFileSync("src/client/"+file,"utf8"),context);
   vm.runInContext(compatibilitySource+"\n"+(appCode), context);
 
   return sandbox;
